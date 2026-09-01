@@ -1,0 +1,46 @@
+# Executive Assistant dashboard config
+# Edit this file to tune daily operator output without code changes.
+
+business:
+  name: MedFlow
+  tagline: Ambient scribe + billing codes for Southeast Michigan specialty practices
+  operator: Samuel Freeman
+  timezone: America/New_York
+  market: Independent practices (2–8 physicians) — not health systems
+
+primary_project_slug: medflow
+
+dashboard:
+  weekday_post_hour: 7
+  weekday_post_minute: 0
+  post_on_weekends: false
+
+focus_blocks:
+  weekday:
+    - label: Morning (90 min) — BUILD
+      hint: Core loop — audio, transcript, SOAP draft, CPT suggestions, approval UI
+    - label: Midday (30 min) — WARM INTROS
+      hint: SPARK, referrals, pilot follow-ups — no cold physician outreach
+    - label: Afternoon (30 min) — COMPLIANCE + SHIP
+      hint: HIPAA/BAA gates, LinkedIn build trail, deploy one thing
+  friday_suffix: Friday close — EOD score, weekly review, update ARR tracker in Supabase
+
+metrics:
+  - key: build_shipped
+    label: Product slices shipped
+    target: "≥1"
+  - key: warm_intros
+    label: Warm intro / pilot touchpoints
+    target: "≥1"
+  - key: compliance_gates_cleared
+    label: Compliance gates advanced
+    target: "≥0"
+  - key: deep_work_blocks
+    label: Deep work blocks (90+ min)
+    target: "≥1"
+
+commands:
+  - /ea dashboard
+  - /ea plan today
+  - /ea followups
+  - /ea weekly review

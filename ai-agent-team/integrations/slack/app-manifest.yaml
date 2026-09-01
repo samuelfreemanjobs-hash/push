@@ -1,0 +1,27 @@
+display_information:
+  name: MedFlow Ops
+  description: Executive Assistant + automation commands for MedFlow (n8n-backed)
+  background_color: "#0f172a"
+features:
+  bot_user:
+    display_name: MedFlow Ops
+    always_online: true
+  slash_commands:
+    - command: /ea
+      description: Executive Assistant — daily dashboard
+      url: https://YOUR_N8N_HOST/webhook/slack-ea
+      usage_hint: "[dashboard | plan today | followups | weekly review]"
+    - command: /cloud
+      description: Cloud Architect — runtime health audit
+      url: https://YOUR_N8N_HOST/webhook/cloud-audit
+      usage_hint: "audit"
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - chat:write
+      - chat:write.public
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

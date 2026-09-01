@@ -1,0 +1,91 @@
+{
+  "name": "ea-slack-commands",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-ea",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-slack-ea",
+      "name": "Slack EA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "slack-ea-commands"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst text = (body.text || body.command || '').trim();\nconst command = text.toLowerCase();\nreturn [{ json: { command, raw: body } }];"
+      },
+      "id": "parse-slack",
+      "name": "Parse Slack payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RAILWAY_API_URL }}/api/webhooks/n8n/slack-ea",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ command: $json.command }) }}",
+        "options": {}
+      },
+      "id": "http-slack-ea",
+      "name": "POST push runtime slack-ea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { response_type: $json.response_type || 'in_channel', text: $json.text } }}",
+        "options": {}
+      },
+      "id": "respond-slack",
+      "name": "Respond to Slack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Slack EA Webhook": {
+      "main": [[{ "node": "Parse Slack payload", "type": "main", "index": 0 }]]
+    },
+    "Parse Slack payload": {
+      "main": [[{ "node": "POST push runtime slack-ea", "type": "main", "index": 0 }]]
+    },
+    "POST push runtime slack-ea": {
+      "main": [[{ "node": "Respond to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "name": "ea" },
+    { "name": "slack" },
+    { "name": "phase-1" }
+  ]
+}
