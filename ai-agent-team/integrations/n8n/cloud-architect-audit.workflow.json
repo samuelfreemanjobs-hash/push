@@ -1,0 +1,56 @@
+{
+  "name": "cloud-architect-audit",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cloud-audit",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-cloud-audit",
+      "name": "Cloud Audit Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "cloud-audit"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.RAILWAY_API_URL }}/health",
+        "options": {}
+      },
+      "id": "http-health",
+      "name": "Check push runtime health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const health = $input.first().json;\nconst lines = [\n  '☁️ Cloud Architect Audit',\n  `Runtime: ${health.status || 'unknown'}`,\n  `Product: ${health.product || 'n/a'}`,\n  `Checked: ${health.timestamp || new Date().toISOString()}`,\n  '',\n  'Next: connect Supabase advisors + Railway service list in Phase 2.'\n];\nreturn [{ json: { text: lines.join('\\n') } }];"
+      },
+      "id": "format-audit",
+      "name": "Format audit summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Cloud Audit Webhook": {
+      "main": [[{ "node": "Check push runtime health", "type": "main", "index": 0 }]]
+    },
+    "Check push runtime health": {
+      "main": [[{ "node": "Format audit summary", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "cloud-architect" },
+    { "name": "phase-1" }
+  ]
+}

@@ -1,0 +1,44 @@
+# Executive Assistant dashboard config
+# Edit this file to tune daily operator output without code changes.
+
+business:
+  name: MedFlow
+  operator: Samuel Freeman
+  timezone: America/New_York
+
+primary_project_slug: medflow
+
+dashboard:
+  weekday_post_hour: 7
+  weekday_post_minute: 0
+  post_on_weekends: false
+
+focus_blocks:
+  weekday:
+    - label: Morning (60 min)
+      hint: Top revenue task — MedFlow product or pipeline
+    - label: Midday (30 min)
+      hint: Follow-ups + outbound prep
+    - label: Afternoon (30 min)
+      hint: Ops gates + automation improvements
+  friday_suffix: Friday close — EOD score + weekly review if time
+
+metrics:
+  - key: revenue_tasks_completed
+    label: Revenue tasks completed
+    target: "≥1"
+  - key: outbound_sent
+    label: Outbound sent
+    target: "≥1"
+  - key: followups_cleared
+    label: Follow-ups cleared
+    target: "≥0"
+  - key: deep_work_blocks
+    label: Deep work blocks
+    target: "≥2"
+
+commands:
+  - /ea dashboard
+  - /ea plan today
+  - /ea followups
+  - /ea weekly review

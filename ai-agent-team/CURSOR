@@ -1,1 +1,3 @@
-
+Cloud agent rules: integrations/n8n/README.md
+Deploy: railway.toml + n8n/railway.toml
+EA config: config/ea-dashboard.yaml
