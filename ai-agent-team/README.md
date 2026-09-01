@@ -58,8 +58,9 @@ Full guide: `integrations/n8n/README.md`
 
 ## Config
 
+- **Operating system:** `docs/MEDFLOW-OS.md` — channels, playbook, salvage map from Freeman Intelligence OS
 - Daily dashboard copy: `config/ea-dashboard.yaml`
-- CRM schema: `supabase/migrations/001_crm_schema.sql`
+- CRM schema: `supabase/migrations/001_crm_schema.sql` + `002_medflow_playbook.sql`
 - Slack app: `integrations/slack/app-manifest.yaml`
 
 ## Phase 1 complete checklist

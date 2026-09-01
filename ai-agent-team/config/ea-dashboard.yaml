@@ -3,8 +3,10 @@
 
 business:
   name: MedFlow
+  tagline: Ambient scribe + billing codes for Southeast Michigan specialty practices
   operator: Samuel Freeman
   timezone: America/New_York
+  market: Independent practices (2–8 physicians) — not health systems
 
 primary_project_slug: medflow
 
@@ -15,27 +17,27 @@ dashboard:
 
 focus_blocks:
   weekday:
-    - label: Morning (60 min)
-      hint: Top revenue task — MedFlow product or pipeline
-    - label: Midday (30 min)
-      hint: Follow-ups + outbound prep
-    - label: Afternoon (30 min)
-      hint: Ops gates + automation improvements
-  friday_suffix: Friday close — EOD score + weekly review if time
+    - label: Morning (90 min) — BUILD
+      hint: Core loop — audio, transcript, SOAP draft, CPT suggestions, approval UI
+    - label: Midday (30 min) — WARM INTROS
+      hint: SPARK, referrals, pilot follow-ups — no cold physician outreach
+    - label: Afternoon (30 min) — COMPLIANCE + SHIP
+      hint: HIPAA/BAA gates, LinkedIn build trail, deploy one thing
+  friday_suffix: Friday close — EOD score, weekly review, update ARR tracker in Supabase
 
 metrics:
-  - key: revenue_tasks_completed
-    label: Revenue tasks completed
+  - key: build_shipped
+    label: Product slices shipped
     target: "≥1"
-  - key: outbound_sent
-    label: Outbound sent
+  - key: warm_intros
+    label: Warm intro / pilot touchpoints
     target: "≥1"
-  - key: followups_cleared
-    label: Follow-ups cleared
+  - key: compliance_gates_cleared
+    label: Compliance gates advanced
     target: "≥0"
   - key: deep_work_blocks
-    label: Deep work blocks
-    target: "≥2"
+    label: Deep work blocks (90+ min)
+    target: "≥1"
 
 commands:
   - /ea dashboard
