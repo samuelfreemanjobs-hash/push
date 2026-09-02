@@ -1,0 +1,41 @@
+# [PRODUCT NAME] — Cursor Context
+
+## Project summary
+[One sentence description]
+
+## Stack
+- Node.js 22+ ESM
+- Express 4
+- [AI package]
+- @supabase/supabase-js
+- cors, dotenv
+
+## File structure
+```
+[folder-name]/
+  src/
+    index.js      ← all server code
+  .env.example
+  .gitignore
+  package.json
+  README.md
+```
+
+## Coding rules
+- All server logic lives in `src/index.js`
+- ESM imports only (no require)
+- Try/catch on every async route handler
+- Return JSON on all responses including errors
+- Never log or return raw API keys
+
+## Current endpoints
+| Method | Path | What it does |
+|--------|------|-------------|
+| GET | /health | Liveness check |
+| POST | /api/[endpoint] | [description] |
+| GET | /api/[endpoint]/:id | [description] |
+
+## Active tasks / what's left to build
+- [ ] [next thing to build]
+- [ ] [next thing to build]
+- [ ] [next thing to build]

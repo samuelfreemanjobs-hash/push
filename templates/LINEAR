@@ -1,0 +1,31 @@
+# [PRODUCT NAME] — Linear Project Setup
+
+## Project info
+- **Name:** [PRODUCT NAME]
+- **Identifier:** [SHORT-CODE] (e.g. AAT for AI Agent Team)
+- **Status:** Active
+
+## Initial tickets to create
+
+### Must-have (ship these first)
+- [ ] [SHORT-CODE]-1: Set up project scaffold and repo
+- [ ] [SHORT-CODE]-2: Implement [main endpoint]
+- [ ] [SHORT-CODE]-3: Wire up [AI provider] integration
+- [ ] [SHORT-CODE]-4: Wire up Supabase [table name] table
+- [ ] [SHORT-CODE]-5: Deploy to Railway and verify /health
+
+### Nice-to-have (after MVP is live)
+- [ ] [SHORT-CODE]-6: Add API key authentication
+- [ ] [SHORT-CODE]-7: Add rate limiting
+- [ ] [SHORT-CODE]-8: Add request logging
+- [ ] [SHORT-CODE]-9: Write integration tests for main endpoint
+- [ ] [SHORT-CODE]-10: Add pagination to list endpoints
+
+## Cycle 1 goal
+Ship a working [main endpoint] that calls [AI provider] and stores results in Supabase. Live URL on Railway.
+
+## Definition of done (Cycle 1)
+- `GET /health` returns 200
+- `POST /api/[endpoint]` returns AI response
+- Data is visible in Supabase Table Editor
+- Railway deploy is green

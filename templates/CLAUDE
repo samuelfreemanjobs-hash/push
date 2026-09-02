@@ -1,0 +1,34 @@
+# [PRODUCT NAME] — Claude Context
+
+## What this project does
+[One sentence. E.g. "A REST API that accepts user messages, sends them to an AI model, and stores conversations in Supabase."]
+
+## Stack
+- Runtime: Node.js 22+ (ESM)
+- Framework: Express 4
+- AI: [Gemini / Claude / OpenAI]
+- Database: Supabase (Postgres)
+- Deploy: Railway
+
+## Key files
+- `src/index.js` — entire server (routes, middleware, startup)
+- `.env.example` — all required env vars
+- `package.json` — deps and scripts
+
+## Env vars required
+- `[AI_API_KEY]` — [provider] API key
+- `SUPABASE_URL` — Supabase project URL
+- `SUPABASE_KEY` — Supabase anon key
+- `PORT` — defaults to 3000
+
+## API endpoints
+- `GET /health` — liveness check
+- `POST /api/[main-endpoint]` — [what it does]
+- `GET /api/[secondary-endpoint]` — [what it does]
+
+## Rules when editing this project
+- Keep all server code in `src/index.js` unless told otherwise
+- Always add error handling on async routes (try/catch, return 500)
+- Never commit `.env` — only `.env.example`
+- Use `console.error` for errors, not `throw`
+- ESM only — no `require()`
