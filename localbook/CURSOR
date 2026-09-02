@@ -1,0 +1,61 @@
+# LocalBook — Cursor Context
+
+## Project summary
+Full-stack appointment booking app for local SMBs. React + Firebase.
+No backend server — everything runs client-side + Firestore.
+
+## Stack
+- React 18 + Vite (ESM)
+- Tailwind CSS
+- Firebase 10 (Auth + Firestore + Hosting)
+- react-router-dom v6
+
+## File structure
+```
+localbook/
+  src/
+    App.jsx              ← routing
+    firebase.js          ← Firebase init
+    index.css            ← Tailwind imports
+    main.jsx             ← React entry
+    hooks/
+      useAuth.js         ← onAuthStateChanged wrapper
+    pages/
+      Landing.jsx        ← homepage + Sign-In
+      Dashboard.jsx      ← owner tabs
+      BookingPage.jsx    ← 4-step public booking flow
+    components/
+      BusinessSetup.jsx
+      ServicesManager.jsx
+      HoursManager.jsx
+      BlockedDates.jsx
+      BookingsCalendar.jsx
+    utils/
+      slots.js           ← generateTimeSlots, formatTime, getDayName
+  firestore.rules
+  firebase.json
+  .env.example
+```
+
+## Routes
+| Path | Component | Auth required |
+|------|-----------|--------------|
+| / | Landing | No |
+| /dashboard | Dashboard | Yes (Google) |
+| /book/:businessId | BookingPage | No |
+
+## Coding conventions
+- React functional components only
+- useState + useEffect for local state
+- All Firestore reads/writes in the component that needs them
+- Tailwind only — no CSS modules, no styled-components
+- Keep slot generation in utils/slots.js
+- Confirm destructive actions with window.confirm()
+
+## Active tasks (next to build)
+- [ ] Email confirmation via Firebase Extensions (Trigger Email)
+- [ ] SMS reminders via Twilio (Cloud Function trigger)
+- [ ] Stripe payment collection on booking confirmation
+- [ ] Custom domain support
+- [ ] Owner reschedule flow (currently can only cancel)
+- [ ] Multi-location support (multiple business profiles per account)

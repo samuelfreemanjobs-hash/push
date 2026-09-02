@@ -1,0 +1,41 @@
+# LocalBook — Linear Project Setup
+
+## Project info
+- **Name:** LocalBook
+- **Identifier:** LB
+- **Status:** Active
+
+## Cycle 1 — MVP (ship these first)
+- [x] LB-1: Project scaffold (React + Vite + Tailwind + Firebase)
+- [x] LB-2: Firebase Auth — Google Sign-In + ProtectedRoute
+- [x] LB-3: Business dashboard — setup tab (name, description, address, logo)
+- [x] LB-4: Services manager — add/edit/delete services with duration + price
+- [x] LB-5: Hours manager — set available days and time ranges
+- [x] LB-6: Blocked dates — calendar to mark dates unavailable
+- [x] LB-7: Public booking page — 4-step flow (service → date → time → info)
+- [x] LB-8: Bookings dashboard — list + cancel
+- [x] LB-9: Firestore security rules
+- [x] LB-10: Firebase Hosting config
+
+## Cycle 2 — Growth features
+- [ ] LB-11: Email confirmation to customer on booking (Firebase Trigger Email Extension)
+- [ ] LB-12: Email notification to owner on new booking
+- [ ] LB-13: SMS reminder 24h before appointment (Twilio + Cloud Function)
+- [ ] LB-14: Owner reschedule flow (change date/time of existing booking)
+- [ ] LB-15: Embed widget (iframe snippet for business websites)
+
+## Cycle 3 — Monetization
+- [ ] LB-16: Stripe payment collection at booking confirmation
+- [ ] LB-17: Subscription gating (free: 1 service, 20 bookings/mo; Pro: unlimited)
+- [ ] LB-18: Custom domain support (CNAME to Firebase Hosting)
+- [ ] LB-19: Business analytics page (bookings per week, revenue, top service)
+- [ ] LB-20: Multi-location (multiple business profiles per account)
+
+## Definition of done (Cycle 1)
+- Owner can sign in with Google
+- Owner can add at least one service with duration and price
+- Owner can set available hours for at least one day
+- Customer can visit /book/:id and complete a booking
+- Booking appears in owner's dashboard
+- Firestore security rules prevent unauthorized access
+- App builds and deploys to Firebase Hosting without errors

@@ -1,0 +1,57 @@
+# LocalBook — Claude Context
+
+## What this project does
+Full-stack appointment booking web app for local small businesses.
+Owners set up services, hours, and availability via a dashboard.
+Customers book through a public shareable link (/book/:businessId).
+No backend server — Firebase handles auth, database, and hosting.
+
+## Stack
+- Frontend: React 18 + Vite + Tailwind CSS
+- Auth: Firebase Authentication (Google Sign-In only)
+- Database: Firebase Firestore (realtime NoSQL)
+- Hosting: Firebase Hosting
+
+## Key files
+- src/App.jsx — routing (/, /dashboard, /book/:businessId)
+- src/firebase.js — Firebase init (reads VITE_ env vars)
+- src/hooks/useAuth.js — auth state listener
+- src/pages/Landing.jsx — public homepage + Google Sign-In CTA
+- src/pages/Dashboard.jsx — owner dashboard, 5-tab layout
+- src/pages/BookingPage.jsx — 4-step public booking flow
+- src/components/BusinessSetup.jsx — business profile form
+- src/components/ServicesManager.jsx — CRUD for services
+- src/components/HoursManager.jsx — set days/time ranges
+- src/components/BlockedDates.jsx — calendar to block dates
+- src/components/BookingsCalendar.jsx — view + cancel bookings
+- src/utils/slots.js — time slot generation (pure functions)
+- firestore.rules — Firestore security rules
+- firebase.json — hosting + Firestore config
+
+## Env vars (all required, VITE_ prefix for Vite)
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_STORAGE_BUCKET
+- VITE_FIREBASE_MESSAGING_SENDER_ID
+- VITE_FIREBASE_APP_ID
+
+## Firestore data structure
+- /businesses/{uid} — profile: name, description, address, logoUrl, hours, ownerId
+- /businesses/{uid}/services/{id} — name, duration (min), price (nullable)
+- /businesses/{uid}/bookings/{id} — customerName, customerEmail, serviceId,
+  serviceName, serviceDuration, servicePrice, date (YYYY-MM-DD), time (HH:MM),
+  status (confirmed|cancelled), createdAt
+- /businesses/{uid}/blockedDates/{YYYY-MM-DD} — date, blockedAt
+
+## Key design decisions
+- businessId in URL = Firebase Auth UID (no separate ID generation needed)
+- Hours stored as {monday: {enabled, open, close}, ...} on the business doc
+- Slots generated client-side from hours + booked times (no Cloud Functions)
+- All dates as YYYY-MM-DD strings, times as HH:MM 24h strings
+
+## Rules when editing
+- Keep slot logic in src/utils/slots.js — don't inline it in components
+- Public booking page has NO auth — only the booking create operation
+- Owner dashboard requires auth — ProtectedRoute in App.jsx handles this
+- Never store sensitive data in Firestore that violates security rules
