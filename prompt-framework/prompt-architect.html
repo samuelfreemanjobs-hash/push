@@ -1,999 +1,1794 @@
 <title>Prompt Architect</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
 
 <style>
-  :root {
-    --bg: #080D16;
-    --bg-surface: #0E1624;
-    --bg-raised: #162032;
-    --bg-hover: #1C2A42;
-    --border: #1E2E45;
-    --border-bright: #2B4064;
-    --accent: #0EA5E9;
-    --accent-dim: rgba(14, 165, 233, 0.12);
-    --accent-glow: rgba(14, 165, 233, 0.08);
-    --violet: #8B5CF6;
-    --violet-dim: rgba(139, 92, 246, 0.12);
-    --amber: #F59E0B;
-    --amber-dim: rgba(245, 158, 11, 0.1);
-    --emerald: #10B981;
-    --emerald-dim: rgba(16, 185, 129, 0.1);
-    --text: #E2EAF4;
-    --text-muted: #5A7499;
-    --text-subtle: #364F6B;
-    --font-display: 'Cormorant Garamond', Georgia, serif;
-    --font-body: 'Manrope', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-    --radius: 8px;
-    --radius-sm: 4px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
-  }
+:root {
+  --bg: #070C14;
+  --surface: #0D1726;
+  --surface-2: #131F30;
+  --border: #1E3049;
+  --text: #E8EFF9;
+  --text-2: #7A96B8;
+  --text-3: #3D5C7A;
+  --accent: #00D9FF;
+  --accent-dim: rgba(0,217,255,0.10);
+  --accent-glow: rgba(0,217,255,0.22);
+  --violet: #9D78FF;
+  --violet-dim: rgba(157,120,255,0.12);
+  --amber: #F5A623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --emerald: #2ECC8A;
+  --red: #FF5C5C;
+  --sidebar-w: 56px;
+  --preview-w: 360px;
+  --r: 8px;
+  --rs: 4px;
+  --font-d: 'Syne', system-ui, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', monospace;
+}
 
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #F0F4F8;
-      --bg-surface: #FFFFFF;
-      --bg-raised: #F7F9FC;
-      --bg-hover: #EDF2F8;
-      --border: #D1DDE8;
-      --border-bright: #B8CEDE;
-      --accent-glow: rgba(14, 165, 233, 0.06);
-      --accent-dim: rgba(14, 165, 233, 0.08);
-      --violet-dim: rgba(139, 92, 246, 0.08);
-      --amber-dim: rgba(245, 158, 11, 0.08);
-      --emerald-dim: rgba(16, 185, 129, 0.08);
-      --text: #0F1F33;
-      --text-muted: #4A6580;
-      --text-subtle: #8AA5BF;
-      --shadow: 0 4px 24px rgba(0,0,0,0.08);
-    }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #EFF3FA;
+    --surface: #FFFFFF;
+    --surface-2: #F5F7FC;
+    --border: #CDD9EC;
+    --text: #0D1726;
+    --text-2: #4A6380;
+    --text-3: #9AAEC5;
+    --accent: #0084A1;
+    --accent-dim: rgba(0,132,161,0.08);
+    --accent-glow: rgba(0,132,161,0.18);
+    --violet: #6B3FE0;
+    --violet-dim: rgba(107,63,224,0.08);
+    --amber: #A06800;
+    --amber-dim: rgba(160,104,0,0.08);
+    --emerald: #1A8050;
+    --red: #C0392B;
   }
-  :root[data-theme="light"] {
-    --bg: #F0F4F8;
-    --bg-surface: #FFFFFF;
-    --bg-raised: #F7F9FC;
-    --bg-hover: #EDF2F8;
-    --border: #D1DDE8;
-    --border-bright: #B8CEDE;
-    --accent-glow: rgba(14, 165, 233, 0.06);
-    --accent-dim: rgba(14, 165, 233, 0.08);
-    --violet-dim: rgba(139, 92, 246, 0.08);
-    --amber-dim: rgba(245, 158, 11, 0.08);
-    --emerald-dim: rgba(16, 185, 129, 0.08);
-    --text: #0F1F33;
-    --text-muted: #4A6580;
-    --text-subtle: #8AA5BF;
-    --shadow: 0 4px 24px rgba(0,0,0,0.08);
-  }
+}
+:root[data-theme="light"] {
+  --bg: #EFF3FA;
+  --surface: #FFFFFF;
+  --surface-2: #F5F7FC;
+  --border: #CDD9EC;
+  --text: #0D1726;
+  --text-2: #4A6380;
+  --text-3: #9AAEC5;
+  --accent: #0084A1;
+  --accent-dim: rgba(0,132,161,0.08);
+  --accent-glow: rgba(0,132,161,0.18);
+  --violet: #6B3FE0;
+  --violet-dim: rgba(107,63,224,0.08);
+  --amber: #A06800;
+  --amber-dim: rgba(160,104,0,0.08);
+  --emerald: #1A8050;
+  --red: #C0392B;
+}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  overflow: hidden;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-body);
-    font-size: 14px;
-    line-height: 1.6;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 2px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.nav-btn {
+  width: 40px;
+  height: 44px;
+  border-radius: var(--r);
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 8px;
+  font-family: var(--font-b);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+  position: relative;
+}
+.nav-btn svg { width: 17px; height: 17px; }
+.nav-btn:hover { color: var(--accent); background: var(--accent-dim); }
+.nav-btn.active { color: var(--accent); background: var(--accent-dim); }
+.nav-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+.sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 
-  /* ── Header ── */
-  header {
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-surface);
-    padding: 20px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .brand {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-  }
-  .brand-name {
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 300;
-    letter-spacing: 0.02em;
-    color: var(--text);
-    line-height: 1;
-  }
-  .brand-name em {
-    font-style: italic;
-    color: var(--accent);
-  }
-  .brand-tag {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 3px 8px;
-    border: 1px solid var(--border);
-    border-radius: 100px;
-  }
-  .header-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .theme-toggle {
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-family: var(--font-body);
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.15s;
-  }
-  .theme-toggle:hover { border-color: var(--border-bright); color: var(--text); }
-  .header-pill {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    border-radius: 100px;
-    background: var(--accent-dim);
-    color: var(--accent);
-    border: 1px solid rgba(14,165,233,0.2);
-  }
+/* ── SHELL ── */
+.app-shell { flex: 1; display: flex; overflow: hidden; }
+.tab-content { flex: 1; overflow-y: auto; padding: 28px 32px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 
-  /* ── Hero strip ── */
-  .hero {
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    padding: 28px;
-  }
-  .hero-inner {
-    max-width: 900px;
-  }
-  .hero h1 {
-    font-family: var(--font-display);
-    font-size: clamp(28px, 4vw, 42px);
-    font-weight: 300;
-    line-height: 1.2;
-    text-wrap: balance;
-    color: var(--text);
-    margin-bottom: 10px;
-  }
-  .hero h1 strong {
-    font-weight: 600;
-    color: var(--accent);
-  }
-  .hero p {
-    font-size: 15px;
-    color: var(--text-muted);
-    max-width: 680px;
-    line-height: 1.7;
-  }
-  .pillars-strip {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 16px;
-  }
-  .pillar-chip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 4px 9px;
-    border-radius: 100px;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-decoration: none;
-  }
-  .pillar-chip:hover, .pillar-chip.active {
-    background: var(--accent-dim);
-    border-color: rgba(14,165,233,0.3);
-    color: var(--accent);
-  }
-  .pillar-chip .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.6;
-  }
+/* ── PREVIEW ── */
+.preview-panel {
+  width: var(--preview-w);
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.2s;
+  overflow: hidden;
+}
+.preview-panel.hidden { width: 0; }
+.preview-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.preview-title {
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  flex: 1;
+}
+.preview-out { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.preview-code {
+  font-family: var(--font-m);
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.preview-code .pt { color: var(--accent); }
+.preview-code .ph { color: var(--violet); font-weight: 700; }
+.preview-code .pv { color: var(--amber); font-style: italic; }
+.preview-actions {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
-  /* ── Main layout ── */
-  .workspace {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 0;
-    flex: 1;
-    align-items: start;
-  }
-  @media (max-width: 820px) {
-    .workspace { grid-template-columns: 1fr; }
-  }
+/* ── TYPE ── */
+.eyebrow {
+  font-family: var(--font-d);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.page-h { font-family: var(--font-d); font-size: 24px; font-weight: 800; line-height: 1.2; text-wrap: balance; margin-bottom: 6px; }
+.page-sub { color: var(--text-2); font-size: 13px; margin-bottom: 24px; max-width: 540px; }
+.sec-label {
+  font-family: var(--font-d);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 10px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  /* ── Left: Pillars ── */
-  .pillars-panel {
-    padding: 24px 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    border-right: 1px solid var(--border);
-  }
-  .panel-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text-subtle);
-    margin-bottom: 4px;
-  }
+/* ── FORM ── */
+.field { margin-bottom: 16px; }
+.fl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.fh { font-size: 11px; color: var(--text-3); font-weight: 400; }
+textarea, input[type="text"] {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 9px 12px;
+  resize: vertical;
+  transition: border-color 0.15s;
+  outline: none;
+}
+textarea { min-height: 76px; }
+textarea.tall { min-height: 110px; }
+textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+  cursor: pointer;
+}
+select:focus { border-color: var(--violet); }
 
-  /* Accordion */
-  .pillar {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: var(--bg-surface);
-    transition: border-color 0.15s;
-  }
-  .pillar:has(.pillar-body:not([hidden])) {
-    border-color: var(--border-bright);
-  }
-  .pillar-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 13px 16px;
-    cursor: pointer;
-    user-select: none;
-    background: transparent;
-    border: none;
-    width: 100%;
-    text-align: left;
-    color: var(--text);
-  }
-  .pillar-header:hover { background: var(--bg-hover); }
-  .pillar-icon {
-    width: 30px; height: 30px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-  .pillar-num {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--text-subtle);
-    width: 20px;
-    flex-shrink: 0;
-  }
-  .pillar-title-group { flex: 1; }
-  .pillar-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1;
-    margin-bottom: 2px;
-  }
-  .pillar-subtitle {
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-  .pillar-arrow {
-    font-size: 11px;
-    color: var(--text-subtle);
-    transition: transform 0.2s;
-    flex-shrink: 0;
-  }
-  .pillar:has(.pillar-body:not([hidden])) .pillar-arrow { transform: rotate(180deg); }
-  .pillar-body {
-    padding: 0 16px 14px;
-    border-top: 1px solid var(--border);
-  }
-  .pillar-tip {
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.6;
-    margin: 10px 0 8px;
-    padding: 8px 10px;
-    background: var(--bg-raised);
-    border-radius: var(--radius-sm);
-    border-left: 2px solid var(--border-bright);
-  }
-  .pillar-tip strong { color: var(--text); }
-  .pillar-input {
-    width: 100%;
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--font-body);
-    font-size: 13px;
-    line-height: 1.6;
-    padding: 10px 12px;
-    resize: vertical;
-    min-height: 80px;
-    transition: border-color 0.15s;
-    outline: none;
-  }
-  .pillar-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .pillar-input::placeholder { color: var(--text-subtle); font-style: italic; }
-  .pillar-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 6px;
-  }
-  .char-count {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--text-subtle);
-  }
-  .fill-example {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--accent);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .fill-example:hover { opacity: 0.8; }
+/* ── CHIPS ── */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip {
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  font-family: var(--font-b);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.13s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.sel { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.chip.sel.v { background: var(--violet-dim); border-color: var(--violet); color: var(--violet); }
 
-  /* Pillar colors */
-  .p1 .pillar-icon { background: rgba(14,165,233,0.12); }
-  .p2 .pillar-icon { background: rgba(139,92,246,0.12); }
-  .p3 .pillar-icon { background: rgba(245,158,11,0.12); }
-  .p4 .pillar-icon { background: rgba(16,185,129,0.12); }
-  .p5 .pillar-icon { background: rgba(239,68,68,0.12); }
-  .p6 .pillar-icon { background: rgba(236,72,153,0.12); }
-  .p7 .pillar-icon { background: rgba(99,102,241,0.12); }
+/* ── BUTTONS ── */
+.btn {
+  padding: 8px 15px;
+  border-radius: var(--r);
+  border: none;
+  font-family: var(--font-b);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn-p { background: var(--accent); color: #000; }
+.btn-p:hover { filter: brightness(1.1); }
+.btn-g { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+.btn-g:hover { color: var(--text); border-color: var(--text-3); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.icon-btn {
+  width: 30px; height: 30px; padding: 0;
+  border-radius: var(--rs);
+  background: transparent;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn svg { width: 14px; height: 14px; }
 
-  /* ── Right: Preview ── */
-  .preview-panel {
-    padding: 24px 24px;
-    position: sticky;
-    top: 0;
-    max-height: 100vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .preview-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .preview-actions { display: flex; gap: 6px; }
-  .btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 13px;
-    border-radius: var(--radius-sm);
-    font-family: var(--font-body);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.15s;
-    background: var(--bg-raised);
-    color: var(--text-muted);
-  }
-  .btn:hover { border-color: var(--border-bright); color: var(--text); }
-  .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { opacity: 0.88; color: #fff; }
-  .btn-success {
-    background: var(--emerald);
-    border-color: var(--emerald);
-    color: #fff;
-  }
+/* ── BUILD GRID ── */
+.build-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.full { grid-column: 1/-1; }
 
-  .preview-output {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    min-height: 300px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.8;
-    color: var(--text);
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-  }
-  .preview-output .xml-tag { color: var(--accent); }
-  .preview-output .xml-close { color: var(--accent); opacity: 0.6; }
-  .preview-output .section-label { color: var(--violet); font-weight: 500; }
-  .preview-output .placeholder { color: var(--text-subtle); font-style: italic; }
+/* ── PERSONA GEN ── */
+.persona-gen {
+  border: 1px solid var(--violet);
+  border-radius: var(--r);
+  background: var(--violet-dim);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.gen-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.gen-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.gen-fl { font-size: 10px; font-weight: 600; color: var(--text-2); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 3px; }
 
-  .stats-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .stat-chip {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-muted);
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    padding: 3px 10px;
-    font-family: var(--font-mono);
-  }
-  .stat-chip span { color: var(--text); }
+/* ── MODEL SELECTOR ── */
+.model-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.model-radio { position: relative; }
+.model-radio input { position: absolute; opacity: 0; pointer-events: none; }
+.model-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.model-radio input:checked + .model-card { border-color: var(--accent); background: var(--accent-dim); }
+.model-n { font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+.model-d { font-size: 10px; color: var(--text-3); line-height: 1.4; }
 
-  /* ── Best practices cards ── */
-  .practices-section {
-    border-top: 1px solid var(--border);
-    padding: 28px;
-    background: var(--bg-surface);
-  }
-  .practices-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-  }
-  .practice-card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    transition: border-color 0.15s;
-  }
-  .practice-card:hover { border-color: var(--border-bright); }
-  .practice-eyebrow {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .practice-card h3 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .practice-card p {
-    font-size: 12px;
-    color: var(--text-muted);
-    line-height: 1.6;
-  }
+/* ── TEMP SLIDER ── */
+.temp-row { display: flex; align-items: center; gap: 12px; }
+input[type="range"] { -webkit-appearance: none; flex: 1; height: 4px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 8px var(--accent-glow); }
+.temp-v { font-family: var(--font-m); font-size: 13px; color: var(--accent); font-weight: 700; min-width: 28px; text-align: right; }
+.temp-lbls { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-3); margin-top: 4px; }
 
-  .section-heading {
-    font-family: var(--font-display);
-    font-size: 22px;
-    font-weight: 300;
-    color: var(--text);
-    letter-spacing: 0.01em;
-  }
-  .section-heading em { font-style: italic; color: var(--accent); }
+/* ── CHAINS ── */
+.chain-card { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); margin-bottom: 18px; overflow: hidden; }
+.chain-hdr { padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.chain-icon { width: 30px; height: 30px; border-radius: var(--rs); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.chain-title { font-family: var(--font-d); font-size: 14px; font-weight: 700; }
+.chain-desc { font-size: 11px; color: var(--text-2); }
+.chain-steps { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.step { display: flex; gap: 12px; }
+.step-n {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  color: var(--accent); font-size: 10px; font-weight: 700;
+  font-family: var(--font-m);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.step-body { flex: 1; }
+.step-lbl { font-size: 10px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+.step-prompt {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  padding: 10px 34px 10px 12px;
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+}
+.cp-btn {
+  position: absolute; top: 6px; right: 6px;
+  padding: 3px 7px; font-size: 9px; font-family: var(--font-b);
+  font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 3px; color: var(--text-2); cursor: pointer; transition: all 0.15s;
+}
+.cp-btn:hover { color: var(--accent); border-color: var(--accent); }
+.cp-btn.ok { color: var(--emerald); border-color: var(--emerald); }
 
-  /* ── Copy toast ── */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--emerald);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 10px 20px;
-    border-radius: 100px;
-    box-shadow: var(--shadow);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 1000;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+/* ── TECHNIQUES ── */
+.table-wrap { overflow-x: auto; margin-bottom: 28px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); padding: 8px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface-2); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; font-family: var(--font-m); white-space: nowrap; }
+.tech-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.tech-card { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); padding: 14px 15px; }
+.tc-num { font-family: var(--font-m); font-size: 10px; color: var(--text-3); margin-bottom: 3px; }
+.tc-name { font-family: var(--font-d); font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+.tc-desc { font-size: 12px; color: var(--text-2); line-height: 1.5; margin-bottom: 8px; }
+.tc-temp { font-size: 10px; font-family: var(--font-m); color: var(--amber); margin-bottom: 6px; }
+.tc-ex { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--rs); padding: 8px 10px; font-family: var(--font-m); font-size: 10px; color: var(--text-2); line-height: 1.5; }
 
-  /* ── Empty state ── */
-  .empty-hint {
-    color: var(--text-subtle);
-    font-size: 12px;
-    font-style: italic;
-    text-align: center;
-    padding: 32px 16px;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius);
-    display: none;
-  }
-  .empty-hint.visible { display: block; }
+/* ── SCIENCE ── */
+.sci-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.sci-card { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); padding: 18px 20px; }
+.sci-card.full { grid-column: 1/-1; }
+.sci-h { font-family: var(--font-d); font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.sci-s { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
+.stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+.stat-tile { background: var(--surface-2); border-radius: var(--r); padding: 12px; text-align: center; }
+.stat-n { font-family: var(--font-d); font-size: 22px; font-weight: 800; line-height: 1; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.stat-d { font-size: 10px; color: var(--text-2); line-height: 1.3; }
+.red-flags { display: flex; flex-direction: column; gap: 8px; }
+.rf {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 9px 12px;
+  background: rgba(255,92,92,0.06);
+  border: 1px solid rgba(255,92,92,0.2);
+  border-radius: var(--rs);
+}
+.rf-mark { font-family: var(--font-m); font-size: 11px; color: var(--red); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.rf-text { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.rule-60 { position: relative; background: var(--surface-2); border-radius: var(--r); padding: 16px; margin-top: 14px; }
+.rule-bar { height: 8px; background: var(--border); border-radius: 4px; margin: 10px 0 6px; overflow: hidden; position: relative; }
+.rule-fill { position: absolute; top: 0; left: 0; height: 100%; width: 60%; background: var(--emerald); border-radius: 4px; }
+.rule-marker { position: absolute; top: 0; left: 60%; height: 100%; width: 2px; background: var(--amber); }
 
-  @media (prefers-reduced-motion: reduce) {
-    *, .pillar-arrow, .toast { transition: none; }
-  }
+/* ── TEMPLATES ── */
+.cat-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tpl-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+.tpl-card { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); padding: 14px 16px; transition: border-color 0.15s; }
+.tpl-card:hover { border-color: var(--text-3); }
+.tpl-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.tpl-desc { font-size: 11px; color: var(--text-2); margin-bottom: 10px; line-height: 1.4; }
+.tpl-actions { display: flex; gap: 6px; }
+
+/* ── UTILS ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--emerald); color: #000;
+  font-size: 12px; font-weight: 700;
+  padding: 8px 18px; border-radius: 20px;
+  opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 200;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (max-width: 900px) {
+  .preview-panel { display: none; }
+  .build-grid, .sci-grid, .tpl-grid { grid-template-columns: 1fr; }
+  .tech-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .tab-content { padding: 16px; }
+  .tech-grid, .gen-fields { grid-template-columns: 1fr; }
+}
 </style>
 
-<header>
-  <div class="brand">
-    <span class="brand-name">Prompt <em>Architect</em></span>
-    <span class="brand-tag">Universal Framework</span>
+<!-- SIDEBAR + SHELL -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.9"/>
+      <rect x="16" y="2" width="10" height="10" rx="2" fill="var(--violet)" opacity="0.7"/>
+      <rect x="2" y="16" width="10" height="10" rx="2" fill="var(--violet)" opacity="0.7"/>
+      <rect x="16" y="16" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.5"/>
+    </svg>
   </div>
-  <div class="header-meta">
-    <span class="header-pill">7 Pillars</span>
-    <button class="theme-toggle" id="themeToggle">Toggle theme</button>
-  </div>
-</header>
 
-<div class="hero">
-  <div class="hero-inner">
-    <h1>Build prompts that <strong>actually work</strong><br>for anything you apply them to</h1>
-    <p>A structured framework synthesizing Anthropic's research on prompt engineering, agent design, and Claude's behavior. Fill in each pillar to assemble a high-precision prompt — then apply it to any task, tool, or model.</p>
-    <div class="pillars-strip">
-      <span class="pillar-chip"><span class="dot"></span>Role</span>
-      <span class="pillar-chip"><span class="dot"></span>Context</span>
-      <span class="pillar-chip"><span class="dot"></span>Objective</span>
-      <span class="pillar-chip"><span class="dot"></span>Thinking</span>
-      <span class="pillar-chip"><span class="dot"></span>Examples</span>
-      <span class="pillar-chip"><span class="dot"></span>Output</span>
-      <span class="pillar-chip"><span class="dot"></span>Constraints</span>
-    </div>
+  <button class="nav-btn active" data-tab="build" title="Build">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="2"/><line x1="7" y1="7" x2="13" y2="7"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>
+    Build
+  </button>
+  <button class="nav-btn" data-tab="chains" title="Chains">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="5" r="2.5"/><circle cx="15" cy="10" r="2.5"/><circle cx="5" cy="15" r="2.5"/><line x1="7.5" y1="5" x2="12.5" y2="10"/><line x1="7.5" y1="15" x2="12.5" y2="10"/></svg>
+    Chains
+  </button>
+  <button class="nav-btn" data-tab="techniques" title="Techniques">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v3M17 10h-3M10 17v-3M3 10h3"/><circle cx="10" cy="10" r="3.5"/></svg>
+    Tech
+  </button>
+  <button class="nav-btn" data-tab="science" title="Science">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3,14 7,8 10,11 14,5 17,9"/><line x1="3" y1="17" x2="17" y2="17"/></svg>
+    Science
+  </button>
+  <button class="nav-btn" data-tab="templates" title="Templates">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
+    Tpls
+  </button>
+
+  <div class="sidebar-bottom">
+    <button class="nav-btn" onclick="toggleTheme()" title="Toggle theme">
+      <svg id="theme-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="14.4" y1="14.4" x2="15.8" y2="15.8"/><line x1="14.4" y1="5.6" x2="15.8" y2="4.2"/><line x1="4.2" y1="15.8" x2="5.6" y2="14.4"/></svg>
+    </button>
   </div>
 </div>
 
-<div class="workspace">
-  <!-- Left: Pillars -->
-  <div class="pillars-panel">
-    <div class="panel-label">Configure each pillar</div>
+<div class="app-shell">
+  <div class="tab-content">
 
-    <!-- P1: Role -->
-    <div class="pillar p1" id="pillar-1">
-      <button class="pillar-header" onclick="togglePillar(1)">
-        <span class="pillar-num">01</span>
-        <span class="pillar-icon">🎭</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Role &amp; Persona</div>
-          <div class="pillar-subtitle">Who the AI is in this context</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Anthropic research:</strong> Assigning a specific expert role dramatically improves output quality. Be concrete — not "expert" but "senior software engineer with 15 years building distributed systems."
+    <!-- ══ BUILD ══ -->
+    <section class="tab-panel active" id="build">
+      <div class="eyebrow">Context Architecture First</div>
+      <h1 class="page-h">Build Your Prompt</h1>
+      <p class="page-sub">Assemble prompts using the God of Prompts framework — rich persona, XML zoning, and variable injection. Each pillar compounds the last.</p>
+
+      <div class="sec-label">Pillar 1 — Role & Persona</div>
+      <div class="field">
+        <div class="persona-gen">
+          <div class="gen-label">⚡ Rich Persona Generator</div>
+          <div class="gen-fields">
+            <div>
+              <div class="gen-fl">Role</div>
+              <select id="gen-role">
+                <option>Marketing Strategist</option>
+                <option>Expert Copywriter</option>
+                <option>Financial Analyst</option>
+                <option>Software Architect</option>
+                <option>Brand Strategist</option>
+                <option>SEO Specialist</option>
+                <option>Product Manager</option>
+                <option>Sales Expert</option>
+                <option>Content Creator</option>
+                <option>UX Researcher</option>
+                <option>Data Scientist</option>
+                <option>Executive Coach</option>
+              </select>
+            </div>
+            <div>
+              <div class="gen-fl">Industry</div>
+              <select id="gen-industry">
+                <option>SaaS / Tech</option>
+                <option>E-commerce</option>
+                <option>Finance</option>
+                <option>Healthcare</option>
+                <option>Education</option>
+                <option>Agency / Consulting</option>
+                <option>Media / Publishing</option>
+                <option>Real Estate</option>
+                <option>Manufacturing</option>
+              </select>
+            </div>
+            <div>
+              <div class="gen-fl">Experience</div>
+              <select id="gen-experience">
+                <option>3–5 years</option>
+                <option>8–10 years</option>
+                <option>15+ years</option>
+                <option>20+ years (veteran)</option>
+              </select>
+            </div>
+            <div>
+              <div class="gen-fl">Specialty Focus</div>
+              <input type="text" id="gen-specialty" placeholder="e.g. B2B growth, retention...">
+            </div>
+          </div>
+          <button class="btn btn-g btn-sm" onclick="generatePersona()">Generate Rich Persona →</button>
         </div>
-        <textarea class="pillar-input" id="p1" placeholder="e.g. You are an expert technical writer specializing in developer documentation, with deep knowledge of API design and a talent for making complex systems accessible to engineers at all levels." oninput="updatePreview(); updateCount(this, 'c1')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c1">0 chars</span>
-          <button class="fill-example" onclick="fillExample(1)">Use example →</button>
+        <textarea id="persona" class="tall" placeholder="#ROLE: Describe WHO the AI should be — not just a job title, but a full professional identity: background, philosophy, how they communicate, what they care about, what they refuse to do. Rich personas outperform job titles by 3x."></textarea>
+      </div>
+
+      <div class="build-grid">
+        <div class="field">
+          <div class="fl">Context <span class="fh">Set the scene</span></div>
+          <textarea id="context" placeholder="Situation, constraints, what the AI needs to know about WHY this task matters. Background it cannot infer."></textarea>
+        </div>
+        <div class="field">
+          <div class="fl">Task / Objective <span class="fh">The mission</span></div>
+          <textarea id="objective" placeholder="Precisely what you need. Specific outcome, not just the activity. Bad: 'write an email'. Good: 'write a 3-sentence re-engagement email that surfaces the cost of inaction without being manipulative.'"></textarea>
+        </div>
+        <div class="field">
+          <div class="fl">Thinking Approach <span class="fh">How to reason through it</span></div>
+          <textarea id="thinking" placeholder="First, analyze X. Then consider Y from Z's perspective. Approach this by breaking it into..."></textarea>
+        </div>
+        <div class="field">
+          <div class="fl">Few-Shot Examples <span class="fh">Show, don't just tell</span></div>
+          <textarea id="examples" placeholder="Input: [example situation]&#10;Output: [ideal response]&#10;&#10;Input: [example 2]&#10;Output: [ideal response 2]"></textarea>
+        </div>
+
+        <div class="field full">
+          <div class="sec-label">Pillar 6 — Output Format</div>
+          <div class="fl">Format</div>
+          <div class="chip-row" id="fmt-chips">
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Bullet Points</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Summary</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Table</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Step-by-Step</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Email Template</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Q&A Format</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Pro/Con</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Report</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Code</button>
+            <button class="chip" data-field="format" onclick="toggleChip(this)">Tweet Thread</button>
+          </div>
+          <div class="fl" style="margin-top:8px">Tone</div>
+          <div class="chip-row" id="tone-chips">
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Informative</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Persuasive</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Friendly</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Professional</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Humorous</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Inspirational</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Direct</button>
+            <button class="chip v" data-field="tone" onclick="toggleChip(this)">Empathetic</button>
+          </div>
+          <textarea id="output-text" placeholder="Additional output instructions: length constraints, specific sections to include, what to avoid in the response format..."></textarea>
+        </div>
+
+        <div class="field">
+          <div class="fl">Constraints <span class="fh">The guardrails</span></div>
+          <textarea id="constraints" placeholder="What to AVOID. Hard limits. What NOT to do. Format constraints, banned words, topics off-limits, length caps..."></textarea>
+        </div>
+        <div class="field">
+          <div class="fl">Variables <span class="fh">Dynamic inputs — use {var} in prompts above</span></div>
+          <textarea id="variables" placeholder="product = [your product name]&#10;audience = [target demographic]&#10;goal = [desired outcome]&#10;tone_ref = [brand voice reference]"></textarea>
         </div>
       </div>
-    </div>
 
-    <!-- P2: Context -->
-    <div class="pillar p2" id="pillar-2">
-      <button class="pillar-header" onclick="togglePillar(2)">
-        <span class="pillar-num">02</span>
-        <span class="pillar-icon">🌐</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Context</div>
-          <div class="pillar-subtitle">Background, situation, and audience</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Key insight:</strong> Claude performs better with more context, not less. Include who the audience is, what they already know, what constraints exist, and why this task matters.
+      <div class="sec-label" style="margin-top:8px">Model Configuration</div>
+      <div class="model-grid">
+        <label class="model-radio">
+          <input type="radio" name="model" value="Haiku">
+          <div class="model-card"><div class="model-n">Haiku</div><div class="model-d">Speed tasks · classification · quick extractions</div></div>
+        </label>
+        <label class="model-radio">
+          <input type="radio" name="model" value="Sonnet" checked>
+          <div class="model-card"><div class="model-n">Sonnet ★</div><div class="model-d">80–90% of daily work · best intelligence/speed ratio</div></div>
+        </label>
+        <label class="model-radio">
+          <input type="radio" name="model" value="Opus">
+          <div class="model-card"><div class="model-n">Opus</div><div class="model-d">Architecture · strategy · deep analysis — when stakes are highest</div></div>
+        </label>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <div class="fl">Temperature <span class="fh">0 = deterministic · 1 = maximum creativity</span></div>
+        <div class="temp-row">
+          <input type="range" id="temp" min="0" max="1" step="0.1" value="0.3" oninput="document.getElementById('temp-v').textContent=this.value;updatePreview()">
+          <span class="temp-v" id="temp-v">0.3</span>
         </div>
-        <textarea class="pillar-input" id="p2" placeholder="e.g. The audience is a team of mid-level backend engineers onboarding to a new microservices platform. They understand REST APIs but are unfamiliar with event-driven architecture. The documentation will live in the company's internal dev portal." oninput="updatePreview(); updateCount(this, 'c2')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c2">0 chars</span>
-          <button class="fill-example" onclick="fillExample(2)">Use example →</button>
+        <div class="temp-lbls"><span>Deterministic (0) — code, facts</span><span>Balanced (0.5)</span><span>Creative (1.0) — brainstorm</span></div>
+      </div>
+    </section>
+
+    <!-- ══ CHAINS ══ -->
+    <section class="tab-panel" id="chains">
+      <div class="eyebrow">Systems Over Single Prompts</div>
+      <h1 class="page-h">Chain Systems</h1>
+      <p class="page-sub">Multi-step prompt sequences that compound intelligence. Copy each step — paste Step N's output into Step N+1. The chain is the product, not the individual prompt.</p>
+
+      <!-- Chain 1 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:var(--accent-dim)">🔁</div>
+          <div>
+            <div class="chain-title">Self-Critique QC Chain</div>
+            <div class="chain-desc">Draft → Critique → Polish · Adds a built-in quality review layer before final output</div>
+          </div>
+        </div>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Draft</div>
+              <div class="step-prompt">Act as an expert in [DOMAIN]. Your task: [OBJECTIVE].
+
+Generate your most thorough initial response. Prioritize completeness over polish — you'll refine in a subsequent step. Do not hedge prematurely. Commit to a position.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Critique — Paste Step 1 output above this</div>
+              <div class="step-prompt">[PASTE STEP 1 OUTPUT HERE]
+
+---
+Now review the above with extreme rigor. Evaluate:
+1. ACCURACY — Are all claims verifiable? What's unsupported?
+2. COMPLETENESS — What's missing that a top expert would include?
+3. CLARITY — What could confuse the target reader?
+4. LOGIC — Any contradictions, gaps, or weak reasoning?
+5. IMPACT — Does it actually achieve [OBJECTIVE]?
+
+Output a numbered critique. Be harsh. This is not the final output.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Polish — Paste Steps 1+2 above this</div>
+              <div class="step-prompt">[PASTE ORIGINAL DRAFT HERE]
+
+[PASTE CRITIQUE HERE]
+
+---
+Using the critique above as your guide, produce the definitive final version. Address every critique point explicitly. This is your final output — make it exceptional. Do not add a preamble explaining what you changed.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- P3: Objective -->
-    <div class="pillar p3" id="pillar-3">
-      <button class="pillar-header" onclick="togglePillar(3)">
-        <span class="pillar-num">03</span>
-        <span class="pillar-icon">🎯</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Objective</div>
-          <div class="pillar-subtitle">What must be accomplished and why</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Be precise:</strong> Define the goal, success criteria, and scope. "Write a summary" fails — "Write a 3-paragraph executive summary that identifies the top 3 risks and proposes mitigation for each" succeeds.
+      <!-- Chain 2 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:var(--violet-dim)">⚙️</div>
+          <div>
+            <div class="chain-title">XML Constraint System</div>
+            <div class="chain-desc">Audit → Architect → Compact · Structures complex problems with state compaction</div>
+          </div>
         </div>
-        <textarea class="pillar-input" id="p3" placeholder="e.g. Write a getting-started guide for the event streaming API. The guide must: (1) explain the core publish/subscribe model in plain English, (2) walk through a working code example in Python, (3) cover the 3 most common error scenarios and how to handle them." oninput="updatePreview(); updateCount(this, 'c3')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c3">0 chars</span>
-          <button class="fill-example" onclick="fillExample(3)">Use example →</button>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Audit</div>
+              <div class="step-prompt">Analyze this situation and identify all constraints, requirements, and context:
+
+[YOUR SITUATION / PROBLEM]
+
+Output as structured XML:
+<constraints>[hard limits]</constraints>
+<requirements>[what must be true]</requirements>
+<context>[relevant background]</context>
+<unknowns>[what you'd need to know]</unknowns>
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Architect — Paste Step 1 above this</div>
+              <div class="step-prompt">[PASTE STEP 1 OUTPUT HERE]
+
+---
+Using the constraint analysis above, design the optimal solution. Output:
+<solution_design>[the approach]</solution_design>
+<implementation>[ordered steps]</implementation>
+<failure_modes>[what could go wrong + mitigations]</failure_modes>
+<success_metrics>[how we'll know it worked]</success_metrics>
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Compact — Create save-point for next session</div>
+              <div class="step-prompt">[PASTE STEPS 1+2 OUTPUT HERE]
+
+---
+Compress the above into a dense JSON save-point for state compaction. Format:
+{"session_id":"[DATE]-[TOPIC]","status":"[current state]","decisions":["decision1","decision2"],"next_action":"[immediate next step]","context":"[100-word max summary]","open_questions":["q1","q2"]}
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- P4: Thinking -->
-    <div class="pillar p4" id="pillar-4">
-      <button class="pillar-header" onclick="togglePillar(4)">
-        <span class="pillar-num">04</span>
-        <span class="pillar-icon">🧠</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Thinking Process</div>
-          <div class="pillar-subtitle">How to approach and reason through the task</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Chain of thought:</strong> For complex tasks, instruct Claude to break down the problem before answering. Research shows this reduces errors on multi-step reasoning tasks by up to 40%.
+      <!-- Chain 3 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:var(--amber-dim)">🧠</div>
+          <div>
+            <div class="chain-title">Theory of Mind Chain</div>
+            <div class="chain-desc">Epistemic Map → Alien View → Audience Simulator · +29% accuracy on perspective-taking tasks (MIT study)</div>
+          </div>
         </div>
-        <textarea class="pillar-input" id="p4" placeholder="e.g. Before writing, work through these steps: (1) identify the 3 concepts a new reader must understand first, (2) determine the simplest analogies for each, (3) plan where a code example adds the most value. Then write." oninput="updatePreview(); updateCount(this, 'c4')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c4">0 chars</span>
-          <button class="fill-example" onclick="fillExample(4)">Use example →</button>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Epistemic Architect</div>
+              <div class="step-prompt">Map the belief landscape around [TOPIC].
+
+Identify 5 distinct perspectives:
+1. What do domain experts believe, and why?
+2. What do laypeople assume, often incorrectly?
+3. What do critics/skeptics argue?
+4. What hidden assumptions are baked into mainstream thinking?
+5. What would a rigorous outsider find surprising or strange?
+
+Output: an epistemic map with confidence ratings for each claim.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Alien Collaborator</div>
+              <div class="step-prompt">You are a researcher from a civilization that developed independently from Earth. You are studying [TOPIC] for the first time with no cultural assumptions or inherited biases.
+
+Examine it from first principles only. What patterns do you observe that humans seem to take for granted? What questions would you ask that humans never think to ask? What strikes you as deeply irrational or surprising about how humans approach this?
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Audience Simulator — Paste Steps 1+2 above</div>
+              <div class="step-prompt">[PASTE STEPS 1+2 OUTPUT HERE]
+
+---
+Using the epistemic map and alien perspective above, create a tailored explanation of [TOPIC] for [TARGET AUDIENCE].
+
+Preemptively address:
+- Their top 3 objections (stated as the audience would state them)
+- Their most likely confusion points
+- What they must believe FIRST before they'll accept the conclusion
+- One analogy from their world that makes this click instantly
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- P5: Examples -->
-    <div class="pillar p5" id="pillar-5">
-      <button class="pillar-header" onclick="togglePillar(5)">
-        <span class="pillar-num">05</span>
-        <span class="pillar-icon">📚</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Examples</div>
-          <div class="pillar-subtitle">Demonstrations of ideal input/output</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Few-shot power:</strong> 2–3 concrete examples outperform lengthy instructions. Show what "good" looks like — and if helpful, show what "bad" looks like with an explanation.
+      <!-- Chain 4 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:rgba(255,92,92,0.1)">⚔️</div>
+          <div>
+            <div class="chain-title">Strategic Warfare Chain</div>
+            <div class="chain-desc">Recon → Adversarial War Room → Decision Synthesis · For competitive analysis and high-stakes decisions</div>
+          </div>
         </div>
-        <textarea class="pillar-input" id="p5" style="min-height:110px" placeholder="e.g. Good section heading: 'Handle connection timeouts' — specific, action-oriented, tells the reader what they'll learn.&#10;&#10;Bad section heading: 'Error handling' — too vague, could mean anything.&#10;&#10;Good code comment: explains WHY, not WHAT. Bad: '# increment counter by 1'." oninput="updatePreview(); updateCount(this, 'c5')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c5">0 chars</span>
-          <button class="fill-example" onclick="fillExample(5)">Use example →</button>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Strategic Recon</div>
+              <div class="step-prompt">Conduct a full strategic reconnaissance of [COMPETITIVE LANDSCAPE / CHALLENGE].
+
+Map:
+1. Key players and their current positions
+2. Resource asymmetries (who has what advantage)
+3. Hidden vulnerabilities in the current leaders
+4. Tempo and timing — is there a window of opportunity?
+5. Terrain advantages — what context favors which approach?
+
+Output: intel report with a threat/opportunity matrix.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Adversarial War Room</div>
+              <div class="step-prompt">You are the strongest possible adversary of [MY POSITION / STRATEGY]. Your job: build the most devastating case AGAINST it.
+
+Find:
+- The fatal flaw I haven't noticed
+- The assumption I'm making that's most likely wrong
+- The attack vector that would collapse my strategy fastest
+- The scenario where my strengths become liabilities
+
+Don't hold back. I need to know the worst now, not after it's too late.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Decision Synthesis — Paste Steps 1+2 above</div>
+              <div class="step-prompt">[PASTE STEPS 1+2 OUTPUT HERE]
+
+---
+Holding the strategic map and adversarial critique simultaneously, identify the optimal path forward.
+
+Apply second-order thinking: what happens as a result of the result?
+
+Output:
+- Recommended strategy (specific, not general)
+- The single biggest bet embedded in it
+- 2 contingency branches if the core assumption fails
+- The decision I must make in the next 48 hours
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- P6: Output Format -->
-    <div class="pillar p6" id="pillar-6">
-      <button class="pillar-header" onclick="togglePillar(6)">
-        <span class="pillar-num">06</span>
-        <span class="pillar-icon">📄</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Output Format</div>
-          <div class="pillar-subtitle">Structure, length, and presentation</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Specify precisely:</strong> Define format (markdown, JSON, prose), length (word count or "3 paragraphs"), structure (headers, numbered steps), and tone. Ambiguity here is the #1 cause of unsatisfying output.
+      <!-- Chain 5 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:var(--emerald-dim,rgba(46,204,138,0.12))">💾</div>
+          <div>
+            <div class="chain-title">AI Memory System</div>
+            <div class="chain-desc">Session Log → Pattern Extract → Briefing · Maintain continuity across sessions using state compaction</div>
+          </div>
         </div>
-        <textarea class="pillar-input" id="p6" placeholder="e.g. Output in Markdown. Structure: H2 heading per major concept, code blocks with Python syntax highlighting, bullet points for steps (no more than 7), a callout box for warnings. Total length: 600–900 words." oninput="updatePreview(); updateCount(this, 'c6')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c6">0 chars</span>
-          <button class="fill-example" onclick="fillExample(6)">Use example →</button>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Daily Session Log</div>
+              <div class="step-prompt">Create a structured memory log for today's session.
+
+<session_log>
+  <date>[TODAY'S DATE]</date>
+  <project>[PROJECT NAME]</project>
+  <key_decisions>[List major decisions made]</key_decisions>
+  <insights>[What you learned that you didn't know before]</insights>
+  <what_worked>[Approaches, prompts, or methods that worked well]</what_worked>
+  <open_questions>[Unresolved questions for next session]</open_questions>
+  <next_actions>[Ordered list of next steps]</next_actions>
+</session_log>
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Pattern Extractor — Paste recent session logs above</div>
+              <div class="step-prompt">[PASTE LAST 5-10 SESSION LOGS HERE]
+
+---
+Analyze these session logs. Identify:
+1. Recurring themes and topics (with frequency)
+2. Progress velocity — are we accelerating or stuck?
+3. Persistent blockers that keep appearing
+4. Emerging opportunities not yet acted on
+5. Patterns in what's working vs. failing
+
+Rate each finding: High / Medium / Low confidence. Flag the 1 most important insight.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Next-Session Brief</div>
+              <div class="step-prompt">[PASTE PATTERN ANALYSIS HERE]
+
+---
+Create a compressed briefing to hand to an AI at the start of the next session. It must contain everything needed to continue without losing context.
+
+Output as JSON save-point:
+{"project":"[NAME]","last_updated":"[DATE]","status":"[IN PROGRESS/BLOCKED/ON TRACK]","context":"[100-word max summary]","pending":["item1","item2"],"key_decisions":["decision1"],"next_session_start":"[exact first action]"}
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- P7: Constraints -->
-    <div class="pillar p7" id="pillar-7">
-      <button class="pillar-header" onclick="togglePillar(7)">
-        <span class="pillar-num">07</span>
-        <span class="pillar-icon">🚫</span>
-        <span class="pillar-title-group">
-          <div class="pillar-title">Constraints &amp; Guardrails</div>
-          <div class="pillar-subtitle">What to avoid and non-negotiable rules</div>
-        </span>
-        <span class="pillar-arrow">▼</span>
-      </button>
-      <div class="pillar-body" hidden>
-        <div class="pillar-tip">
-          <strong>Positive + negative:</strong> Pair each "don't" with a "do instead." Research shows pure negative constraints are less effective than telling Claude what the preferred alternative is.
+      <!-- Chain 6 -->
+      <div class="chain-card">
+        <div class="chain-hdr">
+          <div class="chain-icon" style="background:var(--amber-dim)">📊</div>
+          <div>
+            <div class="chain-title">Eisenhower Auditor</div>
+            <div class="chain-desc">Priority Matrix → Ruthless Filter → Execution Plan · Cuts overwhelm, protects Q2 time</div>
+          </div>
         </div>
-        <textarea class="pillar-input" id="p7" placeholder="e.g. Do not use jargon without defining it first. Avoid passive voice — use active voice instead. Never assume the reader knows what a message broker is; explain it. Skip marketing language like 'powerful' or 'seamless'." oninput="updatePreview(); updateCount(this, 'c7')"></textarea>
-        <div class="pillar-footer">
-          <span class="char-count" id="c7">0 chars</span>
-          <button class="fill-example" onclick="fillExample(7)">Use example →</button>
+        <div class="chain-steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-lbl">Priority Matrix</div>
+              <div class="step-prompt">Here are all my current tasks, projects, and commitments:
+[YOUR COMPLETE LIST]
+
+For each item, classify without mercy:
+Q1 — Urgent + Important (crisis, deadline-driven)
+Q2 — Not Urgent + Important (strategy, growth, relationships)
+Q3 — Urgent + Not Important (other people's priorities, interruptions)
+Q4 — Not Urgent + Not Important (time wasters)
+
+Output as a labeled 2×2 matrix. Justify any Q1 classification — true Q1 is rare.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-lbl">Ruthless Filter — Paste Step 1 above</div>
+              <div class="step-prompt">[PASTE MATRIX HERE]
+
+---
+Apply the 80/20 filter:
+- Q3 items: Who specifically should handle each instead of me?
+- Q4 items: Can it be eliminated entirely? What's the real cost of dropping it?
+- Q2 items: Which 20% will produce 80% of the meaningful results?
+
+Output:
+ELIMINATE: [specific items]
+DELEGATE: [item → who]
+FOCUS Q2: [top 3 items that will matter most in 6 months]
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-lbl">Execution Plan</div>
+              <div class="step-prompt">[PASTE FILTERED LIST HERE]
+
+---
+Build a weekly execution plan using only Q1 and top Q2 items.
+
+For each item, define:
+- DONE = [specific measurable outcome, not activity]
+- TIME BLOCK = [day + hours]
+- NEXT ACTION = [the single physical next step, verb + noun]
+
+Output as a structured weekly schedule. Flag any week with more than 2 Q1 items — that's a sign of chronic crisis mode, not priority.
+<button class="cp-btn" onclick="copyStep(this)">COPY</button></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <button class="btn" onclick="resetAll()" style="align-self:flex-start;margin-top:4px;">↺ Reset all fields</button>
-  </div>
+    <!-- ══ TECHNIQUES ══ -->
+    <section class="tab-panel" id="techniques">
+      <div class="eyebrow">Google's Research-Backed Methods</div>
+      <h1 class="page-h">Prompting Techniques</h1>
+      <p class="page-sub">Use the decision matrix to pick the right technique before you write a single word. The technique determines the scaffolding; the content fills it.</p>
 
-  <!-- Right: Preview -->
-  <div class="preview-panel">
+      <div class="sec-label">Decision Matrix</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Situation</th><th>Best Technique</th><th>Temp</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>First attempt, output format is obvious</td><td><span class="badge" style="background:var(--accent-dim);color:var(--accent)">Zero-Shot</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.3</td><td style="color:var(--text-2)">No examples needed; model has sufficient pattern</td></tr>
+            <tr><td>Need a specific format or style</td><td><span class="badge" style="background:var(--violet-dim);color:var(--violet)">Few-Shot</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.2</td><td style="color:var(--text-2)">Examples anchor format more reliably than instructions</td></tr>
+            <tr><td>Multi-step reasoning or math</td><td><span class="badge" style="background:var(--accent-dim);color:var(--accent)">Chain of Thought</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.0</td><td style="color:var(--text-2)">Explicit reasoning steps reduce errors 40–70%</td></tr>
+            <tr><td>Multiple valid answers exist</td><td><span class="badge" style="background:var(--amber-dim);color:var(--amber)">Self-Consistency</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.6</td><td style="color:var(--text-2)">Generate N chains, take majority — reduces hallucination</td></tr>
+            <tr><td>Exploring a solution space</td><td><span class="badge" style="background:var(--amber-dim);color:var(--amber)">Tree of Thoughts</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.7</td><td style="color:var(--text-2)">Branches multiple reasoning paths simultaneously</td></tr>
+            <tr><td>Need real-time info + actions</td><td><span class="badge" style="background:var(--violet-dim);color:var(--violet)">ReAct</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.3</td><td style="color:var(--text-2)">Reason + Act interleaved with tool use</td></tr>
+            <tr><td>Need deep conceptual grounding</td><td><span class="badge" style="background:var(--accent-dim);color:var(--accent)">Step-Back</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.3</td><td style="color:var(--text-2)">Abstract first, then solve specific — improves accuracy</td></tr>
+            <tr><td>High-stakes, must be right</td><td><span class="badge" style="background:rgba(255,92,92,0.12);color:var(--red)">Self-Critique</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.2</td><td style="color:var(--text-2)">Draft→Critique→Refine loop catches errors before delivery</td></tr>
+            <tr><td>Refining the prompt itself</td><td><span class="badge" style="background:var(--emerald-dim,rgba(46,204,138,.12));color:var(--emerald)">Auto Prompt Eng</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.5</td><td style="color:var(--text-2)">Let AI generate + evaluate better prompt variants</td></tr>
+            <tr><td>Creative brainstorming</td><td><span class="badge" style="background:var(--accent-dim);color:var(--accent)">Zero-Shot + Role</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.8–1.0</td><td style="color:var(--text-2)">High temp + rich persona unlocks divergent thinking</td></tr>
+            <tr><td>Code writing</td><td><span class="badge" style="background:var(--accent-dim);color:var(--accent)">CoT + Few-Shot</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.0</td><td style="color:var(--text-2)">Deterministic + examples of input/output pairs</td></tr>
+            <tr><td>Strategic decisions</td><td><span class="badge" style="background:var(--amber-dim);color:var(--amber)">ToT + Self-Critique</span></td><td style="font-family:var(--font-m);color:var(--amber)">0.5</td><td style="color:var(--text-2)">Explore paths + adversarially review the best one</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec-label">The 9 Techniques</div>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tc-num">01</div>
+          <div class="tc-name">Zero-Shot</div>
+          <div class="tc-desc">No examples. Direct instruction. Works when the model has strong pattern for the task. The foundation everything else builds on.</div>
+          <div class="tc-temp">temp: 0.2–0.8 · varies by task</div>
+          <div class="tc-ex">Classify this customer email as: complaint / inquiry / compliment. Email: [TEXT]</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">02</div>
+          <div class="tc-name">Few-Shot</div>
+          <div class="tc-desc">2–5 input/output examples before the real task. Anchors format and style more reliably than any instruction. Most underused technique.</div>
+          <div class="tc-temp">temp: 0.1–0.3</div>
+          <div class="tc-ex">Input: "Product broke after 2 days" → Tone: Frustrated&#10;Input: "Love this!" → Tone: Positive&#10;Input: [TEXT] → Tone:</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">03</div>
+          <div class="tc-name">Chain of Thought</div>
+          <div class="tc-desc">Force step-by-step reasoning. Add "think step by step" or show reasoning in examples. Reduces errors 40–70% on complex tasks. Always temp=0.</div>
+          <div class="tc-temp">temp: 0.0 — deterministic only</div>
+          <div class="tc-ex">Solve this step by step, showing your reasoning at each stage: [PROBLEM]</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">04</div>
+          <div class="tc-name">Self-Consistency</div>
+          <div class="tc-desc">Generate multiple independent reasoning chains, take the majority answer. Dramatically reduces hallucination on factual questions.</div>
+          <div class="tc-temp">temp: 0.5–0.8 · run 3–5 times</div>
+          <div class="tc-ex">Think through this problem independently 3 times using different approaches. Then give the answer that appeared most consistently.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">05</div>
+          <div class="tc-name">Tree of Thoughts</div>
+          <div class="tc-desc">Branch multiple reasoning paths simultaneously, evaluate each, prune weak ones. Like a chess engine exploring moves. Best for open-ended problems.</div>
+          <div class="tc-temp">temp: 0.6–0.8</div>
+          <div class="tc-ex">Generate 3 distinct approaches to [PROBLEM]. Rate each 1–10. Develop only the highest-rated approach to completion.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">06</div>
+          <div class="tc-name">ReAct</div>
+          <div class="tc-desc">Interleave Reasoning and Acting — think, then use a tool, then think about the result. Foundation of all modern AI agents.</div>
+          <div class="tc-temp">temp: 0.2–0.4</div>
+          <div class="tc-ex">Thought: I need to find X&#10;Action: search("X")&#10;Observation: [result]&#10;Thought: Based on this, I should...</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">07</div>
+          <div class="tc-name">Step-Back</div>
+          <div class="tc-desc">Ask a more abstract question first to establish principles, then apply to the specific problem. Grounds reasoning in fundamentals before specifics.</div>
+          <div class="tc-temp">temp: 0.3</div>
+          <div class="tc-ex">Step 1: What are the core principles governing [DOMAIN]? Step 2: Apply those principles to solve [SPECIFIC PROBLEM].</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">08</div>
+          <div class="tc-name">Self-Critique</div>
+          <div class="tc-desc">Generate → Critique → Refine. The built-in QC loop. Model acts as its own adversarial reviewer between drafts. See the Chains tab for full implementation.</div>
+          <div class="tc-temp">temp: 0.1–0.3</div>
+          <div class="tc-ex">Draft: [GENERATE RESPONSE]&#10;Now critique your draft. What's weak?&#10;Final: Rewrite addressing every critique.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tc-num">09</div>
+          <div class="tc-name">Auto Prompt Eng</div>
+          <div class="tc-desc">Let the AI generate better prompts for itself. Provide goal + constraints, have it generate 5 prompt variants, evaluate each, use the winner.</div>
+          <div class="tc-temp">temp: 0.5–0.7</div>
+          <div class="tc-ex">Goal: [OBJECTIVE]. Generate 5 different prompts that could achieve this. Rate each 1–10 for clarity, specificity, and likely output quality. Recommend the best.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SCIENCE ══ -->
+    <section class="tab-panel" id="science">
+      <div class="eyebrow">Research-Backed Prompt Science</div>
+      <h1 class="page-h">The Science of Tokens</h1>
+      <p class="page-sub">Prompt engineering is empirical. These findings change how you structure every prompt you write. The data has clear implications — follow them.</p>
+
+      <div class="sci-grid">
+        <div class="sci-card full">
+          <div class="sci-h">Token Flip Curve — Accuracy vs. Context Length</div>
+          <div class="sci-s">Model accuracy peaks at 4K–7K tokens, then drops sharply. The "token flip" at ~7,000 is where models begin second-guessing earlier correct answers.</div>
+          <div class="stat-row">
+            <div class="stat-tile">
+              <div class="stat-n" style="color:var(--emerald)">71.9%</div>
+              <div class="stat-d">Accuracy under 4K tokens</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-n" style="color:var(--amber)">~7K</div>
+              <div class="stat-d">Token flip zone — peak then drop</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-n" style="color:var(--red)">44.7%</div>
+              <div class="stat-d">Accuracy over 12K tokens</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 600 200" style="width:100%;height:180px;display:block" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid lines -->
+            <line x1="50" y1="160" x2="570" y2="160" stroke="var(--border)" stroke-width="1"/>
+            <line x1="50" y1="20" x2="50" y2="160" stroke="var(--border)" stroke-width="1"/>
+            <line x1="50" y1="120" x2="570" y2="120" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="50" y1="80" x2="570" y2="80" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <!-- Y labels -->
+            <text x="42" y="164" fill="var(--text-3)" font-size="9" text-anchor="end" font-family="JetBrains Mono,monospace">0%</text>
+            <text x="42" y="124" fill="var(--text-3)" font-size="9" text-anchor="end" font-family="JetBrains Mono,monospace">50%</text>
+            <text x="42" y="84" fill="var(--text-3)" font-size="9" text-anchor="end" font-family="JetBrains Mono,monospace">75%</text>
+            <text x="42" y="44" fill="var(--text-3)" font-size="9" text-anchor="end" font-family="JetBrains Mono,monospace">100%</text>
+            <!-- X labels -->
+            <text x="50" y="175" fill="var(--text-3)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">0</text>
+            <text x="180" y="175" fill="var(--text-3)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">4K</text>
+            <text x="285" y="175" fill="var(--text-3)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">7K</text>
+            <text x="400" y="175" fill="var(--text-3)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">12K</text>
+            <text x="570" y="175" fill="var(--text-3)" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">16K</text>
+            <text x="310" y="187" fill="var(--text-2)" font-size="9" text-anchor="middle" font-family="Inter,sans-serif">context window tokens</text>
+            <!-- Accuracy curve path: starts low, rises to peak at ~7K, drops off -->
+            <!-- Coords: x=50(0tok), x=180(4K), x=285(7K-peak), x=400(12K), x=570(16K) -->
+            <!-- Accuracy: 40%(y=128), 72%(y=73), 78%(y=57), 45%(y=124), 38%(y=136) -->
+            <path d="M50,136 C90,120 140,70 180,73 C220,76 260,55 285,57 C315,59 350,110 400,124 C450,138 510,140 570,144"
+                  fill="url(#curveGrad)" stroke="none"/>
+            <path d="M50,136 C90,120 140,70 180,73 C220,76 260,55 285,57 C315,59 350,110 400,124 C450,138 510,140 570,144"
+                  fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+            <!-- Token flip vertical line -->
+            <line x1="285" y1="20" x2="285" y2="160" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="288" y="32" fill="var(--amber)" font-size="9" font-family="Inter,sans-serif" font-weight="700">Token Flip Zone</text>
+            <!-- Peak dot -->
+            <circle cx="285" cy="57" r="4" fill="var(--accent)"/>
+            <!-- 4K dot -->
+            <circle cx="180" cy="73" r="3" fill="var(--accent)" opacity="0.7"/>
+            <!-- 12K dot -->
+            <circle cx="400" cy="124" r="3" fill="var(--red)" opacity="0.7"/>
+            <!-- Confidence drops label -->
+            <text x="440" y="110" fill="var(--red)" font-size="9" font-family="Inter,sans-serif">accuracy cliff</text>
+          </svg>
+        </div>
+
+        <div class="sci-card">
+          <div class="sci-h">The 60% Rule</div>
+          <div class="sci-s">Trim outputs to 60% of natural length for 97% accuracy. Longer ≠ better. Most AI responses carry 40% filler.</div>
+          <div class="rule-60">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2)">
+              <span>Signal</span>
+              <span style="color:var(--text-3)">Filler (cut this)</span>
+            </div>
+            <div class="rule-bar">
+              <div class="rule-fill"></div>
+              <div class="rule-marker"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3)">
+              <span style="color:var(--emerald);font-weight:700">60% — optimal</span>
+              <span>100% — natural length</span>
+            </div>
+          </div>
+          <div style="margin-top:14px;font-size:12px;color:var(--text-2);line-height:1.6">
+            Add to any prompt: <span style="font-family:var(--font-m);color:var(--accent);font-size:11px">"Use 60% of natural output length. Every sentence must carry weight."</span>
+          </div>
+        </div>
+
+        <div class="sci-card">
+          <div class="sci-h">Reconsideration Red Flags</div>
+          <div class="sci-s">67.5% of token flips are deliberate reconsiderations. When you see these phrases, accuracy has already peaked — stop there.</div>
+          <div class="red-flags">
+            <div class="rf"><div class="rf-mark">⚠</div><div class="rf-text"><strong style="color:var(--text)">"Actually…"</strong> — model reversing a correct earlier answer</div></div>
+            <div class="rf"><div class="rf-mark">⚠</div><div class="rf-text"><strong style="color:var(--text)">"Let me reconsider…"</strong> — about to undo good work</div></div>
+            <div class="rf"><div class="rf-mark">⚠</div><div class="rf-text"><strong style="color:var(--text)">"Wait, on reflection…"</strong> — overthinking triggered, confidence dropping</div></div>
+            <div class="rf"><div class="rf-mark">⚠</div><div class="rf-text"><strong style="color:var(--text)">"I may have overcounted…"</strong> — second-guessing correct math</div></div>
+            <div class="rf"><div class="rf-mark">⚠</div><div class="rf-text"><strong style="color:var(--text)">"To be more precise…"</strong> (unsolicited) — padding toward wrong answer</div></div>
+          </div>
+        </div>
+
+        <div class="sci-card full">
+          <div class="sci-h">Model Selection Guide</div>
+          <div class="sci-s">Match the model to the task's cognitive demand. Haiku for speed, Sonnet for most work, Opus for architectural thinking.</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Model</th><th>Best For</th><th>Avoid When</th><th>Temp Sweet Spot</th></tr></thead>
+              <tbody>
+                <tr><td style="font-weight:700;color:var(--accent)">Haiku</td><td style="color:var(--text-2)">Classification, extraction, routing, simple Q&A, high-volume tasks</td><td style="color:var(--text-2)">Deep reasoning, nuanced writing, strategy</td><td style="font-family:var(--font-m);color:var(--amber)">0.0–0.3</td></tr>
+                <tr><td style="font-weight:700;color:var(--violet)">Sonnet ★</td><td style="color:var(--text-2)">80–90% of all work. Coding, analysis, drafting, summarization, agents</td><td style="color:var(--text-2)">Rarely — the default for nearly everything</td><td style="font-family:var(--font-m);color:var(--amber)">0.2–0.7</td></tr>
+                <tr><td style="font-weight:700;color:var(--amber)">Opus</td><td style="color:var(--text-2)">System design, strategy, philosophy, architecture decisions, deep research synthesis</td><td style="color:var(--text-2)">Speed-sensitive tasks, simple queries</td><td style="font-family:var(--font-m);color:var(--amber)">0.3–0.8</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TEMPLATES ══ -->
+    <section class="tab-panel" id="templates">
+      <div class="eyebrow">Ready to Deploy</div>
+      <h1 class="page-h">Prompt Templates</h1>
+      <p class="page-sub">Production-ready prompts with [PLACEHOLDERS]. Click Load to push any template into the Builder, or Copy to grab the raw text.</p>
+
+      <div class="cat-tabs">
+        <button class="chip sel" onclick="filterTpl('all',this)">All</button>
+        <button class="chip" onclick="filterTpl('sales',this)">Sales Arsenal</button>
+        <button class="chip" onclick="filterTpl('decision',this)">Decision Frameworks</button>
+        <button class="chip" onclick="filterTpl('memory',this)">Memory System</button>
+        <button class="chip" onclick="filterTpl('content',this)">Content</button>
+      </div>
+
+      <div class="tpl-grid" id="tpl-grid"></div>
+    </section>
+
+  </div><!-- /tab-content -->
+
+  <!-- PREVIEW PANEL -->
+  <aside class="preview-panel" id="preview-panel">
     <div class="preview-header">
-      <div>
-        <div class="panel-label">Assembled prompt</div>
-      </div>
-      <div class="preview-actions">
-        <button class="btn" onclick="fillAll()">Fill demo</button>
-        <button class="btn btn-primary" id="copyBtn" onclick="copyPrompt()">Copy prompt</button>
-      </div>
+      <span class="preview-title">Live Assembly</span>
+      <button class="icon-btn" onclick="copyPrompt()" title="Copy prompt">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
+      </button>
+      <button class="icon-btn" onclick="clearAll()" title="Clear all">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
     </div>
-
-    <div class="preview-output" id="previewOutput"></div>
-
-    <div class="stats-row" id="statsRow">
-      <span class="stat-chip">Chars: <span id="totalChars">0</span></span>
-      <span class="stat-chip">~Tokens: <span id="totalTokens">0</span></span>
-      <span class="stat-chip">Pillars filled: <span id="pillarsFilledCount">0</span>/7</span>
+    <div class="preview-out">
+      <pre class="preview-code" id="preview-code"><span style="color:var(--text-3);font-style:italic">← Fill in the fields to assemble your prompt</span></pre>
     </div>
-
-    <div style="border-top:1px solid var(--border); padding-top: 14px;">
-      <div class="panel-label" style="margin-bottom:8px;">Quick tips</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--accent-dim);border-radius:var(--radius-sm);border-left:2px solid var(--accent);">
-          <strong style="color:var(--accent);">XML tags work:</strong> Claude treats &lt;context&gt;, &lt;task&gt;, &lt;examples&gt; as semantic delimiters — use them in every prompt.
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--violet-dim);border-radius:var(--radius-sm);border-left:2px solid var(--violet);">
-          <strong style="color:var(--violet);">Thinking first:</strong> For complex tasks, enable extended thinking (claude-opus-5 with thinking: adaptive) before generating output.
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--amber-dim);border-radius:var(--radius-sm);border-left:2px solid var(--amber);">
-          <strong style="color:var(--amber);">Specificity wins:</strong> Every vague word in your prompt ("good", "appropriate", "relevant") degrades output quality. Replace with measurable criteria.
-        </div>
-      </div>
+    <div class="preview-actions">
+      <button class="btn btn-p" style="flex:1" onclick="copyPrompt()">Copy Prompt</button>
+      <button class="btn btn-g" onclick="clearAll()">Clear</button>
     </div>
-  </div>
+  </aside>
 </div>
 
-<!-- Best Practices Section -->
-<div class="practices-section">
-  <div class="section-heading">Anthropic's <em>core principles</em></div>
-  <div class="practices-grid">
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--accent);">Structure</div>
-      <h3>Use XML tags as delimiters</h3>
-      <p>Claude is trained to treat &lt;tag&gt; blocks as semantic sections. &lt;context&gt;, &lt;task&gt;, &lt;examples&gt;, &lt;output_format&gt; improve parsing accuracy significantly on long prompts.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--violet);">Reasoning</div>
-      <h3>Let Claude think before answering</h3>
-      <p>Instruct "think step by step" or use adaptive thinking mode. For multi-step problems, reasoning before responding reduces errors by up to 40% vs. direct response.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--amber);">Specificity</div>
-      <h3>Replace every vague word</h3>
-      <p>"Good output" tells Claude nothing. "A 300-word summary with 3 bullet points per section, no passive voice" is actionable. Measure quality in the prompt itself.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--emerald);">Examples</div>
-      <h3>Show, don't just tell</h3>
-      <p>2–3 input/output examples outperform pages of instructions. Include at least one "bad" example with an explanation — contrast is how Claude calibrates quality.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--accent);">Persona</div>
-      <h3>Expert roles improve output</h3>
-      <p>Assigning a specific expert identity — not just "expert" but "senior ML engineer who has shipped 5 production recommendation systems" — activates domain-relevant reasoning patterns.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--violet);">Framing</div>
-      <h3>Positive constraints beat negative</h3>
-      <p>"Avoid jargon" is weaker than "define every technical term the first time it appears." Telling Claude what to do instead is more effective than what not to do.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--amber);">Agents</div>
-      <h3>Break complex tasks into steps</h3>
-      <p>For agentic work: give Claude a sequential plan it can execute. Number the steps, make dependencies explicit, and specify when to pause and verify before continuing.</p>
-    </div>
-    <div class="practice-card">
-      <div class="practice-eyebrow" style="color:var(--emerald);">Calibration</div>
-      <h3>Tell Claude when to say "I don't know"</h3>
-      <p>Explicitly permit uncertainty: "If you're unsure, say so and explain why rather than guessing." This reduces hallucination and builds trust in outputs you'll act on.</p>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast">Prompt copied to clipboard</div>
+<div class="toast" id="toast"></div>
 
 <script>
-const examples = {
-  1: "You are an expert technical writer with 12 years of experience creating developer documentation for major API platforms. You specialize in making complex distributed systems concepts accessible to engineers of varying experience levels, with a particular talent for precise, active-voice prose that respects the reader's time.",
-  2: "The audience is a team of mid-level backend engineers (3–7 years experience) onboarding to a new event-streaming microservices platform. They understand REST APIs well but have no prior experience with event-driven architecture or message brokers. This guide will live in the company's internal dev portal and will be the first thing engineers read before their first integration.",
-  3: "Write a getting-started guide for the platform's event streaming API. The guide must: (1) explain the publish/subscribe model using a concrete real-world analogy, (2) walk through a complete working Python code example that publishes and consumes a message, (3) cover the 3 most common integration errors and exactly how to resolve each. The reader should be able to go from zero to a working integration in under 30 minutes.",
-  4: "Before writing, work through this sequence: First, identify the 3 concepts a brand-new reader must understand before anything else makes sense. Second, find the simplest non-technical analogy for the publish/subscribe model. Third, determine exactly where in the guide a code example will have the highest impact. Only after completing this planning should you begin writing the guide.",
-  5: "Good section heading: 'Handle connection timeouts' — specific, tells the reader what they'll be able to do.\nBad section heading: 'Error handling' — too vague, could describe 20 different topics.\n\nGood code comment: // Retry with exponential backoff to avoid thundering herd on broker restart\nBad code comment: // increment counter by 1",
-  6: "Output in Markdown with the following structure: one H2 heading per major section, Python code blocks with syntax highlighting, numbered steps for any procedure (maximum 7 steps), and a > blockquote callout for any warning or gotcha. Total length: 650–900 words. Code examples should be self-contained and runnable.",
-  7: "Do not use jargon without defining it in plain English the first time it appears. Avoid passive voice — rewrite to active voice instead. Never assume the reader knows what a message broker, consumer group, or partition is; introduce each term explicitly. Omit marketing language ('powerful', 'seamless', 'robust') — use specific, factual descriptions instead."
-};
+// ── TEMPLATES DATA ─────────────────────────────────────────────
+const templates = [
+  {
+    cat: 'sales',
+    title: 'Pain Excavator',
+    desc: 'Uncovers the real cost of the problem, not just the surface symptom.',
+    prompt: `You are a veteran B2B sales strategist with 15 years in enterprise SaaS. Your specialty: helping buyers articulate problems they already know they have but haven't fully quantified.
 
-function togglePillar(n) {
-  const body = document.querySelector(`#pillar-${n} .pillar-body`);
-  body.hidden = !body.hidden;
+<task>
+Help [PROSPECT NAME] at [COMPANY] understand the true cost of [PROBLEM] they're experiencing.
+</task>
+
+<thinking_approach>
+First, identify the visible symptom. Then excavate: what's downstream of that symptom? Who else in the org is affected? What decisions are being made with bad data because of this problem? What's the cost per quarter?
+</thinking_approach>
+
+<output_format>
+Format: Conversational questions → then a 1-paragraph cost summary
+Tone: Consultative, not pushy
+</output_format>`
+  },
+  {
+    cat: 'sales',
+    title: 'Objection Neutralizer',
+    desc: 'Reframes objections as information, not resistance.',
+    prompt: `You are an expert sales coach. Prospect objection: "[OBJECTION]"
+
+<task>
+Generate 3 distinct responses to this objection — each using a different psychology:
+1. The Agree + Reframe (validate, then pivot)
+2. The Question Behind the Question (uncover the real concern)
+3. The Social Proof + Specificity (similar customer, specific outcome)
+</task>
+
+<constraints>
+No dismissing the objection. No "I understand your concern but...". No features-as-benefits. Every response must advance the conversation, not close it down.
+</constraints>`
+  },
+  {
+    cat: 'sales',
+    title: 'Authority Builder',
+    desc: 'Establishes credibility without bragging.',
+    prompt: `You are a B2B marketing strategist specializing in thought leadership.
+
+<task>
+Write a 150-word expertise statement for [NAME/COMPANY] in [INDUSTRY] that establishes authority on [TOPIC] without explicit self-promotion.
+</task>
+
+<output_format>
+Format: Short paragraph — could open a LinkedIn post, an email, or a proposal
+Tone: Confident, specific, evidence-grounded
+</output_format>
+
+<constraints>
+No superlatives. No "world-class" or "industry-leading". Every claim must be provable. Include one specific number or named client outcome if available.
+</constraints>`
+  },
+  {
+    cat: 'sales',
+    title: 'Follow-Up Sequence',
+    desc: '5-touch follow-up sequence that adds value, not noise.',
+    prompt: `You are an expert copywriter specializing in B2B sales sequences.
+
+<context>
+Prospect: [PROSPECT]
+Last interaction: [WHAT HAPPENED]
+Offering: [YOUR PRODUCT/SERVICE]
+Their likely objection: [ASSUMED OBJECTION]
+</context>
+
+<task>
+Write a 5-email follow-up sequence. Each email must add standalone value — a insight, a case study, a question — not just "checking in." Emails should build on each other.
+</task>
+
+<variables>
+spacing = [1 day, 3 days, 7 days, 14 days, 30 days]
+email_length = 3-5 sentences max per email
+cta = one low-friction action per email
+</variables>`
+  },
+  {
+    cat: 'decision',
+    title: 'First Principles Analyzer',
+    desc: "Strip a problem to its atoms. Rebuild from truth, not assumption.",
+    prompt: `Apply First Principles thinking to: [PROBLEM / DECISION]
+
+Step 1 — DECONSTRUCT: List every assumption currently embedded in how we think about this problem. Be exhaustive.
+
+Step 2 — QUESTION: For each assumption, ask: "Is this actually true, or is it inherited convention?"
+
+Step 3 — REBUILD: Starting only from what is demonstrably true, rebuild the solution from scratch. Ignore how it's currently done.
+
+Step 4 — DELTA: What's different between the conventional approach and the first-principles approach? Which differences are actually actionable?`
+  },
+  {
+    cat: 'decision',
+    title: 'Inversion Thinker',
+    desc: "Munger's method: solve the inverse problem first.",
+    prompt: `Apply Inversion to: [GOAL / DECISION]
+
+Instead of asking "how do we succeed at [GOAL]?", ask the inverse:
+
+1. How would we guarantee FAILURE at [GOAL]? List every possible way it could go wrong.
+2. For each failure mode: what's its probability? What's its impact?
+3. Now reverse: what would prevent each failure?
+4. SYNTHESIS: The anti-failure strategy IS the strategy. List specific actions that avoid the highest-probability, highest-impact failures.
+
+This is not a risk register. This is the plan.`
+  },
+  {
+    cat: 'decision',
+    title: 'Second-Order Effects',
+    desc: "Think past the obvious consequence to the consequence of the consequence.",
+    prompt: `Map the second and third-order effects of: [DECISION / ACTION]
+
+FIRST ORDER (immediate, obvious):
+What happens directly as a result?
+
+SECOND ORDER (what happens as a result of the result):
+How do key stakeholders respond to the first-order effects? What systemic changes does that trigger?
+
+THIRD ORDER (what happens as a result of the second-order response):
+What does the landscape look like 2-3 years after the cascade?
+
+FLAG: Which second or third-order effect is most likely to be a surprise? Which one reverses the appeal of this decision entirely if it occurs?`
+  },
+  {
+    cat: 'decision',
+    title: 'Regret Minimization',
+    desc: "Bezos's framework: project to 80 and look back.",
+    prompt: `Apply the Regret Minimization Framework to: [DECISION]
+
+Project yourself to age 80, looking back on your life.
+
+Scenario A: You chose to [DO THE THING].
+What do you think about this choice at 80? What did it lead to? What did you learn? What did you give up?
+
+Scenario B: You chose NOT to [DO THE THING].
+What do you think about this choice at 80? What did you avoid? What did you miss? How does the road-not-taken look from here?
+
+VERDICT: Which choice produces more regret at 80? That's your answer. The logic is downstream of the feeling — use this to identify it, then construct the reasoning.`
+  },
+  {
+    cat: 'decision',
+    title: 'Pre-Mortem Analysis',
+    desc: "Project forward to failure, then explain why it happened.",
+    prompt: `Run a Pre-Mortem on: [PROJECT / PLAN / DECISION]
+
+It is [DATE 1 YEAR FROM NOW]. [PROJECT] has failed completely. Not partially — it failed.
+
+Your job: explain exactly what happened. Reconstruct the sequence of events that led to this failure.
+
+1. What was the first crack that appeared?
+2. What did we ignore that we shouldn't have?
+3. What worked against us that we didn't anticipate?
+4. What did we do out of ego or optimism that we shouldn't have?
+5. What was the decision that, in hindsight, was the point of no return?
+
+Now: use this failure narrative to identify the 3 actions we should take in the NEXT 30 DAYS to prevent it.`
+  },
+  {
+    cat: 'memory',
+    title: 'Session State Compactor',
+    desc: "Compress any long conversation into a dense JSON save-point.",
+    prompt: `Compress the following conversation/session into a state save-point:
+
+[PASTE CONVERSATION HERE]
+
+Output as JSON:
+{
+  "session_id": "[DATE]-[TOPIC SLUG]",
+  "status": "[IN PROGRESS / BLOCKED / AWAITING INPUT]",
+  "context_summary": "[100 words max — everything needed to continue]",
+  "key_decisions": ["decision1", "decision2"],
+  "open_questions": ["q1", "q2"],
+  "pending_actions": ["action1", "action2"],
+  "next_session_start": "[exact first instruction for next session]",
+  "critical_constraints": ["constraint1"]
 }
 
-function fillExample(n) {
-  const ta = document.getElementById(`p${n}`);
-  ta.value = examples[n];
-  updateCount(ta, `c${n}`);
-  updatePreview();
-}
+Rule: if the next session can't continue coherently from this JSON alone, the compaction failed. Try again.`
+  },
+  {
+    cat: 'memory',
+    title: 'Pattern Extractor',
+    desc: "Find recurring themes and insights across multiple sessions.",
+    prompt: `Analyze these session logs for patterns:
 
-function fillAll() {
-  for (let i = 1; i <= 7; i++) {
-    const ta = document.getElementById(`p${i}`);
-    ta.value = examples[i];
-    updateCount(ta, `c${i}`);
-    const body = document.querySelector(`#pillar-${i} .pillar-body`);
-    body.hidden = false;
+[PASTE 5-10 SESSION LOGS HERE]
+
+Identify:
+1. RECURRING THEMES — topics that appear 3+ times (list with frequency)
+2. VELOCITY — are we accelerating, plateauing, or stuck? Evidence?
+3. PERSISTENT BLOCKERS — what keeps reappearing as a problem?
+4. EMERGING OPPORTUNITIES — what's being mentioned but not yet acted on?
+5. WHAT'S WORKING — specific approaches that consistently produce results
+6. WHAT'S FAILING — approaches that consistently disappoint
+
+Rate each finding: HIGH / MEDIUM / LOW confidence based on evidence volume.
+Flag: the single insight that changes what we should prioritize.`
+  },
+  {
+    cat: 'content',
+    title: 'Hook Generator',
+    desc: "5 opening hooks that stop the scroll.",
+    prompt: `You are a best-selling author and content strategist who has studied viral content across every platform.
+
+<task>
+Generate 5 distinct opening hooks for a [FORMAT: post/article/thread] about [TOPIC] targeting [AUDIENCE].
+</task>
+
+Each hook must use a different psychological mechanism:
+1. Counterintuitive claim (violates expectation)
+2. Specific social proof (name + number)
+3. Personal failure (vulnerability + lesson)
+4. Question that reveals a gap in their knowledge
+5. Prediction with stakes (what changes if this is true)
+
+<constraints>
+Max 2 sentences per hook. No emojis. No "Did you know..." No "In today's world...". Make it true to your experience.
+</constraints>`
+  },
+  {
+    cat: 'content',
+    title: 'Value Proposition Sharpener',
+    desc: "Turn vague positioning into a specific, falsifiable claim.",
+    prompt: `Current value proposition: "[YOUR CURRENT VP]"
+
+<task>
+Identify what's vague, generic, or unprovable in this value proposition. Then rewrite it to be:
+1. Specific — names an exact outcome with numbers where possible
+2. Falsifiable — a competitor couldn't say the exact same thing
+3. Customer-language — uses the words the buyer uses, not internal jargon
+4. Outcome-focused — what changes in their life/business, not what you do
+</task>
+
+Output:
+- Diagnosis: what's weak in the current VP
+- Rewrite v1: customer-language version
+- Rewrite v2: specificity-maximized version
+- Questions that, if answered, would make the VP 10x stronger`
   }
+];
+
+// ── RENDER TEMPLATES ───────────────────────────────────────────
+function renderTemplates(cat) {
+  const grid = document.getElementById('tpl-grid');
+  const filtered = cat === 'all' ? templates : templates.filter(t => t.cat === cat);
+  grid.innerHTML = filtered.map((t,i) => `
+    <div class="tpl-card">
+      <div class="tpl-title">${t.title}</div>
+      <div class="tpl-desc">${t.desc}</div>
+      <div class="tpl-actions">
+        <button class="btn btn-p btn-sm" onclick="loadTemplate(${templates.indexOf(t)})">Load into Builder</button>
+        <button class="btn btn-g btn-sm" onclick="copyTpl(${templates.indexOf(t)},this)">Copy</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterTpl(cat, btn) {
+  document.querySelectorAll('.cat-tabs .chip').forEach(c => c.classList.remove('sel'));
+  btn.classList.add('sel');
+  renderTemplates(cat);
+}
+
+function loadTemplate(idx) {
+  const tpl = templates[idx];
+  document.getElementById('objective').value = tpl.prompt;
+  switchTab('build');
   updatePreview();
+  showToast('Template loaded into Builder');
 }
 
-function resetAll() {
-  for (let i = 1; i <= 7; i++) {
-    document.getElementById(`p${i}`).value = '';
-    document.getElementById(`c${i}`).textContent = '0 chars';
-  }
-  updatePreview();
+function copyTpl(idx, btn) {
+  navigator.clipboard.writeText(templates[idx].prompt).then(() => {
+    const old = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = old, 2000);
+  });
 }
 
-function updateCount(el, countId) {
-  document.getElementById(countId).textContent = `${el.value.length} chars`;
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === id));
+  // show preview only on build tab
+  document.getElementById('preview-panel').classList.toggle('hidden', id !== 'build');
 }
 
-function escape(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── LIVE PREVIEW ───────────────────────────────────────────────
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlight(raw) {
+  const e = esc(raw);
+  return e
+    .replace(/(&lt;\/?[\w_-]+&gt;)/g, '<span class="pt">$1</span>')
+    .replace(/(#[A-Z]+:)/g, '<span class="ph">$1</span>')
+    .replace(/(\[[^\]]+\])/g, '<span class="pv">$1</span>');
+}
+
+function getSelected(groupId) {
+  return [...document.querySelectorAll(`#${groupId} .chip.sel`)]
+    .map(c => c.textContent).join(', ');
 }
 
 function updatePreview() {
-  const vals = {};
-  let filled = 0;
-  for (let i = 1; i <= 7; i++) {
-    vals[i] = document.getElementById(`p${i}`).value.trim();
-    if (vals[i]) filled++;
+  const persona = document.getElementById('persona').value.trim();
+  const context = document.getElementById('context').value.trim();
+  const objective = document.getElementById('objective').value.trim();
+  const thinking = document.getElementById('thinking').value.trim();
+  const examples = document.getElementById('examples').value.trim();
+  const outputText = document.getElementById('output-text').value.trim();
+  const constraints = document.getElementById('constraints').value.trim();
+  const variables = document.getElementById('variables').value.trim();
+  const format = getSelected('fmt-chips');
+  const tone = getSelected('tone-chips');
+  const model = (document.querySelector('input[name="model"]:checked') || {value:'Sonnet'}).value;
+  const temp = document.getElementById('temp').value;
+
+  let parts = [];
+  if (persona) parts.push(`#ROLE:\n${persona}`);
+  if (context) parts.push(`<context>\n${context}\n</context>`);
+  if (objective) parts.push(`<task>\n${objective}\n</task>`);
+  if (thinking) parts.push(`<thinking_approach>\n${thinking}\n</thinking_approach>`);
+  if (examples) parts.push(`<examples>\n${examples}\n</examples>`);
+
+  let outBlock = '';
+  if (format || tone || outputText) {
+    outBlock = '<output_format>';
+    if (format) outBlock += `\nFormat: ${format}`;
+    if (tone) outBlock += `\nTone: ${tone}`;
+    if (outputText) outBlock += `\n${outputText}`;
+    outBlock += '\n</output_format>';
+    parts.push(outBlock);
+  }
+  if (constraints) parts.push(`<constraints>\n${constraints}\n</constraints>`);
+  if (variables) parts.push(`<variables>\n${variables}\n</variables>`);
+  if (parts.length) parts.push(`[Model: ${model} | Temp: ${temp}]`);
+
+  const assembled = parts.join('\n\n');
+  const pre = document.getElementById('preview-code');
+  if (!assembled) {
+    pre.innerHTML = '<span style="color:var(--text-3);font-style:italic">← Fill in the fields to assemble your prompt</span>';
+  } else {
+    pre.innerHTML = highlight(assembled);
   }
 
-  const labels = ['role','context','task','thinking','examples','output_format','constraints'];
-  const icons = ['🎭','🌐','🎯','🧠','📚','📄','🚫'];
-
-  let html = '';
-  let rawPrompt = '';
-
-  if (filled === 0) {
-    document.getElementById('previewOutput').innerHTML =
-      '<span style="color:var(--text-subtle);font-style:italic;">Open a pillar and start filling it in — your assembled prompt will appear here in real time.</span>';
-    updateStats('', 0);
-    return;
-  }
-
-  const pairs = [
-    { i:1, tag:'role', label:'Role & Persona' },
-    { i:2, tag:'context', label:'Context' },
-    { i:3, tag:'task', label:'Objective' },
-    { i:4, tag:'thinking', label:'Thinking Approach' },
-    { i:5, tag:'examples', label:'Examples' },
-    { i:6, tag:'output_format', label:'Output Format' },
-    { i:7, tag:'constraints', label:'Constraints' },
-  ];
-
-  // Role goes first as plain text, rest as XML
-  if (vals[1]) {
-    html += `<span class="section-label"># Role</span>\n${escape(vals[1])}\n\n`;
-    rawPrompt += `# Role\n${vals[1]}\n\n`;
-  }
-
-  const xmlPairs = pairs.slice(1);
-  for (const p of xmlPairs) {
-    if (vals[p.i]) {
-      html += `<span class="xml-tag">&lt;${p.tag}&gt;</span>\n${escape(vals[p.i])}\n<span class="xml-close">&lt;/${p.tag}&gt;</span>\n\n`;
-      rawPrompt += `<${p.tag}>\n${vals[p.i]}\n</${p.tag}>\n\n`;
-    }
-  }
-
-  document.getElementById('previewOutput').innerHTML = html.trimEnd();
-  updateStats(rawPrompt, filled);
+  // persist
+  try {
+    localStorage.setItem('pa-v2', JSON.stringify({persona,context,objective,thinking,examples,outputText,constraints,variables,temp,model}));
+  } catch(e) {}
 }
 
-function updateStats(raw, filled) {
-  const chars = raw.length;
-  const tokens = Math.round(chars / 4);
-  document.getElementById('totalChars').textContent = chars.toLocaleString();
-  document.getElementById('totalTokens').textContent = `~${tokens.toLocaleString()}`;
-  document.getElementById('pillarsFilledCount').textContent = filled;
+// Wire up all textareas + radios
+['persona','context','objective','thinking','examples','output-text','constraints','variables']
+  .forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updatePreview);
+  });
+document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', updatePreview));
+
+// ── CHIP TOGGLE ────────────────────────────────────────────────
+function toggleChip(chip) {
+  // format chips: single-select; tone chips: single-select
+  const group = chip.closest('.chip-row');
+  group.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  chip.classList.add('sel');
+  updatePreview();
 }
 
-function buildRawPrompt() {
-  const pairs = [
-    { i:1, tag:'role', label:'Role & Persona' },
-    { i:2, tag:'context', label:'Context' },
-    { i:3, tag:'task', label:'Objective' },
-    { i:4, tag:'thinking', label:'Thinking Approach' },
-    { i:5, tag:'examples', label:'Examples' },
-    { i:6, tag:'output_format', label:'Output Format' },
-    { i:7, tag:'constraints', label:'Constraints' },
-  ];
-  let out = '';
-  const v1 = document.getElementById('p1').value.trim();
-  if (v1) out += `# Role\n${v1}\n\n`;
-  for (const p of pairs.slice(1)) {
-    const v = document.getElementById(`p${p.i}`).value.trim();
-    if (v) out += `<${p.tag}>\n${v}\n</${p.tag}>\n\n`;
+// ── COPY PROMPT ────────────────────────────────────────────────
+function getRawPrompt() {
+  const persona = document.getElementById('persona').value.trim();
+  const context = document.getElementById('context').value.trim();
+  const objective = document.getElementById('objective').value.trim();
+  const thinking = document.getElementById('thinking').value.trim();
+  const examples = document.getElementById('examples').value.trim();
+  const outputText = document.getElementById('output-text').value.trim();
+  const constraints = document.getElementById('constraints').value.trim();
+  const variables = document.getElementById('variables').value.trim();
+  const format = getSelected('fmt-chips');
+  const tone = getSelected('tone-chips');
+  const model = (document.querySelector('input[name="model"]:checked')||{value:'Sonnet'}).value;
+  const temp = document.getElementById('temp').value;
+
+  let parts = [];
+  if (persona) parts.push(`#ROLE:\n${persona}`);
+  if (context) parts.push(`<context>\n${context}\n</context>`);
+  if (objective) parts.push(`<task>\n${objective}\n</task>`);
+  if (thinking) parts.push(`<thinking_approach>\n${thinking}\n</thinking_approach>`);
+  if (examples) parts.push(`<examples>\n${examples}\n</examples>`);
+  let outBlock = '';
+  if (format || tone || outputText) {
+    outBlock = '<output_format>';
+    if (format) outBlock += `\nFormat: ${format}`;
+    if (tone) outBlock += `\nTone: ${tone}`;
+    if (outputText) outBlock += `\n${outputText}`;
+    outBlock += '\n</output_format>';
+    parts.push(outBlock);
   }
-  return out.trimEnd();
+  if (constraints) parts.push(`<constraints>\n${constraints}\n</constraints>`);
+  if (variables) parts.push(`<variables>\n${variables}\n</variables>`);
+  if (parts.length) parts.push(`[Model: ${model} | Temp: ${temp}]`);
+  return parts.join('\n\n');
 }
 
 function copyPrompt() {
-  const raw = buildRawPrompt();
-  if (!raw) return;
-  navigator.clipboard.writeText(raw).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = '✓ Copied';
-    btn.classList.add('btn-success');
-    btn.classList.remove('btn-primary');
-    const toast = document.getElementById('toast');
-    toast.classList.add('show');
-    setTimeout(() => {
-      toast.classList.remove('show');
-      btn.textContent = 'Copy prompt';
-      btn.classList.remove('btn-success');
-      btn.classList.add('btn-primary');
-    }, 2200);
-  });
+  const raw = getRawPrompt();
+  if (!raw) { showToast('Nothing to copy yet'); return; }
+  navigator.clipboard.writeText(raw).then(() => showToast('Prompt copied!'));
 }
 
-// Theme toggle
-const toggle = document.getElementById('themeToggle');
-toggle.addEventListener('click', () => {
-  const root = document.documentElement;
-  const current = root.getAttribute('data-theme');
-  if (!current) {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'light' : 'dark');
-  } else if (current === 'dark') {
-    root.setAttribute('data-theme', 'light');
-  } else {
-    root.setAttribute('data-theme', 'dark');
-  }
-});
-
-// Restore from localStorage
-try {
-  for (let i = 1; i <= 7; i++) {
-    const saved = localStorage.getItem(`pa_p${i}`);
-    if (saved) {
-      document.getElementById(`p${i}`).value = saved;
-      updateCount(document.getElementById(`p${i}`), `c${i}`);
-    }
-  }
+function clearAll() {
+  ['persona','context','objective','thinking','examples','output-text','constraints','variables']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.querySelectorAll('.chip.sel').forEach(c => c.classList.remove('sel'));
+  document.getElementById('temp').value = 0.3;
+  document.getElementById('temp-v').textContent = '0.3';
   updatePreview();
-} catch(e) {}
+}
 
-// Auto-save
-for (let i = 1; i <= 7; i++) {
-  document.getElementById(`p${i}`).addEventListener('input', function() {
-    try { localStorage.setItem(`pa_p${i}`, this.value); } catch(e) {}
+// ── COPY STEP ──────────────────────────────────────────────────
+function copyStep(btn) {
+  const block = btn.closest('.step-prompt');
+  const text = block.textContent.replace('COPY','').replace('COPIED','').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'COPIED';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('ok'); }, 2500);
   });
 }
 
-// Open first pillar by default
-document.querySelector('#pillar-1 .pillar-body').hidden = false;
-updatePreview();
+// ── PERSONA GENERATOR ──────────────────────────────────────────
+const personaData = {
+  'Marketing Strategist': {verbs: ['architects growth systems','dissects consumer psychology','builds category dominance'], method: 'data-backed positioning', style: 'precise and provocative'},
+  'Expert Copywriter': {verbs: ['transforms features into desires','writes in the reader\'s voice','makes the complex feel inevitable'], method: 'direct response principles + narrative structure', style: 'economical and emotionally resonant'},
+  'Financial Analyst': {verbs: ['stress-tests assumptions','reads between the numbers','sees risk others price incorrectly'], method: 'scenario modeling and probabilistic thinking', style: 'rigorous, skeptical, exact'},
+  'Software Architect': {verbs: ['designs for failure modes first','thinks in contracts and interfaces','optimizes for change not just correctness'], method: 'systems thinking and constraint analysis', style: 'structured and opinionated'},
+  'Brand Strategist': {verbs: ['builds belief systems not just identities','finds the tension that makes a brand interesting','makes strategy visual and visceral'], method: 'cultural insight + competitive tension', style: 'sharp and unconventional'},
+  'SEO Specialist': {verbs: ['reverse-engineers search intent','builds content systems not pages','finds the queries competitors have overlooked'], method: 'entity mapping and topical authority frameworks', style: 'analytical with a builder\'s instinct'},
+  'Product Manager': {verbs: ['prioritizes ruthlessly under uncertainty','turns user pain into product bets','aligns incentives to drive outcomes'], method: 'outcome-driven roadmapping and jobs-to-be-done', style: 'crisp, decisive, outcome-focused'},
+  'Sales Expert': {verbs: ['connects problems to consequences first','earns the right to pitch','coaches buyers through their own decision process'], method: 'consultative selling and outcome-based framing', style: 'confident, warm, and relentlessly curious'},
+  'Content Creator': {verbs: ['turns expertise into audience trust','finds the angle others miss','respects the reader\'s time above all'], method: 'editorial thinking applied to brand content', style: 'conversational, opinionated, and specific'},
+  'UX Researcher': {verbs: ['listens past what users say to what they mean','spots behavioral patterns in small samples','translates insight into design constraint'], method: 'contextual inquiry and thematic synthesis', style: 'curious, empathetic, and precise'},
+  'Data Scientist': {verbs: ['builds models that survive contact with production','questions the question before answering it','communicates uncertainty as a feature not a bug'], method: 'end-to-end ML pipeline thinking', style: 'methodical and calibrated'},
+  'Executive Coach': {verbs: ['asks the question behind the question','creates the conditions for leaders to think clearly','holds the long view when clients can\'t'], method: 'systemic coaching and pattern interruption', style: 'direct, spacious, and grounding'}
+};
+
+function generatePersona() {
+  const role = document.getElementById('gen-role').value;
+  const industry = document.getElementById('gen-industry').value;
+  const exp = document.getElementById('gen-experience').value;
+  const specialty = document.getElementById('gen-specialty').value.trim() || 'revenue growth';
+  const data = personaData[role] || {verbs:['solves complex problems'], method:'proven frameworks', style:'clear and direct'};
+  const verb = data.verbs[Math.floor(Math.random()*data.verbs.length)];
+
+  const persona = `You are a senior ${role} with ${exp} of experience in the ${industry} space, specializing in ${specialty}. You ${verb}. Your approach is grounded in ${data.method}.
+
+When you communicate, your style is ${data.style}. You do not pad responses with caveats or qualifications you don't mean. You disagree when you disagree, cite specific mechanisms not vague principles, and push back on premises when they're flawed.
+
+You have seen what works and what doesn't in ${industry}. You prioritize signal over sophistication, and you hold yourself and the work to a high standard.`;
+
+  document.getElementById('persona').value = persona;
+  updatePreview();
+}
+
+// ── THEME TOGGLE ───────────────────────────────────────────────
+function toggleTheme() {
+  const root = document.documentElement;
+  const cur = root.getAttribute('data-theme');
+  root.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
+}
+
+// ── TOAST ──────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── RESTORE STATE ──────────────────────────────────────────────
+function restoreState() {
+  try {
+    const saved = localStorage.getItem('pa-v2');
+    if (!saved) return;
+    const s = JSON.parse(saved);
+    ['persona','context','objective','thinking','examples','output-text','constraints','variables']
+      .forEach(id => { if(s[id] !== undefined) { const el = document.getElementById(id); if(el) el.value = s[id]; } });
+    if (s.temp) { document.getElementById('temp').value = s.temp; document.getElementById('temp-v').textContent = s.temp; }
+    if (s.model) { const r = document.querySelector(`input[name="model"][value="${s.model}"]`); if(r) r.checked = true; }
+    updatePreview();
+  } catch(e) {}
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+renderTemplates('all');
+restoreState();
+if (!document.getElementById('persona').value) updatePreview();
 </script>
