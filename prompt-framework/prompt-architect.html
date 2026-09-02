@@ -1,0 +1,999 @@
+<title>Prompt Architect</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #080D16;
+    --bg-surface: #0E1624;
+    --bg-raised: #162032;
+    --bg-hover: #1C2A42;
+    --border: #1E2E45;
+    --border-bright: #2B4064;
+    --accent: #0EA5E9;
+    --accent-dim: rgba(14, 165, 233, 0.12);
+    --accent-glow: rgba(14, 165, 233, 0.08);
+    --violet: #8B5CF6;
+    --violet-dim: rgba(139, 92, 246, 0.12);
+    --amber: #F59E0B;
+    --amber-dim: rgba(245, 158, 11, 0.1);
+    --emerald: #10B981;
+    --emerald-dim: rgba(16, 185, 129, 0.1);
+    --text: #E2EAF4;
+    --text-muted: #5A7499;
+    --text-subtle: #364F6B;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Manrope', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --radius: 8px;
+    --radius-sm: 4px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F0F4F8;
+      --bg-surface: #FFFFFF;
+      --bg-raised: #F7F9FC;
+      --bg-hover: #EDF2F8;
+      --border: #D1DDE8;
+      --border-bright: #B8CEDE;
+      --accent-glow: rgba(14, 165, 233, 0.06);
+      --accent-dim: rgba(14, 165, 233, 0.08);
+      --violet-dim: rgba(139, 92, 246, 0.08);
+      --amber-dim: rgba(245, 158, 11, 0.08);
+      --emerald-dim: rgba(16, 185, 129, 0.08);
+      --text: #0F1F33;
+      --text-muted: #4A6580;
+      --text-subtle: #8AA5BF;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F0F4F8;
+    --bg-surface: #FFFFFF;
+    --bg-raised: #F7F9FC;
+    --bg-hover: #EDF2F8;
+    --border: #D1DDE8;
+    --border-bright: #B8CEDE;
+    --accent-glow: rgba(14, 165, 233, 0.06);
+    --accent-dim: rgba(14, 165, 233, 0.08);
+    --violet-dim: rgba(139, 92, 246, 0.08);
+    --amber-dim: rgba(245, 158, 11, 0.08);
+    --emerald-dim: rgba(16, 185, 129, 0.08);
+    --text: #0F1F33;
+    --text-muted: #4A6580;
+    --text-subtle: #8AA5BF;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .brand-name em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .brand-tag {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+  }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .theme-toggle {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .theme-toggle:hover { border-color: var(--border-bright); color: var(--text); }
+  .header-pill {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(14,165,233,0.2);
+  }
+
+  /* ── Hero strip ── */
+  .hero {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px;
+  }
+  .hero-inner {
+    max-width: 900px;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 300;
+    line-height: 1.2;
+    text-wrap: balance;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .hero h1 strong {
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .hero p {
+    font-size: 15px;
+    color: var(--text-muted);
+    max-width: 680px;
+    line-height: 1.7;
+  }
+  .pillars-strip {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .pillar-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .pillar-chip:hover, .pillar-chip.active {
+    background: var(--accent-dim);
+    border-color: rgba(14,165,233,0.3);
+    color: var(--accent);
+  }
+  .pillar-chip .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* ── Main layout ── */
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 0;
+    flex: 1;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .workspace { grid-template-columns: 1fr; }
+  }
+
+  /* ── Left: Pillars ── */
+  .pillars-panel {
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-right: 1px solid var(--border);
+  }
+  .panel-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    margin-bottom: 4px;
+  }
+
+  /* Accordion */
+  .pillar {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-surface);
+    transition: border-color 0.15s;
+  }
+  .pillar:has(.pillar-body:not([hidden])) {
+    border-color: var(--border-bright);
+  }
+  .pillar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    color: var(--text);
+  }
+  .pillar-header:hover { background: var(--bg-hover); }
+  .pillar-icon {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .pillar-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-subtle);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .pillar-title-group { flex: 1; }
+  .pillar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .pillar-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .pillar-arrow {
+    font-size: 11px;
+    color: var(--text-subtle);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .pillar:has(.pillar-body:not([hidden])) .pillar-arrow { transform: rotate(180deg); }
+  .pillar-body {
+    padding: 0 16px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .pillar-tip {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 10px 0 8px;
+    padding: 8px 10px;
+    background: var(--bg-raised);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--border-bright);
+  }
+  .pillar-tip strong { color: var(--text); }
+  .pillar-input {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .pillar-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .pillar-input::placeholder { color: var(--text-subtle); font-style: italic; }
+  .pillar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+  .char-count {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-subtle);
+  }
+  .fill-example {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .fill-example:hover { opacity: 0.8; }
+
+  /* Pillar colors */
+  .p1 .pillar-icon { background: rgba(14,165,233,0.12); }
+  .p2 .pillar-icon { background: rgba(139,92,246,0.12); }
+  .p3 .pillar-icon { background: rgba(245,158,11,0.12); }
+  .p4 .pillar-icon { background: rgba(16,185,129,0.12); }
+  .p5 .pillar-icon { background: rgba(239,68,68,0.12); }
+  .p6 .pillar-icon { background: rgba(236,72,153,0.12); }
+  .p7 .pillar-icon { background: rgba(99,102,241,0.12); }
+
+  /* ── Right: Preview ── */
+  .preview-panel {
+    padding: 24px 24px;
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .preview-actions { display: flex; gap: 6px; }
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 13px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    background: var(--bg-raised);
+    color: var(--text-muted);
+  }
+  .btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.88; color: #fff; }
+  .btn-success {
+    background: var(--emerald);
+    border-color: var(--emerald);
+    color: #fff;
+  }
+
+  .preview-output {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    min-height: 300px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .preview-output .xml-tag { color: var(--accent); }
+  .preview-output .xml-close { color: var(--accent); opacity: 0.6; }
+  .preview-output .section-label { color: var(--violet); font-weight: 500; }
+  .preview-output .placeholder { color: var(--text-subtle); font-style: italic; }
+
+  .stats-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px 10px;
+    font-family: var(--font-mono);
+  }
+  .stat-chip span { color: var(--text); }
+
+  /* ── Best practices cards ── */
+  .practices-section {
+    border-top: 1px solid var(--border);
+    padding: 28px;
+    background: var(--bg-surface);
+  }
+  .practices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .practice-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.15s;
+  }
+  .practice-card:hover { border-color: var(--border-bright); }
+  .practice-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .practice-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .practice-card p {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .section-heading em { font-style: italic; color: var(--accent); }
+
+  /* ── Copy toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--emerald);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 100px;
+    box-shadow: var(--shadow);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Empty state ── */
+  .empty-hint {
+    color: var(--text-subtle);
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 32px 16px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    display: none;
+  }
+  .empty-hint.visible { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, .pillar-arrow, .toast { transition: none; }
+  }
+</style>
+
+<header>
+  <div class="brand">
+    <span class="brand-name">Prompt <em>Architect</em></span>
+    <span class="brand-tag">Universal Framework</span>
+  </div>
+  <div class="header-meta">
+    <span class="header-pill">7 Pillars</span>
+    <button class="theme-toggle" id="themeToggle">Toggle theme</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1>Build prompts that <strong>actually work</strong><br>for anything you apply them to</h1>
+    <p>A structured framework synthesizing Anthropic's research on prompt engineering, agent design, and Claude's behavior. Fill in each pillar to assemble a high-precision prompt — then apply it to any task, tool, or model.</p>
+    <div class="pillars-strip">
+      <span class="pillar-chip"><span class="dot"></span>Role</span>
+      <span class="pillar-chip"><span class="dot"></span>Context</span>
+      <span class="pillar-chip"><span class="dot"></span>Objective</span>
+      <span class="pillar-chip"><span class="dot"></span>Thinking</span>
+      <span class="pillar-chip"><span class="dot"></span>Examples</span>
+      <span class="pillar-chip"><span class="dot"></span>Output</span>
+      <span class="pillar-chip"><span class="dot"></span>Constraints</span>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+  <!-- Left: Pillars -->
+  <div class="pillars-panel">
+    <div class="panel-label">Configure each pillar</div>
+
+    <!-- P1: Role -->
+    <div class="pillar p1" id="pillar-1">
+      <button class="pillar-header" onclick="togglePillar(1)">
+        <span class="pillar-num">01</span>
+        <span class="pillar-icon">🎭</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Role &amp; Persona</div>
+          <div class="pillar-subtitle">Who the AI is in this context</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Anthropic research:</strong> Assigning a specific expert role dramatically improves output quality. Be concrete — not "expert" but "senior software engineer with 15 years building distributed systems."
+        </div>
+        <textarea class="pillar-input" id="p1" placeholder="e.g. You are an expert technical writer specializing in developer documentation, with deep knowledge of API design and a talent for making complex systems accessible to engineers at all levels." oninput="updatePreview(); updateCount(this, 'c1')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c1">0 chars</span>
+          <button class="fill-example" onclick="fillExample(1)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2: Context -->
+    <div class="pillar p2" id="pillar-2">
+      <button class="pillar-header" onclick="togglePillar(2)">
+        <span class="pillar-num">02</span>
+        <span class="pillar-icon">🌐</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Context</div>
+          <div class="pillar-subtitle">Background, situation, and audience</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Key insight:</strong> Claude performs better with more context, not less. Include who the audience is, what they already know, what constraints exist, and why this task matters.
+        </div>
+        <textarea class="pillar-input" id="p2" placeholder="e.g. The audience is a team of mid-level backend engineers onboarding to a new microservices platform. They understand REST APIs but are unfamiliar with event-driven architecture. The documentation will live in the company's internal dev portal." oninput="updatePreview(); updateCount(this, 'c2')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c2">0 chars</span>
+          <button class="fill-example" onclick="fillExample(2)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P3: Objective -->
+    <div class="pillar p3" id="pillar-3">
+      <button class="pillar-header" onclick="togglePillar(3)">
+        <span class="pillar-num">03</span>
+        <span class="pillar-icon">🎯</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Objective</div>
+          <div class="pillar-subtitle">What must be accomplished and why</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Be precise:</strong> Define the goal, success criteria, and scope. "Write a summary" fails — "Write a 3-paragraph executive summary that identifies the top 3 risks and proposes mitigation for each" succeeds.
+        </div>
+        <textarea class="pillar-input" id="p3" placeholder="e.g. Write a getting-started guide for the event streaming API. The guide must: (1) explain the core publish/subscribe model in plain English, (2) walk through a working code example in Python, (3) cover the 3 most common error scenarios and how to handle them." oninput="updatePreview(); updateCount(this, 'c3')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c3">0 chars</span>
+          <button class="fill-example" onclick="fillExample(3)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P4: Thinking -->
+    <div class="pillar p4" id="pillar-4">
+      <button class="pillar-header" onclick="togglePillar(4)">
+        <span class="pillar-num">04</span>
+        <span class="pillar-icon">🧠</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Thinking Process</div>
+          <div class="pillar-subtitle">How to approach and reason through the task</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Chain of thought:</strong> For complex tasks, instruct Claude to break down the problem before answering. Research shows this reduces errors on multi-step reasoning tasks by up to 40%.
+        </div>
+        <textarea class="pillar-input" id="p4" placeholder="e.g. Before writing, work through these steps: (1) identify the 3 concepts a new reader must understand first, (2) determine the simplest analogies for each, (3) plan where a code example adds the most value. Then write." oninput="updatePreview(); updateCount(this, 'c4')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c4">0 chars</span>
+          <button class="fill-example" onclick="fillExample(4)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P5: Examples -->
+    <div class="pillar p5" id="pillar-5">
+      <button class="pillar-header" onclick="togglePillar(5)">
+        <span class="pillar-num">05</span>
+        <span class="pillar-icon">📚</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Examples</div>
+          <div class="pillar-subtitle">Demonstrations of ideal input/output</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Few-shot power:</strong> 2–3 concrete examples outperform lengthy instructions. Show what "good" looks like — and if helpful, show what "bad" looks like with an explanation.
+        </div>
+        <textarea class="pillar-input" id="p5" style="min-height:110px" placeholder="e.g. Good section heading: 'Handle connection timeouts' — specific, action-oriented, tells the reader what they'll learn.&#10;&#10;Bad section heading: 'Error handling' — too vague, could mean anything.&#10;&#10;Good code comment: explains WHY, not WHAT. Bad: '# increment counter by 1'." oninput="updatePreview(); updateCount(this, 'c5')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c5">0 chars</span>
+          <button class="fill-example" onclick="fillExample(5)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P6: Output Format -->
+    <div class="pillar p6" id="pillar-6">
+      <button class="pillar-header" onclick="togglePillar(6)">
+        <span class="pillar-num">06</span>
+        <span class="pillar-icon">📄</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Output Format</div>
+          <div class="pillar-subtitle">Structure, length, and presentation</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Specify precisely:</strong> Define format (markdown, JSON, prose), length (word count or "3 paragraphs"), structure (headers, numbered steps), and tone. Ambiguity here is the #1 cause of unsatisfying output.
+        </div>
+        <textarea class="pillar-input" id="p6" placeholder="e.g. Output in Markdown. Structure: H2 heading per major concept, code blocks with Python syntax highlighting, bullet points for steps (no more than 7), a callout box for warnings. Total length: 600–900 words." oninput="updatePreview(); updateCount(this, 'c6')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c6">0 chars</span>
+          <button class="fill-example" onclick="fillExample(6)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- P7: Constraints -->
+    <div class="pillar p7" id="pillar-7">
+      <button class="pillar-header" onclick="togglePillar(7)">
+        <span class="pillar-num">07</span>
+        <span class="pillar-icon">🚫</span>
+        <span class="pillar-title-group">
+          <div class="pillar-title">Constraints &amp; Guardrails</div>
+          <div class="pillar-subtitle">What to avoid and non-negotiable rules</div>
+        </span>
+        <span class="pillar-arrow">▼</span>
+      </button>
+      <div class="pillar-body" hidden>
+        <div class="pillar-tip">
+          <strong>Positive + negative:</strong> Pair each "don't" with a "do instead." Research shows pure negative constraints are less effective than telling Claude what the preferred alternative is.
+        </div>
+        <textarea class="pillar-input" id="p7" placeholder="e.g. Do not use jargon without defining it first. Avoid passive voice — use active voice instead. Never assume the reader knows what a message broker is; explain it. Skip marketing language like 'powerful' or 'seamless'." oninput="updatePreview(); updateCount(this, 'c7')"></textarea>
+        <div class="pillar-footer">
+          <span class="char-count" id="c7">0 chars</span>
+          <button class="fill-example" onclick="fillExample(7)">Use example →</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" onclick="resetAll()" style="align-self:flex-start;margin-top:4px;">↺ Reset all fields</button>
+  </div>
+
+  <!-- Right: Preview -->
+  <div class="preview-panel">
+    <div class="preview-header">
+      <div>
+        <div class="panel-label">Assembled prompt</div>
+      </div>
+      <div class="preview-actions">
+        <button class="btn" onclick="fillAll()">Fill demo</button>
+        <button class="btn btn-primary" id="copyBtn" onclick="copyPrompt()">Copy prompt</button>
+      </div>
+    </div>
+
+    <div class="preview-output" id="previewOutput"></div>
+
+    <div class="stats-row" id="statsRow">
+      <span class="stat-chip">Chars: <span id="totalChars">0</span></span>
+      <span class="stat-chip">~Tokens: <span id="totalTokens">0</span></span>
+      <span class="stat-chip">Pillars filled: <span id="pillarsFilledCount">0</span>/7</span>
+    </div>
+
+    <div style="border-top:1px solid var(--border); padding-top: 14px;">
+      <div class="panel-label" style="margin-bottom:8px;">Quick tips</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--accent-dim);border-radius:var(--radius-sm);border-left:2px solid var(--accent);">
+          <strong style="color:var(--accent);">XML tags work:</strong> Claude treats &lt;context&gt;, &lt;task&gt;, &lt;examples&gt; as semantic delimiters — use them in every prompt.
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--violet-dim);border-radius:var(--radius-sm);border-left:2px solid var(--violet);">
+          <strong style="color:var(--violet);">Thinking first:</strong> For complex tasks, enable extended thinking (claude-opus-5 with thinking: adaptive) before generating output.
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--amber-dim);border-radius:var(--radius-sm);border-left:2px solid var(--amber);">
+          <strong style="color:var(--amber);">Specificity wins:</strong> Every vague word in your prompt ("good", "appropriate", "relevant") degrades output quality. Replace with measurable criteria.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Best Practices Section -->
+<div class="practices-section">
+  <div class="section-heading">Anthropic's <em>core principles</em></div>
+  <div class="practices-grid">
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--accent);">Structure</div>
+      <h3>Use XML tags as delimiters</h3>
+      <p>Claude is trained to treat &lt;tag&gt; blocks as semantic sections. &lt;context&gt;, &lt;task&gt;, &lt;examples&gt;, &lt;output_format&gt; improve parsing accuracy significantly on long prompts.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--violet);">Reasoning</div>
+      <h3>Let Claude think before answering</h3>
+      <p>Instruct "think step by step" or use adaptive thinking mode. For multi-step problems, reasoning before responding reduces errors by up to 40% vs. direct response.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--amber);">Specificity</div>
+      <h3>Replace every vague word</h3>
+      <p>"Good output" tells Claude nothing. "A 300-word summary with 3 bullet points per section, no passive voice" is actionable. Measure quality in the prompt itself.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--emerald);">Examples</div>
+      <h3>Show, don't just tell</h3>
+      <p>2–3 input/output examples outperform pages of instructions. Include at least one "bad" example with an explanation — contrast is how Claude calibrates quality.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--accent);">Persona</div>
+      <h3>Expert roles improve output</h3>
+      <p>Assigning a specific expert identity — not just "expert" but "senior ML engineer who has shipped 5 production recommendation systems" — activates domain-relevant reasoning patterns.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--violet);">Framing</div>
+      <h3>Positive constraints beat negative</h3>
+      <p>"Avoid jargon" is weaker than "define every technical term the first time it appears." Telling Claude what to do instead is more effective than what not to do.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--amber);">Agents</div>
+      <h3>Break complex tasks into steps</h3>
+      <p>For agentic work: give Claude a sequential plan it can execute. Number the steps, make dependencies explicit, and specify when to pause and verify before continuing.</p>
+    </div>
+    <div class="practice-card">
+      <div class="practice-eyebrow" style="color:var(--emerald);">Calibration</div>
+      <h3>Tell Claude when to say "I don't know"</h3>
+      <p>Explicitly permit uncertainty: "If you're unsure, say so and explain why rather than guessing." This reduces hallucination and builds trust in outputs you'll act on.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Prompt copied to clipboard</div>
+
+<script>
+const examples = {
+  1: "You are an expert technical writer with 12 years of experience creating developer documentation for major API platforms. You specialize in making complex distributed systems concepts accessible to engineers of varying experience levels, with a particular talent for precise, active-voice prose that respects the reader's time.",
+  2: "The audience is a team of mid-level backend engineers (3–7 years experience) onboarding to a new event-streaming microservices platform. They understand REST APIs well but have no prior experience with event-driven architecture or message brokers. This guide will live in the company's internal dev portal and will be the first thing engineers read before their first integration.",
+  3: "Write a getting-started guide for the platform's event streaming API. The guide must: (1) explain the publish/subscribe model using a concrete real-world analogy, (2) walk through a complete working Python code example that publishes and consumes a message, (3) cover the 3 most common integration errors and exactly how to resolve each. The reader should be able to go from zero to a working integration in under 30 minutes.",
+  4: "Before writing, work through this sequence: First, identify the 3 concepts a brand-new reader must understand before anything else makes sense. Second, find the simplest non-technical analogy for the publish/subscribe model. Third, determine exactly where in the guide a code example will have the highest impact. Only after completing this planning should you begin writing the guide.",
+  5: "Good section heading: 'Handle connection timeouts' — specific, tells the reader what they'll be able to do.\nBad section heading: 'Error handling' — too vague, could describe 20 different topics.\n\nGood code comment: // Retry with exponential backoff to avoid thundering herd on broker restart\nBad code comment: // increment counter by 1",
+  6: "Output in Markdown with the following structure: one H2 heading per major section, Python code blocks with syntax highlighting, numbered steps for any procedure (maximum 7 steps), and a > blockquote callout for any warning or gotcha. Total length: 650–900 words. Code examples should be self-contained and runnable.",
+  7: "Do not use jargon without defining it in plain English the first time it appears. Avoid passive voice — rewrite to active voice instead. Never assume the reader knows what a message broker, consumer group, or partition is; introduce each term explicitly. Omit marketing language ('powerful', 'seamless', 'robust') — use specific, factual descriptions instead."
+};
+
+function togglePillar(n) {
+  const body = document.querySelector(`#pillar-${n} .pillar-body`);
+  body.hidden = !body.hidden;
+}
+
+function fillExample(n) {
+  const ta = document.getElementById(`p${n}`);
+  ta.value = examples[n];
+  updateCount(ta, `c${n}`);
+  updatePreview();
+}
+
+function fillAll() {
+  for (let i = 1; i <= 7; i++) {
+    const ta = document.getElementById(`p${i}`);
+    ta.value = examples[i];
+    updateCount(ta, `c${i}`);
+    const body = document.querySelector(`#pillar-${i} .pillar-body`);
+    body.hidden = false;
+  }
+  updatePreview();
+}
+
+function resetAll() {
+  for (let i = 1; i <= 7; i++) {
+    document.getElementById(`p${i}`).value = '';
+    document.getElementById(`c${i}`).textContent = '0 chars';
+  }
+  updatePreview();
+}
+
+function updateCount(el, countId) {
+  document.getElementById(countId).textContent = `${el.value.length} chars`;
+}
+
+function escape(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updatePreview() {
+  const vals = {};
+  let filled = 0;
+  for (let i = 1; i <= 7; i++) {
+    vals[i] = document.getElementById(`p${i}`).value.trim();
+    if (vals[i]) filled++;
+  }
+
+  const labels = ['role','context','task','thinking','examples','output_format','constraints'];
+  const icons = ['🎭','🌐','🎯','🧠','📚','📄','🚫'];
+
+  let html = '';
+  let rawPrompt = '';
+
+  if (filled === 0) {
+    document.getElementById('previewOutput').innerHTML =
+      '<span style="color:var(--text-subtle);font-style:italic;">Open a pillar and start filling it in — your assembled prompt will appear here in real time.</span>';
+    updateStats('', 0);
+    return;
+  }
+
+  const pairs = [
+    { i:1, tag:'role', label:'Role & Persona' },
+    { i:2, tag:'context', label:'Context' },
+    { i:3, tag:'task', label:'Objective' },
+    { i:4, tag:'thinking', label:'Thinking Approach' },
+    { i:5, tag:'examples', label:'Examples' },
+    { i:6, tag:'output_format', label:'Output Format' },
+    { i:7, tag:'constraints', label:'Constraints' },
+  ];
+
+  // Role goes first as plain text, rest as XML
+  if (vals[1]) {
+    html += `<span class="section-label"># Role</span>\n${escape(vals[1])}\n\n`;
+    rawPrompt += `# Role\n${vals[1]}\n\n`;
+  }
+
+  const xmlPairs = pairs.slice(1);
+  for (const p of xmlPairs) {
+    if (vals[p.i]) {
+      html += `<span class="xml-tag">&lt;${p.tag}&gt;</span>\n${escape(vals[p.i])}\n<span class="xml-close">&lt;/${p.tag}&gt;</span>\n\n`;
+      rawPrompt += `<${p.tag}>\n${vals[p.i]}\n</${p.tag}>\n\n`;
+    }
+  }
+
+  document.getElementById('previewOutput').innerHTML = html.trimEnd();
+  updateStats(rawPrompt, filled);
+}
+
+function updateStats(raw, filled) {
+  const chars = raw.length;
+  const tokens = Math.round(chars / 4);
+  document.getElementById('totalChars').textContent = chars.toLocaleString();
+  document.getElementById('totalTokens').textContent = `~${tokens.toLocaleString()}`;
+  document.getElementById('pillarsFilledCount').textContent = filled;
+}
+
+function buildRawPrompt() {
+  const pairs = [
+    { i:1, tag:'role', label:'Role & Persona' },
+    { i:2, tag:'context', label:'Context' },
+    { i:3, tag:'task', label:'Objective' },
+    { i:4, tag:'thinking', label:'Thinking Approach' },
+    { i:5, tag:'examples', label:'Examples' },
+    { i:6, tag:'output_format', label:'Output Format' },
+    { i:7, tag:'constraints', label:'Constraints' },
+  ];
+  let out = '';
+  const v1 = document.getElementById('p1').value.trim();
+  if (v1) out += `# Role\n${v1}\n\n`;
+  for (const p of pairs.slice(1)) {
+    const v = document.getElementById(`p${p.i}`).value.trim();
+    if (v) out += `<${p.tag}>\n${v}\n</${p.tag}>\n\n`;
+  }
+  return out.trimEnd();
+}
+
+function copyPrompt() {
+  const raw = buildRawPrompt();
+  if (!raw) return;
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-primary');
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      btn.textContent = 'Copy prompt';
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-primary');
+    }, 2200);
+  });
+}
+
+// Theme toggle
+const toggle = document.getElementById('themeToggle');
+toggle.addEventListener('click', () => {
+  const root = document.documentElement;
+  const current = root.getAttribute('data-theme');
+  if (!current) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', prefersDark ? 'light' : 'dark');
+  } else if (current === 'dark') {
+    root.setAttribute('data-theme', 'light');
+  } else {
+    root.setAttribute('data-theme', 'dark');
+  }
+});
+
+// Restore from localStorage
+try {
+  for (let i = 1; i <= 7; i++) {
+    const saved = localStorage.getItem(`pa_p${i}`);
+    if (saved) {
+      document.getElementById(`p${i}`).value = saved;
+      updateCount(document.getElementById(`p${i}`), `c${i}`);
+    }
+  }
+  updatePreview();
+} catch(e) {}
+
+// Auto-save
+for (let i = 1; i <= 7; i++) {
+  document.getElementById(`p${i}`).addEventListener('input', function() {
+    try { localStorage.setItem(`pa_p${i}`, this.value); } catch(e) {}
+  });
+}
+
+// Open first pillar by default
+document.querySelector('#pillar-1 .pillar-body').hidden = false;
+updatePreview();
+</script>
