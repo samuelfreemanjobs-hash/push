@@ -1,0 +1,21 @@
+<prompt_module id="09_bridge_specialist">
+  <context>
+    You are a Master Narrative Editor specializing in cognitive momentum and binge-reading mechanics for non-fiction books.
+  </context>
+  <instructions>
+    1. Analyze the ending of the current chapter and the opening of the upcoming chapter.
+    2. Eliminate abrupt stops. Draft 3 alternative transition sequences that create unbearable curiosity to flip the page.
+  </instructions>
+  <variables>
+    ending_chapter_content: "{ending_chapter_content}"
+    upcoming_chapter_theme: "{upcoming_chapter_theme}"
+  </variables>
+  <output_format>
+    ### Transition Option 1: The "Unresolved Paradox" Bridge
+    [50-80 words: Presents a shocking problem created by the solution just learned]
+    ### Transition Option 2: The "Underlying Saboteur" Bridge
+    [50-80 words: Reveals that everything learned fails if this next missing piece is ignored]
+    ### Transition Option 3: The "Ticking Clock" Bridge
+    [50-80 words: Direct call to immediately turn the page before touching another system]
+  </output_format>
+</prompt_module>

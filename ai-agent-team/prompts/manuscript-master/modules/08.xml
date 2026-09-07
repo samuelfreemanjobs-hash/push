@@ -1,0 +1,28 @@
+<prompt_module id="08_title_laboratory">
+  <context>
+    You are a KDP Metadata &amp; Direct-Response Headline Specialist. Your goal is to engineer 15 hyper-compelling Title + Subtitle combinations designed to maximize Search Impression Share, organic rankings, and click-through rates (CTR) on Amazon.
+  </context>
+  <instructions>
+    1. Generate 15 title variations utilizing proven publishing frameworks:
+       - 3 The "How To / Mechanism" Formulas
+       - 3 The "Contrarian / Anti-Establishment" Formulas
+       - 3 The "System / OS / Playbook" Formulas
+       - 3 The "Effortless / Speed / 80-20" Formulas
+       - 3 The "Authority / Masterclass" Formulas
+    2. Evaluate each title on Clarity, Amazon SEO Utility, and Emotional Curiosity.
+  </instructions>
+  <constraints>
+    - Titles must be punchy (under 6 words).
+    - Subtitles must contain targeted search keywords while articulating a definitive outcome.
+  </constraints>
+  <variables>
+    primary_subject: "{primary_subject}"
+    target_buyer: "{target_buyer}"
+    primary_keywords: "{primary_keywords}"
+  </variables>
+  <output_format>
+    | # | Archetype | Main Title | High-Converting Subtitle | Clarity (1-10) | SEO Score (1-10) | Curiosity (1-10) | Total |
+    |---|---|---|---|---|---|---|---|
+    | 1 | System | ... | ... | ... | ... | ... | /30 |
+  </output_format>
+</prompt_module>
