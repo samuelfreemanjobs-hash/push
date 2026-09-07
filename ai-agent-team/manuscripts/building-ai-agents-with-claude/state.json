@@ -3,7 +3,8 @@
   "core_promise": "Provide a complete operational framework to design, deploy, and govern an autonomous digital workforce using Claude, replacing manual back-office tasks and scaling operations without ballooning payroll.",
   "target_persona": "Founders, operators, and technical managers carrying operational debt, high administrative overhead, and fragmented manual task handoffs.",
   "total_target_words": "38,000 - 42,000",
-  "active_chapter": "Introduction Complete — Ready for Chapter 1 Loop",
+  "active_chapter": "MANUSCRIPT COMPLETE",
+  "status": "publication_ready_draft",
   "narrative_threads": [
     "Transitioning from passive chatbot prompting to proactive deterministic agent loops",
     "Treating agent workflows like industrial assembly lines (Inputs -> Context -> Verification -> Action)",
@@ -16,7 +17,12 @@
   "completed_milestones": [
     "Module 08: Title locked — Building AI Agents with Claude",
     "Module 02: 11-chapter blueprint finalized (~40,000 words) + Implementation Toolkit appendix",
-    "Module 05: Introduction drafted (~1,450 words)"
+    "Module 05: Introduction drafted",
+    "Module 03: Chapters 1-11 drafted (full manuscript)",
+    "Module 07: Implementation Toolkit appendix (Artifacts A-D)",
+    "Module 12: KDP blurb variants (PAS + Authority)",
+    "Module 13: Author bio variants (3 lengths)",
+    "Module 11: Conclusion integrated into Chapter 11 (30-day roadmap + 90-day extension)"
   ],
   "kdp_keywords": [
     "Building AI Agents",
@@ -37,5 +43,23 @@
     "appendix": "Implementation Toolkit (Artifacts A-D)",
     "structure": "Act I: Agentic Shift (Ch 1-3) | Act II: Operational Factory (Ch 4-8) | Act III: Governance & Scale (Ch 9-11)"
   },
-  "next_executable_step": "Chapter 1 Loop: Module 06 (Research Integrator) → Module 04 (Story Creator) → Module 03 (Chapter Expander) for 'The End of Overhead: The Evolution from Chatbots to Autonomous Agents'"
+  "files": {
+    "introduction": "00-introduction.md",
+    "chapters": [
+      "01-chapter-end-of-overhead.md",
+      "02-chapter-claude-advantage.md",
+      "03-chapter-digital-worker-architecture.md",
+      "04-chapter-mcp-integrations.md",
+      "05-chapter-multi-agent-choreography.md",
+      "06-chapter-revenue-engine.md",
+      "07-chapter-back-office-engine.md",
+      "08-chapter-client-delivery.md",
+      "09-chapter-guardrail-protocol.md",
+      "10-chapter-synthetic-workforce.md",
+      "11-chapter-30-day-roadmap.md"
+    ],
+    "appendix": "appendix-implementation-toolkit.md",
+    "packaging": ["kdp-blurb.md", "author-bio.md"]
+  },
+  "next_executable_step": "Developmental edit pass → KDP interior formatting → cover design → upload"
 }
