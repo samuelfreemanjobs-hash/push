@@ -1,0 +1,41 @@
+{
+  "book_title": "Building AI Agents with Claude: How to Build a Digital Workforce That Automates Grunt Work, Cuts Overhead, and Scales Your Business",
+  "core_promise": "Provide a complete operational framework to design, deploy, and govern an autonomous digital workforce using Claude, replacing manual back-office tasks and scaling operations without ballooning payroll.",
+  "target_persona": "Founders, operators, and technical managers carrying operational debt, high administrative overhead, and fragmented manual task handoffs.",
+  "total_target_words": "38,000 - 42,000",
+  "active_chapter": "Introduction Complete — Ready for Chapter 1 Loop",
+  "narrative_threads": [
+    "Transitioning from passive chatbot prompting to proactive deterministic agent loops",
+    "Treating agent workflows like industrial assembly lines (Inputs -> Context -> Verification -> Action)",
+    "Contrasting manual back-office overhead against resilient, low-cost API/MCP infrastructure",
+    "TCAV Protocol as proprietary operational framework",
+    "Digital Shop Floor thesis — Claude as deterministic processing station, not conversational assistant",
+    "Zero-Drift Prompt Spec and XML-zoned system directives",
+    "Circuit breakers, HITL thresholds, and regression testing as enterprise-grade differentiators"
+  ],
+  "completed_milestones": [
+    "Module 08: Title locked — Building AI Agents with Claude",
+    "Module 02: 11-chapter blueprint finalized (~40,000 words) + Implementation Toolkit appendix",
+    "Module 05: Introduction drafted (~1,450 words)"
+  ],
+  "kdp_keywords": [
+    "Building AI Agents",
+    "Claude AI",
+    "Digital Workforce",
+    "Automate Business Operations",
+    "No-Code AI Agents",
+    "AI Automation Systems"
+  ],
+  "selected_title": {
+    "main": "Building AI Agents with Claude",
+    "subtitle": "How to Build a Digital Workforce That Automates Grunt Work, Cuts Overhead, and Scales Your Business",
+    "seo_score": 27
+  },
+  "outline": {
+    "acts": 3,
+    "chapters": 11,
+    "appendix": "Implementation Toolkit (Artifacts A-D)",
+    "structure": "Act I: Agentic Shift (Ch 1-3) | Act II: Operational Factory (Ch 4-8) | Act III: Governance & Scale (Ch 9-11)"
+  },
+  "next_executable_step": "Chapter 1 Loop: Module 06 (Research Integrator) → Module 04 (Story Creator) → Module 03 (Chapter Expander) for 'The End of Overhead: The Evolution from Chatbots to Autonomous Agents'"
+}
