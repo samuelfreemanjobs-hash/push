@@ -1,0 +1,73 @@
+{
+  "name": "Etsy daily pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "cron",
+      "name": "Weekdays 8 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RAILWAY_API_URL }}/api/etsy/pipeline/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-etsy-automation-secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"publish\": false, \"userId\": \"automation\" }"
+      },
+      "id": "run-pipeline",
+      "name": "Run Etsy pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"text\": \"Etsy daily pipeline finished. Listing title: \" + ($json.results?.listing?.title || 'see runtime logs') }"
+      },
+      "id": "slack",
+      "name": "Slack summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0]
+    }
+  ],
+  "connections": {
+    "Weekdays 8 AM": {
+      "main": [[{ "node": "Run Etsy pipeline", "type": "main", "index": 0 }]]
+    },
+    "Run Etsy pipeline": {
+      "main": [[{ "node": "Slack summary", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

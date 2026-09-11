@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "etsy:daily": "node scripts/etsy-daily-run.js",
+    "etsy:daily:publish": "node scripts/etsy-daily-run.js --publish"
   },
   "dependencies": {
     "express": "^4.18.2",

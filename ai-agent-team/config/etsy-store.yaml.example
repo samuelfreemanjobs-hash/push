@@ -1,0 +1,15 @@
+# Copy to config/etsy-store.yaml and edit for your shop
+
+niche: "minimalist wedding invitation templates"
+product_type: digital
+price_band_usd: "4.99-12.99"
+brand_voice: "elegant, modern, calm"
+fulfillment: instant_download
+marketing_channels:
+  - pinterest
+  - instagram
+automation:
+  # Create Etsy drafts only when true (requires OAuth + taxonomy id)
+  publish_drafts: false
+  # Run listing + social daily; research weekly (set in n8n cron)
+  daily_new_listing: true

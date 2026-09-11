@@ -5,9 +5,13 @@ A powerful AI agent application powered by Google Gemini and Supabase.
 ## Features
 
 - 🤖 AI-powered responses using Google Gemini
+- 🛍️ **Etsy automation pipeline** — research → product → listing → SEO → social → optional draft publish
+- 📣 Marketing agent team (`/api/marketing`)
 - 💾 Conversation history with Supabase
 - 🔄 RESTful API
 - 🚀 Production-ready
+
+See [docs/ETSY-AUTOMATION.md](docs/ETSY-AUTOMATION.md) for full Etsy setup (OAuth, n8n cron, compliance).
 
 ## Endpoints
 
@@ -30,6 +34,24 @@ Content-Type: application/json
 ### Get Conversation History
 ```bash
 GET /api/conversations/:userId
+```
+
+### Run Etsy automation pipeline
+```bash
+POST /api/etsy/pipeline/run
+Content-Type: application/json
+x-etsy-automation-secret: <ETSY_AUTOMATION_SECRET>
+
+{
+  "niche": "digital wedding invitations",
+  "productType": "digital",
+  "publish": false
+}
+```
+
+### Etsy automation status
+```bash
+GET /api/etsy/status
 ```
 
 ## Environment Variables
