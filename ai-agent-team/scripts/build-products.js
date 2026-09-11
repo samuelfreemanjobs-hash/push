@@ -173,8 +173,8 @@ function generateAgentKits() {
   execSync('node scripts/generate-all-agents.mjs', { cwd: root, stdio: 'inherit' });
 }
 
-function applyExcellencePass() {
-  execSync('node scripts/apply-excellence-v2.mjs', { cwd: root, stdio: 'inherit' });
+function applyV21Pass() {
+  execSync('node scripts/apply-v21.mjs', { cwd: root, stdio: 'inherit' });
 }
 
 function enrichCopySwipeAgent() {
@@ -209,7 +209,7 @@ function main() {
   ensureDir(dist);
   buildMarketingCommandCenter();
   generateAgentKits();
-  applyExcellencePass();
+  applyV21Pass();
   const mcc = path.join(root, 'products', 'marketing-command-center-excel', 'Marketing-Command-Center.xlsx');
   const mccAgent = path.join(root, 'products', 'agent-03-marketing-planner-agent-kit', '03-templates', 'Marketing-Command-Center.xlsx');
   if (fs.existsSync(mcc)) {

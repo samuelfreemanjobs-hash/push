@@ -6,6 +6,7 @@ import { LICENSE, workflowFile } from './agent-kit-shared.js';
 import { AGENT_KITS } from './agents/top10-definitions.mjs';
 import { AGENT_KITS_11_20 } from './agents/market-top20-11-20.mjs';
 import { applyExcellenceV2 } from './apply-excellence-v2.mjs';
+import { applyV21 } from './apply-v21.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -157,7 +158,8 @@ function main() {
   attachBusinessInABoxReadme();
   writeMasterIndex();
   applyExcellenceV2();
-  console.log('All 20 agent kits generated (v2 excellence applied).');
+  applyV21();
+  console.log('All 20 agent kits generated (v2.1 excellence + verticals applied).');
 }
 
 const isMain =

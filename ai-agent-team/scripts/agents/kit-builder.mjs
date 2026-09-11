@@ -67,18 +67,18 @@ Run workflow **01** on a real scenario (not fictional). Edit the draft before an
 You are ready for the full playbook loop.
 `;
 
-  const workflows = workflowDefs.map((d) =>
-    workflow(
-      d.slug,
-      d.title,
-      d.job,
-      d.inputs,
-      `You are a specialist operator for [YOUR BRAND]. ${d.brief}
+  const workflows = workflowDefs.map((d) => {
+    const brief = d.briefIsFull
+      ? d.brief
+      : `You are a specialist operator for [YOUR BRAND]. ${d.brief}
 
-Deliver in markdown with clear headings. Be specific to the inputs provided. Do not invent facts, metrics, or testimonials. Flag assumptions in a short "Assumptions" section at the end.`,
-      d.qc || ['Reads naturally in brand voice', 'One clear CTA or next step', 'No policy-violating claims'],
-    ),
-  );
+Deliver in markdown with clear headings. Be specific to the inputs provided. Do not invent facts, metrics, or testimonials. Flag assumptions in a short "Assumptions" section at the end.`;
+    return workflow(d.slug, d.title, d.job, d.inputs, brief, d.qc || [
+      'Reads naturally in brand voice',
+      'One clear CTA or next step',
+      'No policy-violating claims',
+    ]);
+  });
 
   return { slug, readme, profile, playbook, setup, workflows, templates: undefined };
 }

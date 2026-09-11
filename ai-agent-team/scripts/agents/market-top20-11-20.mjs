@@ -2,6 +2,7 @@
  * Market demand agents 11–20 (pairs with top10-definitions 1–10).
  */
 import { buildKit, workflow } from './kit-builder.mjs';
+import { applyDeepening } from './deep-workflows-13-19.mjs';
 import { AGENT_KITS_11_20 as LEGACY } from './top20-agents-11-20.mjs';
 
 const legacy11 = LEGACY.find((k) => k.slug === 'agent-11-customer-support-reply-agent-kit');
@@ -16,11 +17,21 @@ function sopKit() {
   return base;
 }
 
-function wf(slug, title, job, inputs, brief) {
-  return { slug, title, job, inputs, brief };
+function wf(slug, title, job, inputs, brief, qc) {
+  return { slug, title, job, inputs, brief, qc };
 }
 
-const leadMagnet = buildKit({
+function deepKit(opts) {
+  const { specialistRole, workflowDefs, ...rest } = opts;
+  const defs = applyDeepening(workflowDefs, specialistRole).map((d) => ({
+    ...d,
+    briefIsFull: true,
+  }));
+  return buildKit({ ...rest, workflowDefs: defs });
+}
+
+const leadMagnet = deepKit({
+  specialistRole: 'lead magnet and email list growth specialist',
   slug: 'agent-13-lead-magnet-opt-in-agent-kit',
   name: 'Lead Magnet & Opt-in Agent',
   tagline: 'Turn expertise into a downloadable lead magnet, landing copy, and 5-email nurture.',
@@ -47,7 +58,8 @@ const leadMagnet = buildKit({
   ],
 });
 
-const directMail = buildKit({
+const directMail = deepKit({
+  specialistRole: 'direct mail and local response marketing specialist',
   slug: 'agent-14-direct-mail-campaign-agent-kit',
   name: 'Direct Mail Campaign Agent',
   tagline: 'Local postcard campaigns: offer, copy, checklist, and print-ready creative briefs.',
@@ -74,7 +86,8 @@ const directMail = buildKit({
   ],
 });
 
-const brandVoice = buildKit({
+const brandVoice = deepKit({
+  specialistRole: 'brand messaging and positioning specialist',
   slug: 'agent-15-brand-voice-messaging-agent-kit',
   name: 'Brand Voice & Messaging Agent',
   tagline: 'Positioning, messaging pillars, and voice rules for consistent copy across channels.',
@@ -97,7 +110,8 @@ const brandVoice = buildKit({
   ],
 });
 
-const blogSeo = buildKit({
+const blogSeo = deepKit({
+  specialistRole: 'blog and SEO content specialist',
   slug: 'agent-16-blog-seo-article-agent-kit',
   name: 'Blog & SEO Article Agent',
   tagline: 'Keyword-led articles: outline, draft sections, meta, and internal links for organic traffic.',
@@ -120,7 +134,8 @@ const blogSeo = buildKit({
   ],
 });
 
-const bizBox = buildKit({
+const bizBox = deepKit({
+  specialistRole: 'multi-SKU digital product operator',
   slug: 'agent-17-business-in-a-box-orchestrator-agent-kit',
   name: 'Business-in-a-Box Orchestrator Agent',
   tagline: 'Launch and run multiple digital SKUs as a system: priorities, bundles, and weekly operator cadence.',
@@ -147,7 +162,8 @@ const bizBox = buildKit({
   ],
 });
 
-const aiOps = buildKit({
+const aiOps = deepKit({
+  specialistRole: 'AI-assisted business operations specialist',
   slug: 'agent-18-ai-ops-admin-agent-kit',
   name: 'AI Ops & Admin Agent',
   tagline: 'Daily/weekly business operations: inbox triage, scheduling narratives, finance summaries, and admin briefs.',
@@ -174,7 +190,8 @@ const aiOps = buildKit({
   ],
 });
 
-const shopAnalytics = buildKit({
+const shopAnalytics = deepKit({
+  specialistRole: 'Etsy shop analytics and growth specialist',
   slug: 'agent-19-etsy-shop-analytics-agent-kit',
   name: 'Etsy Shop Analytics Agent',
   tagline: 'Turn Etsy Stats into decisions: weekly diagnosis, listing fixes, and experiment backlog.',

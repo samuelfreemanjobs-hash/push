@@ -11,7 +11,8 @@
     "etsy:daily:publish": "node scripts/etsy-daily-run.js --publish",
     "products:build": "node scripts/build-products.js",
     "agents:generate": "node scripts/generate-all-agents.mjs",
-    "products:excellence": "node scripts/apply-excellence-v2.mjs"
+    "products:excellence": "node scripts/apply-excellence-v2.mjs",
+    "products:v21": "node scripts/apply-v21.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.3.1",

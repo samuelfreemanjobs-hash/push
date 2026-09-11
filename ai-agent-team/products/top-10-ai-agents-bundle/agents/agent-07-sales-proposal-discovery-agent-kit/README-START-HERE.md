@@ -14,3 +14,13 @@ B2B discovery, proposals, and follow-up workflows for service sellers and agenci
 | `CHANGELOG.md` | Version history |
 
 **Version:** see `VERSION.txt`.
+
+
+## v2.1 — Verticals & Loom
+
+| Folder / file | Purpose |
+|---------------|---------|
+| `08-verticals/` | Paste-ready context for **Etsy**, **coach**, or **local** niches |
+| `09-video-scripts/` | **15-second Loom** script for listing video or Pinterest |
+
+**Version:** see `VERSION.txt`.
