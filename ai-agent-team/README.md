@@ -13,7 +13,7 @@ A powerful AI agent application powered by Google Gemini and Supabase.
 
 See [docs/ETSY-AUTOMATION.md](docs/ETSY-AUTOMATION.md) for full Etsy setup (OAuth, n8n cron, compliance).
 
-Shop config: `config/etsy-store.yaml`. First listings: [docs/ETSY-LAUNCH-PACK.md](docs/ETSY-LAUNCH-PACK.md).
+Shop config: `config/etsy-store.yaml`. Listings: [ETSY-LAUNCH-PACK.md](docs/ETSY-LAUNCH-PACK.md). SEO titles/tags: [ETSY-KEYWORD-PASS.md](docs/ETSY-KEYWORD-PASS.md).
 
 ## Endpoints
 

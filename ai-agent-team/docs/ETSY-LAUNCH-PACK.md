@@ -20,24 +20,12 @@ Configured for `config/etsy-store.yaml`. Use this until `GEMINI_API_KEY` is set 
 
 ## Listing #1 (paste into Etsy) — AI Client Onboarding Agent Kit
 
-**Title (139 chars):**  
-`AI Client Onboarding Agent Kit | SOP Templates Prompt Library Checklist | Small Business Digital Download Instant`
+**Title (use keyword pass option A):**  
+`Client Onboarding Template Kit | SOP AI Workflows Checklist | Freelancer Agency Digital Download`
 
-**13 tags (≤20 chars each):**
+Full SEO set for all 3 listings: **[ETSY-KEYWORD-PASS.md](ETSY-KEYWORD-PASS.md)**
 
-1. `client onboarding`
-2. `ai prompt kit`
-3. `business template`
-4. `sop template`
-5. `agency tools`
-6. `small business`
-7. `digital download`
-8. `workflow template`
-9. `customer onboarding`
-10. `excel template`
-11. `notion alternative`
-12. `freelance business`
-13. `operations kit`
+**13 tags:** see keyword pass listing #1 (optimized for search intent, not generic “ai prompt kit” alone).
 
 **Price:** $24.99  
 **Quantity:** 999  
