@@ -107,4 +107,4 @@ for (const kit of AGENT_KITS) {
 writeMarketingPlannerAgent();
 copyOnboardingKit();
 writeMasterIndex();
-console.log('Top 10 agent kits generated.');
+console.log('Top 10 agent kits generated. Prefer: npm run agents:generate (all 20).');

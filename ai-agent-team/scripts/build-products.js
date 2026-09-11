@@ -8,18 +8,9 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import XLSX from 'xlsx';
 
-const AGENT_KIT_SLUGS = [
-  'agent-01-etsy-listing-seo-agent-kit',
-  'agent-02-social-content-machine-agent-kit',
-  'agent-03-marketing-planner-agent-kit',
-  'agent-04-client-onboarding-agent-kit',
-  'agent-05-email-sequence-agent-kit',
-  'agent-06-ad-copy-agent-kit',
-  'agent-07-sales-proposal-discovery-agent-kit',
-  'agent-08-copy-swipe-agent-kit',
-  'agent-09-pod-design-prompt-agent-kit',
-  'agent-10-listing-mockup-photo-brief-agent-kit',
-];
+import { ALL_AGENT_SLUGS } from './agent-slugs.mjs';
+
+const AGENT_KIT_SLUGS = ALL_AGENT_SLUGS;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -166,7 +157,7 @@ Start with onboarding SOP, then load the Excel dashboard, then use copy template
 }
 
 function generateAgentKits() {
-  execSync('node scripts/generate-top10-agents.mjs', { cwd: root, stdio: 'inherit' });
+  execSync('node scripts/generate-all-agents.mjs', { cwd: root, stdio: 'inherit' });
 }
 
 function enrichCopySwipeAgent() {
@@ -184,17 +175,17 @@ function enrichCopySwipeAgent() {
   }
 }
 
-function buildTop10BundleFolder() {
-  const bundleDir = path.join(root, 'products', 'top-10-ai-agents-bundle', 'agents');
+function buildAgentBundleFolder(bundleName, slugs = AGENT_KIT_SLUGS) {
+  const bundleDir = path.join(root, 'products', bundleName, 'agents');
   fs.rmSync(bundleDir, { recursive: true, force: true });
   fs.mkdirSync(bundleDir, { recursive: true });
-  for (const slug of AGENT_KIT_SLUGS) {
+  for (const slug of slugs) {
     const src = path.join(root, 'products', slug);
     if (fs.existsSync(src)) {
       fs.cpSync(src, path.join(bundleDir, slug), { recursive: true });
     }
   }
-  console.log('Assembled top-10-ai-agents-bundle/agents/');
+  console.log(`Assembled ${bundleName}/agents/`);
 }
 
 function main() {
@@ -203,7 +194,11 @@ function main() {
   buildMarketingCommandCenter();
   enrichCopySwipeAgent();
   buildBusinessInABox();
-  buildTop10BundleFolder();
+  buildAgentBundleFolder('top-20-ai-agents-bundle');
+  buildAgentBundleFolder(
+    'top-10-ai-agents-bundle',
+    AGENT_KIT_SLUGS.filter((s) => s.match(/^agent-0[1-9]-|^agent-10-/)),
+  );
 
   const zips = [
     ['products/ai-client-onboarding-agent-kit', 'ai-client-onboarding-agent-kit.zip'],
@@ -212,6 +207,7 @@ function main() {
     ['products/copywriting-templates', 'business-copywriting-templates.zip'],
     ['products/ai-ops-agent-library', 'ai-ops-agent-library.zip'],
     ['products/business-in-a-box-starter', 'business-in-a-box-starter.zip'],
+    ['products/top-20-ai-agents-bundle', 'top-20-ai-agents-bundle.zip'],
     ['products/top-10-ai-agents-bundle', 'top-10-ai-agents-bundle.zip'],
     ...AGENT_KIT_SLUGS.map((slug) => [`products/${slug}`, `${slug}.zip`]),
   ];

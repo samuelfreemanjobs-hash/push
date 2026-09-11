@@ -10,7 +10,7 @@
     "etsy:daily": "node scripts/etsy-daily-run.js",
     "etsy:daily:publish": "node scripts/etsy-daily-run.js --publish",
     "products:build": "node scripts/build-products.js",
-    "agents:generate": "node scripts/generate-top10-agents.mjs"
+    "agents:generate": "node scripts/generate-all-agents.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.3.1",
