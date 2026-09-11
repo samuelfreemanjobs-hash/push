@@ -55,3 +55,15 @@ Target: 38,000–42,000 words (introduction + 11 chapters + appendix)
 ## Status
 
 ✅ Manuscript complete — ready for developmental edit, formatting, and KDP upload.
+
+## Review PDF
+
+Generate a letter-size review PDF (introduction + all chapters + appendix):
+
+```bash
+cd ai-agent-team/manuscripts
+npm install marked puppeteer --no-save
+node build-manuscript-pdf.mjs
+```
+
+Output: `manuscripts/output/Building-AI-Agents-with-Claude-Review-Draft.pdf`
