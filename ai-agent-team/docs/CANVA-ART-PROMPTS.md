@@ -3,8 +3,12 @@
 Copy-paste **image prompts** into Canva Magic Media and **text overlays** into your template. One file per SKU in [`canva-prompts/`](./canva-prompts/).
 
 ```bash
-npm run products:canva-prompts   # regenerate from scripts/agents/canva-art-data.mjs
+npm run products:canva-prompts    # markdown prompts
+npm run products:canva-autofill   # CSV + API job JSON
+npm run products:canva:submit     # dry-run Canva Connect
 ```
+
+**Full automation guide:** [CANVA-AUTOMATION.md](./CANVA-AUTOMATION.md)
 
 ## Global style
 

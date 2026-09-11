@@ -13,7 +13,9 @@
     "agents:generate": "node scripts/generate-all-agents.mjs",
     "products:excellence": "node scripts/apply-excellence-v2.mjs",
     "products:v21": "node scripts/apply-v21.mjs",
-    "products:canva-prompts": "node scripts/generate-canva-prompts.mjs"
+    "products:canva-prompts": "node scripts/generate-canva-prompts.mjs",
+    "products:canva-autofill": "node scripts/generate-canva-autofill.mjs",
+    "products:canva:submit": "node scripts/canva/submit-autofill-jobs.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.3.1",

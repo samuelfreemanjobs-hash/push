@@ -1,0 +1,66 @@
+{
+  "name": "Canva product art autofill",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "command": "cd /path/to/ai-agent-team && npm run products:canva-autofill"
+      },
+      "id": "gen",
+      "name": "Generate autofill JSON",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "notes": "Set working directory to your ai-agent-team clone"
+    },
+    {
+      "parameters": {
+        "filePath": "/path/to/ai-agent-team/dist/canva-autofill/manifest.json"
+      },
+      "id": "read-manifest",
+      "name": "Read manifest",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.canva.com/rest/v1/autofills",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"brand_template_id\": $json.brand_template_id,\n  \"title\": $json.title,\n  \"data\": $json.data\n}"
+      },
+      "id": "autofill",
+      "name": "Canva autofill (configure)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "notes": "Add HTTP Header Auth: Authorization Bearer {{$env.CANVA_ACCESS_TOKEN}}. Map body from Code node that reads jobs/*.json and config/canva-brand-templates.json"
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [[{ "node": "Generate autofill JSON", "type": "main", "index": 0 }]]
+    },
+    "Generate autofill JSON": {
+      "main": [[{ "node": "Read manifest", "type": "main", "index": 0 }]]
+    },
+    "Read manifest": {
+      "main": [[{ "node": "Canva autofill (configure)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Stub: wire Code + Split In Batches + poll GET /autofills/{id} + POST /exports. See docs/CANVA-AUTOMATION.md"
+  }
+}

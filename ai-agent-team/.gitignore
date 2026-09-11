@@ -8,6 +8,7 @@ products/business-in-a-box-starter/50-business-copywriting-templates.md
 *.log
 .DS_Store
 dist/
+config/canva-brand-templates.json
 build/
 .vscode/
 .idea/

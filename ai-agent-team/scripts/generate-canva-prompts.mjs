@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { CANVA_GLOBAL, CANVA_PRODUCTS } from './agents/canva-art-data.mjs';
+import { baseImagePrompt, buildProductCanvaAssets } from './agents/canva-prompt-lib.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -26,31 +27,29 @@ ${textOverlay}
 }
 
 function renderProduct(p) {
-  const { stylePrefix } = CANVA_GLOBAL;
-  const accentNote = `Accent color ${p.accent} for icons, underlines, and CTA button.`;
-  const baseImage = `${stylePrefix} ${accentNote} Visual theme: ${p.metaphor}. Product: ${p.name}. Mood: trustworthy, outcome-focused, not hypey AI glitter.`;
+  const { text, images } = buildProductCanvaAssets(p);
+  const baseImage = baseImagePrompt(p);
 
-  const heroOverlay = `- **Headline:** ${p.headline}
-- **Subhead:** ${p.subhead}
-- **Badge:** Instant Digital Download
-- **Footer small:** ${CANVA_GLOBAL.brandPlaceholder}`;
+  const heroOverlay = `- **Headline:** ${text.headline}
+- **Subhead:** ${text.subhead}
+- **Badge:** ${text.badge}
+- **Footer small:** ${text.brand}`;
 
-  const insideList = p.inside.map((i) => `- ${i}`).join('\n');
   const galleryOverlay = `- **Title:** What's Inside
-${insideList}
+${p.inside.map((i) => `- ${i}`).join('\n')}
 - **Corner badge:** v2.1 · Scorecard + Artifacts`;
 
-  const pinterestOverlay = `- **Pin title:** ${p.headline}
-- **Subline:** ${p.subhead}
-- **CTA strip:** Shop ${CANVA_GLOBAL.brandPlaceholder} on Etsy`;
+  const pinterestOverlay = `- **Pin title:** ${text.pin_title}
+- **Subline:** ${text.pin_subline}
+- **CTA strip:** Shop ${text.brand} on Etsy`;
 
-  const salesOverlay = `- **H1:** ${p.headline}
-- **H2:** ${p.subhead}
+  const salesOverlay = `- **H1:** ${text.headline}
+- **H2:** ${text.subhead}
 - **3 bullets:** ${p.bullets.join(' · ')}
-- **CTA button text:** Get instant access
-- **Trust line:** Commercial use license · Not a raw prompt dump`;
+- **CTA button text:** ${text.cta}
+- **Trust line:** ${text.trust_line}`;
 
-  const thumbOverlay = `- **Large 3–4 words only:** ${p.headline.split(' ').slice(0, 4).join(' ')}
+  const thumbOverlay = `- **Large 3–4 words only:** ${text.thumb_short}
 - **Tiny:** ${p.price !== 'Bundle' ? p.price : 'Bundle save'}`;
 
   const sections = [
@@ -77,7 +76,7 @@ ${insideList}
       'etsyHero',
       'Primary listing image',
       CANVA_GLOBAL.sizes.etsyHero,
-      `${baseImage} Composition: centered device or document mock showing abstract workflow folders (playbook, workflows, scorecard). Bold empty headline band across top 20%. No tiny unreadable text in the artwork.`,
+      images.etsy_hero,
       heroOverlay,
     ),
     '',
@@ -88,7 +87,7 @@ ${insideList}
       'gallery',
       'Inside the download',
       CANVA_GLOBAL.sizes.etsyGallery,
-      `${baseImage} Composition: isometric folder explosion with 5 labeled tabs (Playbook, Workflows, Examples, Scorecard, Artifacts). Clean icons only; labels can be generic. Light shadow.`,
+      images.etsy_inside,
       galleryOverlay,
     ),
     '',
@@ -99,7 +98,7 @@ ${insideList}
       'how',
       '3-step flow',
       CANVA_GLOBAL.sizes.etsyGallery,
-      `${baseImage} Composition: three steps left-to-right with arrows — (1) Paste workflow (2) Run your AI tool (3) Ship with scorecard. Minimal line icons.`,
+      images.etsy_how,
       `- **Step 1:** Copy workflow brief
 - **Step 2:** Run in your AI tool
 - **Step 3:** Score ≥85 · then publish`,
@@ -112,7 +111,7 @@ ${insideList}
       'verticals',
       'Works for your niche',
       CANVA_GLOBAL.sizes.etsyGallery,
-      `${baseImage} Composition: three equal columns with simple icons — shopping bag (Etsy seller), speech bubble (coach), map pin (local service). Soft column headers area at top.`,
+      images.etsy_verticals,
       `- **Col 1:** Etsy digital seller
 - **Col 2:** Coach / consultant
 - **Col 3:** Local service
@@ -126,7 +125,7 @@ ${insideList}
       'pinterest',
       'Traffic pin',
       CANVA_GLOBAL.sizes.pinterest,
-      `${baseImage} Vertical composition: top 40% bold color block ${p.accent}, bottom 60% light workspace flat lay with laptop and checklist. Space for large title text in upper block.`,
+      images.pinterest,
       pinterestOverlay,
     ),
     '',
@@ -137,7 +136,7 @@ ${insideList}
       'sales',
       'Landing hero',
       CANVA_GLOBAL.sizes.salesHero,
-      `${baseImage} Wide cinematic: left third text-safe solid #F7F5F0, right two thirds abstract product UI mock. Subtle gradient. Professional SaaS landing vibe.`,
+      images.sales_hero,
       salesOverlay,
     ),
     '',
@@ -147,7 +146,7 @@ ${insideList}
 
 **Layout prompt (Canva Magic Design):**
 
-> Wide feature section, 3 icons in a row on off-white background, accent ${p.accent}. Icons represent: ${p.bullets.join(', ')}. Short headings only; no paragraph text in generated art.
+> ${images.feature_strip}
 
 **Text:**
 ${p.bullets.map((b, i) => `- **Feature ${i + 1}:** ${b}`).join('\n')}`,
@@ -159,7 +158,7 @@ ${p.bullets.map((b, i) => `- **Feature ${i + 1}:** ${b}`).join('\n')}`,
       'thumb',
       'Bold thumbnail',
       CANVA_GLOBAL.sizes.thumb,
-      `${baseImage} Composition: single large symbolic icon for ${p.metaphor}, very minimal background, high contrast, no small text in image. Designed to read at 500px.`,
+      images.thumb,
       thumbOverlay,
     ),
     '',
@@ -168,7 +167,7 @@ ${p.bullets.map((b, i) => `- **Feature ${i + 1}:** ${b}`).join('\n')}`,
     'Paste into **Canva Magic Design** with template search *Etsy digital product* or *ebook mockup*:',
     '',
     `\`\`\`
-Create an Etsy digital product listing image set for "${p.name}". ${p.subhead}. Style: modern, ${p.accent} accent, off-white, navy text. Include: hero, what's inside checklist, 3-step how it works. Headline: "${p.headline}".
+${text.magic_design_one_liner}
 \`\`\``,
     '',
   ];
@@ -183,8 +182,12 @@ function renderIndex() {
     'Copy-paste **image prompts** into Canva Magic Media and **text overlays** into your template. One file per SKU in [`canva-prompts/`](./canva-prompts/).',
     '',
     '```bash',
-    'npm run products:canva-prompts   # regenerate from scripts/agents/canva-art-data.mjs',
+    'npm run products:canva-prompts    # markdown prompts',
+    'npm run products:canva-autofill   # CSV + API job JSON',
+    'npm run products:canva:submit     # dry-run Canva Connect',
     '```',
+    '',
+    '**Full automation guide:** [CANVA-AUTOMATION.md](./CANVA-AUTOMATION.md)',
     '',
     '## Global style',
     '',
