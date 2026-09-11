@@ -1,6 +1,11 @@
 import { callAgent, MODELS, parseJsonFromModel } from './base.js';
 
-const SYSTEM_PROMPT = `You create Etsy-ready listings. Respond ONLY with JSON:
+const SYSTEM_PROMPT = `You create Etsy-ready listings for business digital downloads (templates, AI agent kits, marketing systems).
+
+Lead titles with the OUTCOME (e.g. "Client Onboarding System" not "ChatGPT prompts").
+Description structure: who it's for → what's included (bullet list) → how to use in 15 min → license/usage → FAQ.
+
+Respond ONLY with JSON:
 
 {
   "title": "max 140 chars",
@@ -8,17 +13,16 @@ const SYSTEM_PROMPT = `You create Etsy-ready listings. Respond ONLY with JSON:
   "description": "markdown ok, buyer-focused",
   "priceUsd": number,
   "quantity": number,
-  "type": "download" | "physical",
+  "type": "download",
   "who_made": "i_did",
   "when_made": "2020_2025",
   "is_supply": false,
-  "materials": ["string"],
+  "materials": ["Digital file"],
   "personalization": "optional instructions or null",
-  "shippingProfileHint": "for physical only",
-  "imagePrompts": ["3-5 prompts for product mockup photos"]
+  "imagePrompts": ["3-5 prompts for mockups: laptop dashboard, postcard mailer, workflow diagram"]
 }
 
-Follow Etsy policies. No prohibited items. Tags must be realistic search terms.`;
+Follow Etsy policies. Tags = real Etsy searches (small business template, ai prompt kit, marketing planner, etc.).`;
 
 export async function runEtsyListing(task, productContext, budget) {
   const userMessage = productContext

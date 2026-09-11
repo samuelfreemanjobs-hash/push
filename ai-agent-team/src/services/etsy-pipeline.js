@@ -14,7 +14,21 @@ import { createEtsyClientFromEnv } from '../etsy/client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function loadStoreConfig() {
+function parseYamlScalar(raw, key) {
+  const m = raw.match(new RegExp(`${key}:\\s*["']?([^"'\\n]+)`, 'i'));
+  return m?.[1]?.trim();
+}
+
+function parseYamlList(raw, key) {
+  const block = raw.match(new RegExp(`${key}:\\s*\\n((?:  - .+\\n)+)`, 'i'));
+  if (!block) return [];
+  return block[1]
+    .split('\n')
+    .map((line) => line.replace(/^\s*-\s*/, '').trim())
+    .filter(Boolean);
+}
+
+export function loadStoreConfig() {
   const configPath =
     process.env.ETSY_STORE_CONFIG ||
     path.join(__dirname, '../../config/etsy-store.yaml');
@@ -22,20 +36,46 @@ function loadStoreConfig() {
     return null;
   }
   const raw = fs.readFileSync(configPath, 'utf8');
-  const nicheMatch = raw.match(/niche:\s*["']?([^"'\n]+)/i);
-  const productTypeMatch = raw.match(/product_type:\s*(\w+)/i);
   return {
-    niche: nicheMatch?.[1]?.trim(),
-    productType: productTypeMatch?.[1]?.trim(),
+    niche: parseYamlScalar(raw, 'niche'),
+    productType: parseYamlScalar(raw, 'product_type'),
+    positioning: parseYamlScalar(raw, 'positioning'),
+    buyer: parseYamlScalar(raw, 'buyer'),
+    priceBandUsd: parseYamlScalar(raw, 'price_band_usd'),
+    brandVoice: parseYamlScalar(raw, 'brand_voice'),
+    catalogFocus: parseYamlList(raw, 'catalog_focus'),
     rawPath: configPath,
   };
 }
 
 function buildDefaultTask(overrides = {}) {
   const cfg = loadStoreConfig();
-  const niche = overrides.niche || cfg?.niche || 'printable planners for busy parents';
+  const niche =
+    overrides.niche ||
+    cfg?.niche ||
+    'business tools and AI agent outcome kits';
   const productType = overrides.productType || cfg?.productType || 'digital';
-  return `Run the Etsy automation pipeline for niche: "${niche}". Product focus: ${productType}. Optimize for Etsy search and Pinterest discovery.`;
+  const catalog = cfg?.catalogFocus?.length
+    ? `Catalog lines: ${cfg.catalogFocus.join('; ')}.`
+    : '';
+  const positioning = cfg?.positioning
+    ? `Positioning: ${cfg.positioning}.`
+    : 'Sell outcomes, not vague prompts.';
+  const buyer = cfg?.buyer ? `Target buyer: ${cfg.buyer}.` : '';
+  const price = cfg?.priceBandUsd ? `Price band USD: ${cfg.priceBandUsd}.` : '';
+
+  return [
+    `Run the Etsy automation pipeline for niche: "${niche}".`,
+    `Product focus: ${productType} instant downloads.`,
+    positioning,
+    buyer,
+    price,
+    catalog,
+    'Optimize for Etsy search, LinkedIn discovery, and Pinterest saves.',
+    'Avoid trademarked tool names in titles; use generic descriptors (spreadsheet dashboard, prompt library, SOP pack).',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export async function runEtsyPipeline({

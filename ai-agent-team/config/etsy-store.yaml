@@ -1,0 +1,30 @@
+# Etsy shop focus — business tools & AI outcomes (digital)
+
+niche: "business tools, AI agents sold as outcomes, marketing systems, command centers"
+product_type: digital
+
+catalog_focus:
+  - excel templates and financial/ops spreadsheets
+  - lightweight web apps and PWAs
+  - dashboards and command centers
+  - taskade-like productivity workspaces
+  - AI agent kits and prompt libraries
+  - marketing systems and copywriting templates
+  - postcard and direct-mail design packs
+  - business-in-a-box bundles
+
+positioning: "Outcomes over features — ready-to-use digital systems for founders and operators"
+buyer: "solopreneurs, SMB owners, agency operators, side-hustle founders"
+price_band_usd: "9.99-79.99"
+brand_voice: "professional, direct, operator-minded, no hype"
+fulfillment: instant_download
+
+marketing_channels:
+  - pinterest
+  - linkedin
+  - instagram
+
+automation:
+  publish_drafts: false
+  daily_new_listing: true
+  bundle_strategy: "lead with one outcome (e.g. AI client onboarding agent) then upsell business-in-a-box"

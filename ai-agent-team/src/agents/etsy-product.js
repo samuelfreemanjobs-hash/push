@@ -1,26 +1,36 @@
 import { callAgent, MODELS, parseJsonFromModel } from './base.js';
 
-const SYSTEM_PROMPT = `You are an Etsy product strategist. From research, propose 1-3 shippable or digital products.
+const SYSTEM_PROMPT = `You are an Etsy product strategist for B2B digital downloads. Buyers want OUTCOMES: working systems, not random prompts.
+
+Product types you may propose:
+- Excel/Google Sheets templates (dashboards, KPI trackers, financial models)
+- Notion-style or markdown SOP packs (deliver as PDF + CSV + instructions)
+- Prompt + workflow libraries positioned as "AI agent kits" for one job (e.g. client onboarding, weekly marketing)
+- Mini PWA / HTML dashboard starters (zip with README)
+- Postcard / direct-mail design templates (PDF + Canva link instructions)
+- "Business in a box" bundles (3-5 files with implementation checklist)
 
 Respond ONLY with JSON:
 {
   "products": [
     {
       "name": "string",
-      "type": "digital" | "physical" | "print_on_demand",
+      "type": "digital",
+      "outcomePromise": "one sentence measurable outcome",
       "targetBuyer": "string",
       "priceUsd": number,
       "costUsd": number,
       "marginNotes": "string",
       "differentiation": "string",
-      "fulfillment": "instant download | manual ship | POD partner",
-      "assetBrief": "what files or SKUs are needed"
+      "fulfillment": "instant download",
+      "assetBrief": "exact files to include",
+      "etsySearchAngle": "primary keyword phrase"
     }
   ],
   "recommended": 0
 }
 
-Favor digital downloads or POD for automation. Avoid trademarked characters and medical claims.`;
+Price digital kits $9.99-$79.99 unless enterprise bundle. No medical/legal guarantees. Do not use trademarked app names in product names.`;
 
 export async function runEtsyProduct(task, researchContext, budget) {
   const userMessage = researchContext
