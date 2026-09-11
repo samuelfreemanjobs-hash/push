@@ -17,3 +17,15 @@ Solopreneurs drowning in admin who already use AI but lack structured ops workfl
 3. Use workflow **05-inbox-triage** for support overflow
 
 Replace every `[YOUR BRAND]` placeholder before you run workflows.
+
+
+## v2.0 — Excellence pack
+
+| Folder / file | Purpose |
+|---------------|---------|
+| `04-examples/` | Fictional **Acme** sample so you see a finished result |
+| `06-scorecard.md` | Score **≥85/100** before you ship to customers |
+| `07-artifacts/` | Fillable CSV/Markdown — start without AI |
+| `CHANGELOG.md` | Version history |
+
+**Version:** see `VERSION.txt`.

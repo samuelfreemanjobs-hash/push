@@ -91,6 +91,19 @@ function buildMarketingCommandCenter() {
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(leads), 'Lead Sources');
 
+  const exampleWeek = [
+    ['Example only — Acme Digital Studio (delete or replace)'],
+    ['Metric', 'This Week', 'Last Week', 'Goal'],
+    ['Website sessions', 420, 380, 500],
+    ['Email subscribers', 28, 24, 50],
+    ['Leads', 9, 7, 20],
+    ['Sales calls booked', 3, 2, 8],
+    ['Revenue ($)', 1240, 980, 5000],
+    ['Email open rate %', 38, 35, 35],
+    ['Social saves', 64, 51, 100],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(exampleWeek), 'Example Acme Week');
+
   const xlsxPath = path.join(outDir, 'Marketing-Command-Center.xlsx');
   XLSX.writeFile(wb, xlsxPath);
 
@@ -160,6 +173,10 @@ function generateAgentKits() {
   execSync('node scripts/generate-all-agents.mjs', { cwd: root, stdio: 'inherit' });
 }
 
+function applyExcellencePass() {
+  execSync('node scripts/apply-excellence-v2.mjs', { cwd: root, stdio: 'inherit' });
+}
+
 function enrichCopySwipeAgent() {
   const src = path.join(root, 'products', 'copywriting-templates', '50-business-copywriting-templates.md');
   const dest = path.join(
@@ -190,8 +207,15 @@ function buildAgentBundleFolder(bundleName, slugs = AGENT_KIT_SLUGS) {
 
 function main() {
   ensureDir(dist);
-  generateAgentKits();
   buildMarketingCommandCenter();
+  generateAgentKits();
+  applyExcellencePass();
+  const mcc = path.join(root, 'products', 'marketing-command-center-excel', 'Marketing-Command-Center.xlsx');
+  const mccAgent = path.join(root, 'products', 'agent-03-marketing-planner-agent-kit', '03-templates', 'Marketing-Command-Center.xlsx');
+  if (fs.existsSync(mcc)) {
+    fs.mkdirSync(path.dirname(mccAgent), { recursive: true });
+    fs.copyFileSync(mcc, mccAgent);
+  }
   enrichCopySwipeAgent();
   buildBusinessInABox();
   buildAgentBundleFolder('top-20-ai-agents-bundle');
