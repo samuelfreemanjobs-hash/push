@@ -163,8 +163,165 @@ In the first line, name **all three components** (onboarding + excel + copy) so 
 | #1 Onboarding | client onboarding, welcome packet, sop, agency freelance | “marketing calendar” lead |
 | #2 Excel | marketing planner, content calendar, campaign tracker | “onboarding sop” lead |
 | #3 Bundle | bundle, starter kit, business in a box | Rank for bundle terms only; link to #1/#2 in description |
+| #4 Postcard | postcard template, direct mail | Don’t lead with “marketing planner” |
+| #5 Copy | copywriting template, email swipe | Don’t lead with “onboarding” |
+| #6 AI Ops | business workflow prompts | Avoid “10000 chatgpt prompts”; use outcome language |
 
-Use **different hero image text** per listing (onboarding checklist vs dashboard vs “3-in-1 bundle”).
+Use **different hero image text** per listing (onboarding checklist vs dashboard vs “3-in-1 bundle” vs postcard mockup vs swipe file vs workflow grid).
+
+---
+
+## Listing 4 — Postcard Direct-Mail Campaign Pack ($14.99)
+
+**Primary keyword:** `postcard template`  
+**Secondary:** `direct mail template`, `small business marketing`, `4x6 postcard`
+
+### Title options
+
+| # | Title | Chars |
+|---|--------|------:|
+| A (recommended) | Postcard Template 4x6 \| Direct Mail Marketing Small Business \| Printable HTML Digital Download | 94 |
+| B | Direct Mail Postcard Template \| Local Business Marketing Kit \| 4x6 Print Ready Digital Download | 95 |
+| C | Small Business Postcard Template \| Direct Mail Campaign Copy \| 4x6 Printable Instant Download | 97 |
+
+### 13 tags
+
+| Tag | Chars |
+|-----|------:|
+| postcard template | 17 |
+| direct mail | 11 |
+| 4x6 postcard | 12 |
+| small business | 14 |
+| marketing template | 18 |
+| printable postcard | 18 |
+| local business | 14 |
+| digital download | 16 |
+| mailer template | 15 |
+| business postcard | 17 |
+| promo postcard | 14 |
+| print at home | 13 |
+| campaign template | 17 |
+
+### Description opener
+
+> Postcard template 4x6 for direct mail: print-ready HTML front and back, copy swipe file, print specs, and mailing checklist. Instant digital download.
+
+### Long-tail phrases
+
+- direct mail postcard template  
+- local business postcard marketing  
+- 4x6 postcard printable  
+- small business mailer template  
+- postcard marketing kit  
+
+### Avoid in title
+
+- “EDDM” unless you add USPS-specific instructions  
+- Trademarked print shop names  
+
+---
+
+## Listing 5 — 50 Business Copywriting Templates ($17.99)
+
+**Primary keyword:** `copywriting template`  
+**Secondary:** `email template business`, `sales copy template`, `marketing swipe file`
+
+### Title options
+
+| # | Title | Chars |
+|---|--------|------:|
+| A (recommended) | Copywriting Template Bundle 50 \| Email Sales Social Ads \| Small Business Digital Download | 91 |
+| B | Business Copywriting Templates \| Email Marketing Sales Scripts \| Instant Download Swipe File | 95 |
+| C | Marketing Copy Template Pack \| 50 Email Social Ad Scripts \| Freelancer Business Download | 92 |
+
+### 13 tags
+
+| Tag | Chars |
+|-----|------:|
+| copywriting template | 20 |
+| email template | 14 |
+| marketing template | 18 |
+| sales copy | 10 |
+| swipe file | 10 |
+| small business | 14 |
+| digital download | 16 |
+| social media copy | 17 |
+| ad copy template | 16 |
+| freelance business | 18 |
+| business writing | 16 |
+| content template | 16 |
+| script template | 15 |
+
+### Description opener
+
+> 50 business copywriting templates: offers, emails, social, ads, and sales scripts. Fill-in-the-blank swipe file. Instant digital download for small business.
+
+### Long-tail phrases
+
+- email marketing template small business  
+- sales email swipe file  
+- social media caption template business  
+- ad copy formulas template  
+- freelance proposal copy  
+
+### Note
+
+Listing #3 bundle already includes this file — in **#5** description add: “Also included in our Business Template Bundle” with internal Etsy link to #3.
+
+---
+
+## Listing 6 — AI Ops Agent Library — 50 Workflows ($34.99)
+
+**Primary keyword:** `business prompt template`  
+**Secondary:** `ai workflow business`, `chatgpt prompts business` (use in description, not title lead)
+
+Position as **workflows / outcomes**, not a mega prompt dump.
+
+### Title options
+
+| # | Title | Chars |
+|---|--------|------:|
+| A (recommended) | Business AI Workflow Template 50 \| Sales Marketing Ops Prompts \| Small Business Digital Download | 94 |
+| B | AI Business Workflow Library \| 50 Agent Prompts Sales Support \| Operator Digital Download Kit | 94 |
+| C | Small Business AI Templates \| 50 Workflow Prompts Marketing Ops \| Instant Digital Download | 89 |
+
+### 13 tags
+
+| Tag | Chars |
+|-----|------:|
+| business prompts | 16 |
+| ai template | 11 |
+| workflow template | 17 |
+| marketing prompts | 17 |
+| sales template | 14 |
+| digital download | 16 |
+| small business ai | 17 |
+| chatgpt business | 16 |
+| ops template | 12 |
+| freelancer tools | 16 |
+| agency tools | 12 |
+| prompt template | 15 |
+| business automation | 19 |
+
+### Description opener
+
+> 50 business AI workflow templates for sales, marketing, delivery, and admin. Copy-paste agent briefs with clear triggers—not a generic prompt list. Instant download.
+
+### Long-tail phrases
+
+- ai workflow small business  
+- business automation prompt kit  
+- sales follow up email ai  
+- marketing content workflow template  
+- freelance operations templates  
+
+### Differentiate from Listing #1
+
+| #1 Onboarding | #6 AI Ops |
+|---------------|-----------|
+| New client first 14 days | Ongoing sales/marketing/ops |
+| SOP + 12 workflows | 50 broader workflows |
+| Tag lead: `client onboarding` | Tag lead: `business prompts` |
 
 ---
 
@@ -175,6 +332,9 @@ Pin titles are separate from Etsy tags; use these on Pinterest with link to list
 1. Client onboarding checklist for freelancers  
 2. Marketing content calendar spreadsheet small business  
 3. Business template bundle digital download  
+4. 4x6 postcard template direct mail local business  
+5. Email marketing copy templates small business  
+6. AI workflow templates for entrepreneurs  
 
 ---
 
@@ -188,8 +348,8 @@ Pin titles are separate from Etsy tags; use these on Pinterest with link to list
 
 ---
 
-## Optional listing 4 (demand #1 — build when ready)
+## Optional listing 7 (highest raw demand — build when ready)
 
 **Working title:** Small Business Spreadsheet Bundle Bookkeeping Inventory Order Tracker Excel  
 **Tag #1:** `bookkeeping template`  
-Use when you ship the expanded ops workbook; highest raw Etsy demand in your niche.
+Ship when you expand beyond Marketing Command Center into full ops bundle.
