@@ -6,6 +6,10 @@ Customer-ready ZIPs are built into `dist/`:
 npm run products:build
 ```
 
+## Top 10 AI agent kits
+
+See [docs/TOP-10-AI-AGENTS.md](../docs/TOP-10-AI-AGENTS.md). Folders `agent-01-…` through `agent-10-…` plus `top-10-ai-agents-bundle/`.
+
 ## SKUs
 
 | Folder | Etsy listing | Output ZIP |
