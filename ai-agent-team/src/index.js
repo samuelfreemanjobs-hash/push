@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { createManuscriptMasterRouter } from './routes/manuscript-master.js';
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -26,6 +27,11 @@ const supabase = createClient(
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
+
+// Manuscript Master — KDP book architect agent
+if (process.env.GEMINI_API_KEY) {
+  app.use('/api/manuscript-master', createManuscriptMasterRouter(process.env.GEMINI_API_KEY));
+}
 
 // AI Agent endpoint
 app.post('/api/agent', async (req, res) => {
