@@ -25,7 +25,11 @@ const README_V2_BLOCK = `
 
 export function applyExcellenceV2(slugs = [...ALL_AGENT_SLUGS, 'ai-client-onboarding-agent-kit']) {
   for (const slug of slugs) {
-    const data = EXCELLENCE_V2[slug];
+    const data =
+      EXCELLENCE_V2[slug] ||
+      (slug === 'ai-client-onboarding-agent-kit'
+        ? EXCELLENCE_V2['agent-04-client-onboarding-agent-kit']
+        : null);
     if (!data) {
       console.warn('No excellence data for', slug);
       continue;
