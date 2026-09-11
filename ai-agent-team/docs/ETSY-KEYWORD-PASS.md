@@ -1,4 +1,6 @@
-# Etsy keyword pass — top 3 listings
+# Etsy keyword pass — shop listings & all 20 AI agent kits
+
+**Index:** [Listings 1–6 (legacy SKUs)](#listing-1--ai-client-onboarding-agent-kit-2499) · [Agent kits 1–10](#ai-agent-kit-1--etsy-listing-seo-agent-3299) · [Agent kits 11–20](#ai-agent-kit-11--customer-support-reply-agent-3299)
 
 **Shop niche:** Business digital downloads · AI outcomes · ops & marketing systems  
 **Rules used:** Title ≤140 characters · 13 tags · each tag ≤20 characters · front-load primary keyword · no trademarked tool names in titles
