@@ -7,6 +7,7 @@ You asked what else to add after **vertical packs**, **15s Loom scripts**, and *
 | Initiative | What buyers get | Why it wins |
 |------------|-----------------|-------------|
 | **Listing mockup pack** | 5–8 PNG screenshots per agent (scorecard, artifact, folder tree) | Etsy shoppers judge in 2 seconds; proof beats bullet lists |
+| **Canva prompt library** | ✅ `docs/CANVA-ART-PROMPTS.md` + per-SKU files — run `npm run products:canva-prompts` | Fast consistent heroes, Pinterest, sales pages |
 | **Fillable PDF exports** | Same artifacts as PDF forms (Canva or Acrobat) | Many buyers never open CSV; PDF feels “finished” |
 | **Notion duplicate** | One-click duplicate link + matching DB properties | Coaches/consultants live in Notion; lowers setup friction |
 | **“First 30 minutes” video** | 3–5 min walkthrough per agent (not 15s teaser) | Cuts support messages; justifies premium vs $5 prompt packs |

@@ -53,7 +53,9 @@ After edits: `npm run agents:generate` then `npm run products:build`.
 
 **Etsy SEO:** titles, 13 tags, and openers for all 20 agents in [ETSY-KEYWORD-PASS.md](ETSY-KEYWORD-PASS.md).
 
-**v2 excellence pack** (examples, scorecards, artifacts): [PRODUCT-EXCELLENCE-V2.md](PRODUCT-EXCELLENCE-V2.md) — version **2.0.0** in each kit.
+**v2 excellence pack** (examples, scorecards, artifacts): [PRODUCT-EXCELLENCE-V2.md](PRODUCT-EXCELLENCE-V2.md) — version **2.1.0** in each kit.
+
+**Canva listing & sales art:** [CANVA-ART-PROMPTS.md](CANVA-ART-PROMPTS.md) — `npm run products:canva-prompts`
 
 ## Legacy note
 
