@@ -98,10 +98,31 @@ Questions? Message me before purchase—happy to help you pick the right kit.
 
 Always link Listing #1 from the $59.99 bundle description as the anchor; Etsy favors clear bundle value in the first 160 characters.
 
-## Next automated step
+## Digital files (ready to upload)
+
+Build customer ZIPs:
 
 ```bash
 cd ai-agent-team
+npm run products:build
+```
+
+Upload from `dist/`:
+
+| ZIP | Listing |
+|-----|---------|
+| `ai-client-onboarding-agent-kit.zip` | AI Client Onboarding Agent Kit ($24.99) |
+| `marketing-command-center-excel.zip` | Marketing Command Center ($19.99) |
+| `postcard-direct-mail-pack.zip` | Postcard Direct-Mail Pack ($14.99) |
+| `business-copywriting-templates.zip` | 50 Copywriting Templates (pair with SKU 4/5) |
+| `ai-ops-agent-library.zip` | AI Ops Agent Library ($34.99) |
+| `business-in-a-box-starter.zip` | Business-in-a-Box ($59.99) |
+
+Source files live under `products/` for edits. Re-run `products:build` after changes.
+
+## Next automated step
+
+```bash
 cp .env.example .env   # add GEMINI_API_KEY
 npm run etsy:daily     # generates fresh research + next SKU listing JSON
 ```
