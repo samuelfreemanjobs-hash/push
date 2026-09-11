@@ -1,0 +1,23 @@
+/** All 20 market-demand agent kit folder slugs (stable for build ZIP list). */
+export const ALL_AGENT_SLUGS = [
+  'agent-01-etsy-listing-seo-agent-kit',
+  'agent-02-social-content-machine-agent-kit',
+  'agent-03-marketing-planner-agent-kit',
+  'agent-04-client-onboarding-agent-kit',
+  'agent-05-email-sequence-agent-kit',
+  'agent-06-ad-copy-agent-kit',
+  'agent-07-sales-proposal-discovery-agent-kit',
+  'agent-08-copy-swipe-agent-kit',
+  'agent-09-pod-design-prompt-agent-kit',
+  'agent-10-listing-mockup-photo-brief-agent-kit',
+  'agent-11-customer-support-reply-agent-kit',
+  'agent-12-sop-operations-doc-agent-kit',
+  'agent-13-lead-magnet-opt-in-agent-kit',
+  'agent-14-direct-mail-campaign-agent-kit',
+  'agent-15-brand-voice-messaging-agent-kit',
+  'agent-16-blog-seo-article-agent-kit',
+  'agent-17-business-in-a-box-orchestrator-agent-kit',
+  'agent-18-ai-ops-admin-agent-kit',
+  'agent-19-etsy-shop-analytics-agent-kit',
+  'agent-20-coach-consultant-professional-agent-kit',
+];

@@ -1,10 +1,14 @@
 node_modules/
+products/business-in-a-box-starter/onboarding-kit/
+products/business-in-a-box-starter/Marketing-Command-Center.xlsx
+products/business-in-a-box-starter/50-business-copywriting-templates.md
 .env
 .env.local
 .env.*.local
 *.log
 .DS_Store
 dist/
+config/canva-brand-templates.json
 build/
 .vscode/
 .idea/

@@ -1,0 +1,69 @@
+{
+  "_comment": "Copy to canva-brand-templates.json and paste brand template IDs from Canva → Brand → Templates → Connect API. Field values must match text element names in your template.",
+  "etsy_hero": {
+    "brand_template_id": "REPLACE_WITH_CANVA_BRAND_TEMPLATE_ID",
+    "fields": {
+      "headline": "Headline",
+      "subhead": "Subhead",
+      "bullet_1": "Bullet1",
+      "bullet_2": "Bullet2",
+      "bullet_3": "Bullet3",
+      "price": "Price",
+      "brand": "Brand",
+      "badge": "Badge"
+    }
+  },
+  "etsy_inside": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "headline": "Headline",
+      "inside_list": "InsideList",
+      "brand": "Brand"
+    }
+  },
+  "etsy_how": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "headline": "Headline",
+      "subhead": "Subhead",
+      "brand": "Brand"
+    }
+  },
+  "etsy_verticals": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "headline": "Headline",
+      "subhead": "Subhead",
+      "brand": "Brand"
+    }
+  },
+  "pinterest": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "pin_title": "PinTitle",
+      "pin_subline": "PinSubline",
+      "brand": "Brand"
+    }
+  },
+  "sales_hero": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "headline": "Headline",
+      "subhead": "Subhead",
+      "bullet_1": "Bullet1",
+      "bullet_2": "Bullet2",
+      "bullet_3": "Bullet3",
+      "cta": "CTA",
+      "trust_line": "TrustLine",
+      "brand": "Brand"
+    }
+  },
+  "thumb": {
+    "brand_template_id": "REPLACE",
+    "fields": {
+      "thumb_short": "ThumbTitle",
+      "price": "Price",
+      "brand": "Brand"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+SLACK / DM TEMPLATES — [YOUR BRAND]
+====================================
+
+--- New client ping (internal team) ---
+New client onboarded: [Client Name]. Owner: [Name]. Kickoff: [Date]. Folder: [link]
+
+--- Client-friendly quick hello ---
+Hi [First Name] — [YOUR NAME] from [YOUR BRAND]. Welcome aboard! I just sent a welcome email with your kickoff link and portal. Shout if anything's unclear.
+
+--- Nudge (friendly) ---
+Hi [First Name] — gentle bump on [intake item]. No rush, but we need it to hit [milestone date]. Need help?
+
+--- Kickoff same-day ---
+Looking forward to our call at [time] today. I'll share screen for the timeline doc — bring any questions about scope or priorities.
