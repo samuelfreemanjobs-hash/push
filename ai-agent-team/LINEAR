@@ -2,27 +2,32 @@
 
 Project: **PM Product Matrix Operations**
 
-## When connected (Linear MCP)
+## MCP server (this repo)
 
-1. Create or sync issues from `pm/backlog.yaml` (keys: push-1 … push-5).
-2. Map GitHub issue numbers to Linear identifiers in issue descriptions.
-3. Post weekly rollups to Slack `#pm-product-matrix` (channel C0BDL629ER2).
+Use **`push-linear`** (`mcp/linear-server`) for issue sync and PM automation.
 
-## Issue templates
+1. Create personal API key → set `LINEAR_API_KEY` in `.cursor/mcp.json` (see `docs/MCP-SETUP.md`).
+2. Optional: `LINEAR_DEFAULT_TEAM_ID` for default team on create.
+3. Tools: `linear_find_project` with name `PM Product Matrix Operations`, then `linear_create_issue` / `linear_list_issues`.
 
-**Autonomous agent task**
+## Backlog sync workflow
 
-- Priority: P0 | P1 | P2
-- Branch: `cursor/<name>-c0f8`
-- Acceptance criteria: bullet list
-- Human gates: secrets, OAuth, merge approval
+1. Read `pm/backlog.yaml` (or `GET /api/pm/backlog`).
+2. For each open item, create or update a Linear issue (link `github_issue` in description).
+3. Post weekly rollups to Slack `#pm-product-matrix` (C0BDL629ER2) — confirm before Slack write.
 
-## Current backlog (offline mirror)
+## Issue template (Linear description)
 
-See `pm/backlog.yaml`. Top autonomous item:
+- **Priority:** P0 | P1 | P2
+- **Branch:** `cursor/<name>-c0f8`
+- **GitHub:** samuelfreemanjobs-hash/push#issue
+- **Acceptance criteria:** bullets
+- **Human gates:** secrets, OAuth, merge approval
 
-- **P0 push-5** — Merge `cursor/etsy-store-automation-f219` after resolving README, `src/index.js`, `package-lock.json` conflicts with manuscript-master.
+## Official Cursor Linear MCP
 
-## Setup
+You can also connect **Linear** under Settings → Tools & MCP (OAuth). Use either official plugin or `push-linear`; avoid duplicating the same writes from both.
 
-Cursor → Settings → Tools & MCP → connect **Linear**. Then re-run Cloud Agent with "sync PM backlog to Linear".
+## Current backlog mirror
+
+See `pm/backlog.yaml`. Top item: **P0 push-5** — merge Etsy store automation branch.

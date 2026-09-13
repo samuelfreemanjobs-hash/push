@@ -50,8 +50,8 @@ priorities:
       github_state: OPEN
 integrations:
   linear:
-    status: needs_auth
-    action: Connect Linear MCP in Cursor Settings → Tools & MCP
+    status: ready_with_api_key
+    action: Set LINEAR_API_KEY in mcp.json — see docs/MCP-SETUP.md
   notion:
     status: zapier_task_limit
     action: Upgrade Zapier plan or use Linear when auth is live

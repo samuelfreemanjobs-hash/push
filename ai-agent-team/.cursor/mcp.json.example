@@ -17,6 +17,14 @@
         "ETSY_SHOP_ID": "",
         "ETSY_REDIRECT_URI": "http://localhost:3000/api/etsy/oauth/callback"
       }
+    },
+    "push-linear": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/linear-server/index.js"],
+      "env": {
+        "LINEAR_API_KEY": "",
+        "LINEAR_DEFAULT_TEAM_ID": ""
+      }
     }
   }
 }
