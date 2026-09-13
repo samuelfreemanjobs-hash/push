@@ -1,0 +1,3 @@
+category,severity,macro_name,body_shortcut
+billing,P2,invoice_reminder,Hi {name}—invoice {id} due {date}: {link}
+technical,P3,file_wont_open,Try desktop + link {url}; reply with screenshot

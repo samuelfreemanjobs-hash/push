@@ -1,0 +1,4 @@
+listing_id,listing_title,tag,duplicate_of_listing,action
+101,Budget Planner PDF,budget planner,,keep
+102,Expense Tracker,budget planner,101,replace tag with expense tracker
+103,Marketing Kit,small business,,keep

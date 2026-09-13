@@ -26,6 +26,7 @@ Cloud Agents and local Cursor sessions should use this file as the entry point f
 
 - `GET /api/pm/backlog` — JSON backlog
 - `POST /api/manuscript-master/*` — see README Manuscript section
+- MCP **`push-gemini`** — `gemini_generate` / `gemini_chat` (same `GEMINI_API_KEY` as runtime)
 
 ## Slack
 
