@@ -42,6 +42,10 @@ curl -X POST http://localhost:3000/api/manuscript-master/execute \
   -d '{"moduleId":"01_concept_generator","variables":{"niche_expertise":"B2B SaaS sales","primary_audience":"VP Sales","monetization_goal":"Consulting Pipeline"},"sessionId":"<sessionId>"}'
 ```
 
+## MCP servers (Canva + Etsy)
+
+Custom stdio MCP servers for **Canva Connect** (autofill/export) and **Etsy Open API v3** (listings, OAuth). Setup: `docs/MCP-SETUP.md`.
+
 ## PM Product Matrix Operations
 
 Autonomous backlog and launch queue for this monorepo. Routing manifests: `LINEAR`, `CURSOR`, `CLAUDE`.

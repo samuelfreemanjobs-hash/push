@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "push-canva-connect": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/canva-server/index.js"],
+      "env": {
+        "CANVA_ACCESS_TOKEN": ""
+      }
+    },
+    "push-etsy": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/etsy-server/index.js"],
+      "env": {
+        "ETSY_API_KEY": "",
+        "ETSY_ACCESS_TOKEN": "",
+        "ETSY_REFRESH_TOKEN": "",
+        "ETSY_SHOP_ID": "",
+        "ETSY_REDIRECT_URI": "http://localhost:3000/api/etsy/oauth/callback"
+      }
+    }
+  }
+}

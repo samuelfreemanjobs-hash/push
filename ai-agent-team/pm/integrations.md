@@ -6,4 +6,7 @@
 | Slack executive assistant | `#executive-assistant` (`C0B8T3ZJW30`) | MedFlow EA loop target |
 | GitHub | `samuelfreemanjobs-hash/push` | Issue source of truth |
 | Linear | PM Product Matrix Operations | Blocked — MCP auth |
+| Canva (official) | Cursor Tools & MCP | Connect in Settings |
+| Canva Connect | `mcp/canva-server` | `CANVA_ACCESS_TOKEN` |
+| Etsy Open API | `mcp/etsy-server` | OAuth + `ETSY_*` env |
 | Notion | Zapier | Blocked — task limit |

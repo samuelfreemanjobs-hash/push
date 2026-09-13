@@ -1,0 +1,19 @@
+{
+  "name": "@push/mcp-servers",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Canva Connect + Etsy Open API MCP servers for Cursor",
+  "type": "module",
+  "workspaces": [
+    "canva-server",
+    "etsy-server"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "canva": "node canva-server/index.js",
+    "etsy": "node etsy-server/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
