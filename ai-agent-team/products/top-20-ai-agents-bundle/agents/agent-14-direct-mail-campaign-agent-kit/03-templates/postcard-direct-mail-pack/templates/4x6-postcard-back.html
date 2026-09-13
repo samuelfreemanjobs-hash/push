@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Postcard Back — [YOUR BRAND]</title>
+  <style>
+    @page { size: 6in 4in; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 6in;
+      height: 4in;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #fff;
+      color: #0f172a;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .message { padding: 0.3in; font-size: 9pt; line-height: 1.4; }
+    .stamp {
+      border: 1px dashed #cbd5e1;
+      margin: 0.25in;
+      height: 0.9in;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 8pt;
+    }
+    .address { padding: 0.2in 0.3in; font-size: 9pt; min-height: 1.2in; }
+    .cta { font-weight: bold; margin-top: 0.15in; }
+    .qr {
+      width: 0.85in;
+      height: 0.85in;
+      border: 2px solid #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7pt;
+      text-align: center;
+      margin-top: 0.1in;
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <strong>[YOUR BRAND]</strong><br />
+    [Street]<br />
+    [City, ST ZIP]
+    <p class="cta">Scan for your free [offer name]:</p>
+    <div class="qr">QR CODE<br />[URL]</div>
+  </div>
+  <div>
+    <div class="stamp">POSTAGE</div>
+    <div class="address">
+      <br /><br />
+      Recipient Name<br />
+      Street Address<br />
+      City, ST ZIP
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "@push/mcp-servers",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Canva, Etsy, Linear, and Gemini MCP servers for Cursor",
+  "type": "module",
+  "workspaces": [
+    "canva-server",
+    "etsy-server",
+    "linear-server",
+    "gemini-server"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "canva": "node canva-server/index.js",
+    "etsy": "node etsy-server/index.js",
+    "linear": "node linear-server/index.js",
+    "gemini": "node gemini-server/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

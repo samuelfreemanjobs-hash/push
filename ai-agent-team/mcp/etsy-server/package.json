@@ -1,0 +1,13 @@
+{
+  "name": "@push/etsy-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "etsy-mcp": "./index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.24.1"
+  }
+}

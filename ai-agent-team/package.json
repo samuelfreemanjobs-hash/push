@@ -6,14 +6,26 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "pm:sync": "node scripts/pm-sync-github-issues.mjs",
+    "etsy:director:list": "node etsy-department/agents/etsy-director-agent.mjs --list-listings",
+    "etsy:director:run": "node etsy-department/agents/etsy-director-agent.mjs --run",
+    "etsy:daily": "node scripts/etsy-daily-run.js",
+    "products:build": "node scripts/build-products.js",
+    "agents:generate": "node scripts/generate-all-agents.mjs",
+    "products:excellence": "node scripts/apply-excellence-v2.mjs",
+    "products:v21": "node scripts/apply-v21.mjs",
+    "products:canva-prompts": "node scripts/generate-canva-prompts.mjs",
+    "products:canva-autofill": "node scripts/generate-canva-autofill.mjs"
   },
   "dependencies": {
     "express": "^4.18.2",
     "dotenv": "^16.3.1",
     "@google/generative-ai": "^0.3.1",
     "@supabase/supabase-js": "^2.38.4",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "yaml": "^2.6.1",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=22"

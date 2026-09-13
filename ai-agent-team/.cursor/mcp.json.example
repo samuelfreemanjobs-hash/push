@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "push-canva-connect": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/canva-server/index.js"],
+      "env": {
+        "CANVA_ACCESS_TOKEN": ""
+      }
+    },
+    "push-etsy": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/etsy-server/index.js"],
+      "env": {
+        "ETSY_API_KEY": "",
+        "ETSY_ACCESS_TOKEN": "",
+        "ETSY_REFRESH_TOKEN": "",
+        "ETSY_SHOP_ID": "",
+        "ETSY_REDIRECT_URI": "http://localhost:3000/api/etsy/oauth/callback"
+      }
+    },
+    "push-linear": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/linear-server/index.js"],
+      "env": {
+        "LINEAR_API_KEY": "",
+        "LINEAR_DEFAULT_TEAM_ID": ""
+      }
+    },
+    "push-gemini": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/gemini-server/index.js"],
+      "env": {
+        "GEMINI_API_KEY": "",
+        "GEMINI_MODEL": "gemini-2.0-flash"
+      }
+    }
+  }
+}

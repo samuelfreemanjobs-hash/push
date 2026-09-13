@@ -1,1 +1,33 @@
+# CURSOR — autonomous execution router
 
+Cloud Agents and local Cursor sessions should use this file as the entry point for PM-driven work.
+
+## Read first
+
+1. `pm/backlog.yaml` — prioritized queue
+2. `pm/product-matrix.md` — portfolio view
+3. `pm/runtime/SOP.md` — 5-agent pipeline rules
+
+## Autonomous work order (this repo)
+
+1. ✅ Merge Manuscript Master (`cursor/manuscript-master-aede`) → issues #2/#3
+2. ⏳ Merge Etsy store automation (`cursor/etsy-store-automation-f219`) → issue #5
+3. Scaffold MedFlow n8n stub → issue #1
+4. Pull Micro SaaS checklist branch when P0–P1 clear → issue #4
+
+## Skills
+
+| Skill | Path |
+|-------|------|
+| PM agent | `skills/pm-agent/SKILL.md` |
+| Manuscript Master | `skills/manuscript-master/SKILL.md` |
+
+## API
+
+- `GET /api/pm/backlog` — JSON backlog
+- `POST /api/manuscript-master/*` — see README Manuscript section
+- MCP **`push-gemini`** — `gemini_generate` / `gemini_chat` (same `GEMINI_API_KEY` as runtime)
+
+## Slack
+
+Post completion summaries to `#pm-product-matrix` after each merged PR (human can approve Slack write in agent settings).

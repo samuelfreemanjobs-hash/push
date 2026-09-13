@@ -1,1 +1,33 @@
+# LINEAR — PM Product Matrix Operations
 
+Project: **PM Product Matrix Operations**
+
+## MCP server (this repo)
+
+Use **`push-linear`** (`mcp/linear-server`) for issue sync and PM automation.
+
+1. Create personal API key → set `LINEAR_API_KEY` in `.cursor/mcp.json` (see `docs/MCP-SETUP.md`).
+2. Optional: `LINEAR_DEFAULT_TEAM_ID` for default team on create.
+3. Tools: `linear_find_project` with name `PM Product Matrix Operations`, then `linear_create_issue` / `linear_list_issues`.
+
+## Backlog sync workflow
+
+1. Read `pm/backlog.yaml` (or `GET /api/pm/backlog`).
+2. For each open item, create or update a Linear issue (link `github_issue` in description).
+3. Post weekly rollups to Slack `#pm-product-matrix` (C0BDL629ER2) — confirm before Slack write.
+
+## Issue template (Linear description)
+
+- **Priority:** P0 | P1 | P2
+- **Branch:** `cursor/<name>-c0f8`
+- **GitHub:** samuelfreemanjobs-hash/push#issue
+- **Acceptance criteria:** bullets
+- **Human gates:** secrets, OAuth, merge approval
+
+## Official Cursor Linear MCP
+
+You can also connect **Linear** under Settings → Tools & MCP (OAuth). Use either official plugin or `push-linear`; avoid duplicating the same writes from both.
+
+## Current backlog mirror
+
+See `pm/backlog.yaml`. Top item: **P0 push-5** — merge Etsy store automation branch.
