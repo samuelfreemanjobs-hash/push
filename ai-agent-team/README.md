@@ -42,6 +42,20 @@ curl -X POST http://localhost:3000/api/manuscript-master/execute \
   -d '{"moduleId":"01_concept_generator","variables":{"niche_expertise":"B2B SaaS sales","primary_audience":"VP Sales","monetization_goal":"Consulting Pipeline"},"sessionId":"<sessionId>"}'
 ```
 
+## PM Product Matrix Operations
+
+Autonomous backlog and launch queue for this monorepo. Routing manifests: `LINEAR`, `CURSOR`, `CLAUDE`.
+
+- `pm/backlog.yaml` — P0–P2 queue synced to GitHub issues
+- `pm/product-matrix.md` — portfolio scoring
+- Skill: `skills/pm-agent/SKILL.md`
+
+```bash
+GET /api/pm/backlog   # JSON backlog
+GET /api/pm/matrix    # product matrix markdown
+npm run pm:sync       # refresh titles/state from GitHub (requires gh)
+```
+
 ## Endpoints
 
 ### Health Check

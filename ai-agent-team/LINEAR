@@ -1,1 +1,28 @@
+# LINEAR — PM Product Matrix Operations
 
+Project: **PM Product Matrix Operations**
+
+## When connected (Linear MCP)
+
+1. Create or sync issues from `pm/backlog.yaml` (keys: push-1 … push-5).
+2. Map GitHub issue numbers to Linear identifiers in issue descriptions.
+3. Post weekly rollups to Slack `#pm-product-matrix` (channel C0BDL629ER2).
+
+## Issue templates
+
+**Autonomous agent task**
+
+- Priority: P0 | P1 | P2
+- Branch: `cursor/<name>-c0f8`
+- Acceptance criteria: bullet list
+- Human gates: secrets, OAuth, merge approval
+
+## Current backlog (offline mirror)
+
+See `pm/backlog.yaml`. Top autonomous item:
+
+- **P0 push-5** — Merge `cursor/etsy-store-automation-f219` after resolving README, `src/index.js`, `package-lock.json` conflicts with manuscript-master.
+
+## Setup
+
+Cursor → Settings → Tools & MCP → connect **Linear**. Then re-run Cloud Agent with "sync PM backlog to Linear".

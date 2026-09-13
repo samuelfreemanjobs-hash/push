@@ -1,0 +1,37 @@
+{
+  "name": "MedFlow EA Slack loop (stub)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "medflow-ea",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-in",
+      "name": "Webhook — EA intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $env.SLACK_EA_CHANNEL_ID }}",
+        "text": "MedFlow EA: {{ $json.body.summary }}"
+      },
+      "id": "slack-post",
+      "name": "Slack — executive-assistant",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [300, 0]
+    }
+  ],
+  "connections": {
+    "Webhook — EA intake": {
+      "main": [[{ "node": "Slack — executive-assistant", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": {
+    "issue": "push#1",
+    "notes": "Import into n8n; set SLACK_EA_CHANNEL_ID and Slack credentials. Wire ai-agent-team runtime webhook when MedFlow Phase 1 is scoped."
+  }
+}

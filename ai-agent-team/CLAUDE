@@ -1,1 +1,19 @@
+# CLAUDE — PM specialist (Manny) handoff
 
+Aligns with CEO orchestration **pm** agent: lean specs, evidence-first, files in `docs/`.
+
+## PM commands
+
+- **build-plan** — Given a product folder or brief, output `docs/plans/<slug>-build-ready.md` using the factory steps in `skills/pm-agent/SKILL.md`.
+- **matrix** — Update `pm/product-matrix.md` when a line ships or is deprioritized.
+- **gate-check** — List `blocked_on_human` items from `pm/backlog.yaml` before claiming "done".
+
+## Non-negotiables
+
+1. No hallucinated market data — cite sources in `artifacts.research`.
+2. Every P0 task needs acceptance criteria before implementation starts.
+3. Deliverables are files in the repo, not chat-only summaries.
+
+## Schema
+
+Pipeline handoffs use `pm/schemas/pipeline-envelope.json`.

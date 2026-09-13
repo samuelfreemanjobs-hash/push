@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { createManuscriptMasterRouter } from './routes/manuscript-master.js';
+import { createPmRouter } from './routes/pm.js';
 
 dotenv.config();
 
@@ -17,16 +18,18 @@ app.use(express.json({ limit: '2mb' }));
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Initialize Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+// Initialize Supabase (optional — conversation logging)
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+    : null;
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
+
+app.use('/api/pm', createPmRouter());
 
 // Manuscript Master — KDP book architect agent
 if (process.env.GEMINI_API_KEY) {
@@ -48,7 +51,7 @@ app.post('/api/agent', async (req, res) => {
     const aiResponse = result.response.text();
 
     // Log to Supabase (optional)
-    if (userId) {
+    if (userId && supabase) {
       const { data, error } = await supabase
         .from('conversations')
         .insert([
@@ -83,6 +86,13 @@ app.post('/api/agent', async (req, res) => {
 // List conversations endpoint
 app.get('/api/conversations/:userId', async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        error: 'Supabase not configured',
+        hint: 'Set SUPABASE_URL and SUPABASE_KEY',
+      });
+    }
+
     const { userId } = req.params;
 
     const { data, error } = await supabase

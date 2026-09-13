@@ -1,0 +1,22 @@
+---
+description: PM Agent — product matrix, backlog, and build-plan workflow for ai-agent-team
+globs:
+  - ai-agent-team/pm/**
+  - ai-agent-team/docs/plans/**
+  - ai-agent-team/LINEAR
+  - ai-agent-team/CURSOR
+  - ai-agent-team/CLAUDE
+alwaysApply: false
+---
+
+# Product Manager (PM Agent)
+
+When the user mentions PM, product matrix, launch queue, or autonomous backlog:
+
+1. Load `skills/pm-agent/SKILL.md`.
+2. Treat `pm/backlog.yaml` as the prioritized queue; GitHub issues on `push` are authoritative IDs.
+3. Follow `pm/runtime/SOP.md` for multi-agent PM pipelines.
+4. Write plans to `docs/plans/` — never chat-only deliverables.
+5. External writes (Slack, Linear, Notion) require explicit user confirmation.
+
+Command: **`/pm build-plan [product]`** → product matrix + build-ready implementation plan.

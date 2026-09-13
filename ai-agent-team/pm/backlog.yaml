@@ -1,0 +1,61 @@
+version: 1
+updated_at: 2026-09-13
+slack_command_center: "#pm-product-matrix"
+linear_project: PM Product Matrix Operations
+priorities:
+  P0:
+    - id: push-5
+      title: Etsy store automation — research → listing → marketing pipeline
+      github_issue: 5
+      branch: cursor/etsy-store-automation-f219
+      status: in_progress
+      owner: cursor
+      autonomous_next:
+        - Resolve merge conflicts with manuscript-master on README, index.js,
+          package-lock
+        - Wire npm scripts agents:generate, products:build,
+          products:canva-autofill
+        - Validate health + manuscript routes coexist
+      blocked_on_human:
+        - Canva MCP auth in Cursor (cloud agents cannot OAuth)
+        - Etsy API secrets for live listing publish
+  P1:
+    - id: push-3
+      title: Manuscript Master — autonomous KDP book architect agent
+      github_issue: 3
+      branch: cursor/manuscript-master-aede
+      status: done
+      notes: Merged into cursor/pm-system-autonomy-c0f8
+    - id: push-1
+      title: n8n-facing runtime + EA Slack loop for MedFlow
+      github_issue: 1
+      branch: cursor/n8n-ea-runtime-3e82
+      status: in_progress
+      autonomous_next:
+        - Wire webhook from ai-agent-team to n8n medflow-ea path
+        - Add MedFlow env vars to .env.example
+      notes: n8n stub at integrations/n8n/medflow-ea-slack-loop.workflow.json
+  P2:
+    - id: push-4
+      title: Micro SaaS Factory Starter — full boilerplate scaffold
+      github_issue: 4
+      branch: cursor/micro-saas-checklist-a24f
+      status: backlog
+    - id: push-2
+      title: Add Manuscript Master KDP book writing agent (duplicate of #3)
+      github_issue: 2
+      branch: cursor/manuscript-master-agent-ea28
+      status: superseded
+      notes: Close when #3 PR merges
+      github_state: OPEN
+integrations:
+  linear:
+    status: needs_auth
+    action: Connect Linear MCP in Cursor Settings → Tools & MCP
+  notion:
+    status: zapier_task_limit
+    action: Upgrade Zapier plan or use Linear when auth is live
+  slack:
+    status: connected
+    channels:
+      pm: C0BDL629ER2
