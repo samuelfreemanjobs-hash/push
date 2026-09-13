@@ -42,9 +42,9 @@ curl -X POST http://localhost:3000/api/manuscript-master/execute \
   -d '{"moduleId":"01_concept_generator","variables":{"niche_expertise":"B2B SaaS sales","primary_audience":"VP Sales","monetization_goal":"Consulting Pipeline"},"sessionId":"<sessionId>"}'
 ```
 
-## MCP servers (Canva, Etsy, Linear)
+## MCP servers (Canva, Etsy, Linear, Gemini)
 
-Custom stdio MCP servers for **Canva Connect**, **Etsy Open API v3**, and **Linear GraphQL** (PM backlog sync). Setup: `docs/MCP-SETUP.md`.
+Custom stdio MCP servers for **Canva Connect**, **Etsy Open API v3**, **Linear GraphQL**, and **Google Gemini**. Setup: `docs/MCP-SETUP.md`.
 
 ## PM Product Matrix Operations
 

@@ -1,6 +1,6 @@
-# Canva, Etsy & Linear MCP servers
+# Canva, Etsy, Linear & Gemini MCP servers
 
-Custom **stdio MCP servers** in this repo for APIs that need scripted control (Canva Connect, Etsy listings, Linear issues). They complement any official Cursor MCP plugins.
+Custom **stdio MCP servers** in this repo for scripted API access (Canva Connect, Etsy listings, Linear issues, **Google Gemini**). They complement official Cursor MCP plugins and the main `ai-agent-team` HTTP API.
 
 ## Canva — two options
 
@@ -18,6 +18,20 @@ Custom **stdio MCP servers** in this repo for APIs that need scripted control (C
 
 For PM work (`pm/backlog.yaml`, project **PM Product Matrix Operations**), `push-linear` is enough with a [personal API key](https://linear.app/settings/account/security).
 
+## Gemini (`push-gemini`)
+
+Uses the same **`GEMINI_API_KEY`** as `ai-agent-team` ([Google AI Studio](https://aistudio.google.com/apikey)).
+
+| Tool | Purpose |
+|------|---------|
+| `gemini_config_status` | Key set? default model name |
+| `gemini_generate` | Single-turn prompt (+ optional system instruction) |
+| `gemini_chat` | Multi-turn history; last message must be `user` |
+
+Optional env: `GEMINI_MODEL` (default `gemini-2.0-flash`).
+
+Use this when you want the **Cursor agent** to call Gemini explicitly (e.g. long drafts, Manuscript Master helpers) without going through `/api/agent`.
+
 ## Install
 
 ```bash
@@ -27,7 +41,7 @@ npm install
 
 ## Cursor `mcp.json`
 
-Copy from `ai-agent-team/.cursor/mcp.json.example` (includes all three servers). Restart Cursor after saving.
+Copy from `ai-agent-team/.cursor/mcp.json.example` (includes all servers). Restart Cursor after saving.
 
 ## Environment variables
 
@@ -48,7 +62,17 @@ See `ai-agent-team/.env.example`.
 
 1. [Etsy Developers](https://www.etsy.com/developers/) → `ETSY_API_KEY`, OAuth via `etsy_build_oauth_url` tools.
 
+### Gemini
+
+1. Create key at [Google AI Studio](https://aistudio.google.com/apikey) → `GEMINI_API_KEY`.
+2. Optional `GEMINI_MODEL` (e.g. `gemini-2.0-flash`, `gemini-1.5-pro`).
+
 ## Tools exposed
+
+### Gemini (`push-gemini`)
+
+- `gemini_config_status`
+- `gemini_generate` / `gemini_chat`
 
 ### Linear (`push-linear`)
 
@@ -77,4 +101,5 @@ cd ai-agent-team/mcp
 npx @modelcontextprotocol/inspector node linear-server/index.js
 npx @modelcontextprotocol/inspector node canva-server/index.js
 npx @modelcontextprotocol/inspector node etsy-server/index.js
+npx @modelcontextprotocol/inspector node gemini-server/index.js
 ```

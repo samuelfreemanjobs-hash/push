@@ -25,6 +25,14 @@
         "LINEAR_API_KEY": "",
         "LINEAR_DEFAULT_TEAM_ID": ""
       }
+    },
+    "push-gemini": {
+      "command": "node",
+      "args": ["${workspaceFolder}/ai-agent-team/mcp/gemini-server/index.js"],
+      "env": {
+        "GEMINI_API_KEY": "",
+        "GEMINI_MODEL": "gemini-2.0-flash"
+      }
     }
   }
 }
