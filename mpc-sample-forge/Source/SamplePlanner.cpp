@@ -148,7 +148,7 @@ void renumberSamples (std::vector<SampleSpec>& specs)
     {
         auto& s = specs[i];
         s.index = (int) i + 1;
-        auto number = juce::String (s.index).paddedLeft ('0', 3);
+        auto number = s.pad > 0 ? juce::String (s.pad).paddedLeft ('0', 2) : juce::String (s.index).paddedLeft ('0', 3);
         s.fileStem = safeFileName (s.stemHead.isEmpty() ? number + "_" + s.stemTail
                                                          : s.stemHead + "_" + number + "_" + s.stemTail);
     }
@@ -178,7 +178,7 @@ bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out)
     if (in.stemHead.endsWith ("_" + oldRoot))
         out.stemHead = in.stemHead.dropLastCharacters (oldRoot.length()) + newRoot;
 
-    auto number = juce::String (out.index).paddedLeft ('0', 3);
+    auto number = out.pad > 0 ? juce::String (out.pad).paddedLeft ('0', 2) : juce::String (out.index).paddedLeft ('0', 3);
     out.fileStem = safeFileName (out.stemHead.isEmpty() ? number + "_" + out.stemTail : out.stemHead + "_" + number + "_" + out.stemTail);
     return true;
 }
@@ -441,8 +441,187 @@ static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions
     return result;
 }
 
+
+//==============================================================================
+// Scale banks: each bank of 16 pads is ONE sound, climbing the scale from pad 1
+// (single notes) or playing the diatonic chord of each degree (chords), so the
+// pads are in tune without 16 Levels > Tune.
+static const char* romanNumeral (int degree, bool minorish)
+{
+    static const char* upper[] = { "I", "II", "III", "IV", "V", "VI", "VII" };
+    static const char* lower[] = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+    return minorish ? lower[degree % 7] : upper[degree % 7];
+}
+
+static std::vector<SampleSpec> planScaleBanks (const Style& kitOrStyle, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    juce::Random rng (opt.seed);
+
+    // members: a kit spreads its banks over its recipes
+    std::vector<const Style*> members;
+    if (kitOrStyle.isKit())
+    {
+        for (auto& m : kitOrStyle.kit)
+            if (auto* st = findBuiltInStyle (m.value); st != nullptr && ! st->isKit()) members.push_back (st);
+    }
+    else members.push_back (&kitOrStyle);
+    if (members.empty()) { error = "no styles to build banks from"; return result; }
+
+    int tonic = parsePitchClass (opt.key);
+    if (opt.key.isEmpty() || opt.key.equalsIgnoreCase ("random") || tonic < 0)
+        tonic = rng.nextInt (12); // one key for every bank, so they all play together
+
+    const int banks = juce::jlimit (1, 26 * 4, (juce::jlimit (1, 2000, opt.count) + 15) / 16);
+    auto engineList = engineIds();
+
+    for (int b = 0; b < banks; ++b)
+    {
+        const Style& style = *members[(size_t) b % members.size()];
+        auto scaleName = opt.scale.isNotEmpty() ? opt.scale : style.scale;
+        std::vector<int> scale;
+        if (! getScale (scaleName, scale)) { error = "unknown scale '" + scaleName + "'"; return {}; }
+
+        const int ps = style.processing.pitchShift;
+        const int playedTonic = ((tonic - ps) % 12 + 12) % 12; // so the varispeeded result lands in the key
+        const auto type = opt.bankType.isNotEmpty() ? opt.bankType : style.bankType();
+        const auto info = pitchClassName (tonic) + " " + scaleName + " - " + type;
+
+        auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+        if (engineName == "mixed" || engineName.isEmpty()) engineName = engineList[rng.nextInt (engineList.size())];
+        const auto variation = rng.nextInt64();               // one timbre per bank
+        const auto velocity = (style.velocityLow + style.velocityHigh) / 2 + rng.nextInt (5) - 2;
+        const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+        auto makeSpec = [&] (int pad, const std::vector<int>& notes, int root)
+        {
+            SampleSpec s;
+            s.pad = pad;
+            s.rootNote = juce::jlimit (0, 127, root + ps);
+            s.engine = engineName;
+            s.variation = variation;
+            s.processing = style.processing;
+            s.styleId = style.id;
+            s.tag = style.tag;
+            s.shortTag = style.shortTag;
+            s.bankInfo = info;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                NoteEvent e;
+                e.note = notes[i];
+                e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() ? 4 : 0));
+                e.startSec = 0;
+                e.lengthSec = hold;
+                s.notes.push_back (e);
+            }
+            return s;
+        };
+
+        if (type == "notes")
+        {
+            // 16 consecutive scale notes, centred in the style's register
+            auto noteAt = [&] (int base, int i) { return base + scale[(size_t) i % scale.size()] + 12 * (i / (int) scale.size()); };
+            auto base = placePitchClass (playedTonic, juce::jmax (24, style.keyLow - 12));
+            auto centre = (style.keyLow + style.keyHigh) / 2;
+            auto best = base;
+            for (int cand = base; cand <= 96; cand += 12)
+            {
+                if (noteAt (cand, 15) > 108) break;
+                if (std::abs ((cand + noteAt (cand, 15)) / 2 - centre) < std::abs ((best + noteAt (best, 15)) / 2 - centre)) best = cand;
+            }
+            for (int pad = 1; pad <= 16; ++pad)
+            {
+                auto note = noteAt (best, pad - 1);
+                auto s = makeSpec (pad, { note }, note);
+                s.kind = "Key";
+                s.label = midiNoteName (note + ps);
+                s.voicing = "-";
+                result.push_back (s);
+            }
+        }
+        else
+        {
+            // the diatonic chord on each degree; each pass up the scale uses another voicing
+            std::vector<Voicing> passVoicings;
+            std::vector<Weighted<Voicing>> pool = style.voicings;
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                if (pool.empty()) pool = style.voicings;
+                auto v = pickWeighted (pool, rng);
+                passVoicings.push_back (v);
+                pool.erase (std::remove_if (pool.begin(), pool.end(), [v] (auto& w) { return w.value == v; }), pool.end());
+            }
+
+            const int degrees = (int) scale.size();
+            std::vector<const ChordQuality*> qualities ((size_t) degrees, nullptr);
+            for (int d = 0; d < degrees; ++d)
+            {
+                auto rootPc = (playedTonic + scale[(size_t) d]) % 12;
+                std::vector<Weighted<juce::String>> fitting;
+                for (auto& w : style.chords)
+                    if (auto* q = findQuality (w.value); q != nullptr && chordFitsScale (rootPc, q->intervals, playedTonic, scale))
+                        fitting.push_back (w);
+                if (fitting.empty()) // stack the scale's own thirds: 7th chord, else triad
+                    for (auto id : { "m7", "maj7", "7", "m7b5", "min", "maj", "dim", "sus2", "5" })
+                        if (auto* q = findQuality (id); chordFitsScale (rootPc, q->intervals, playedTonic, scale)) { fitting.push_back ({ id, 1.0f }); break; }
+                if (! fitting.empty()) qualities[(size_t) d] = findQuality (pickWeighted (fitting, rng));
+            }
+
+            for (int pad = 1; pad <= 16; ++pad)
+            {
+                auto d = (pad - 1) % degrees;
+                auto pass = juce::jmin (2, (pad - 1) / degrees);
+                auto* q = qualities[(size_t) d];
+                if (q == nullptr) q = findQuality ("5");
+                auto rootPc = (playedTonic + scale[(size_t) d]) % 12;
+                auto root = placePitchClass (rootPc, style.chordRootLow);
+                if (root > style.chordRootHigh) root -= 12;
+                if (pass >= 2) root += 12; // pads past the second pass: the same chords an octave up, not repeats
+
+                auto voicing = passVoicings[(size_t) juce::jmin (pass, 1)];
+                auto notes = buildVoicing (root, q->intervals, voicing);
+                for (auto alt : { Voicing::Close, Voicing::Inversion1, Voicing::Open })
+                    if (lowIntervalViolations (notes) > 0) { voicing = alt; notes = buildVoicing (root, q->intervals, alt); }
+
+                auto s = makeSpec (pad, notes, root);
+                s.kind = "Chord";
+                // roman numeral of the degree (lower case = minor-ish chord) so progressions read off the pads
+                auto minorChord = q->intervals.size() > 1 && q->intervals[1] == 3;
+                s.label = juce::String (romanNumeral (d, minorChord)) + "-" + pitchClassName (rootPc + ps) + q->suffix;
+                s.voicing = voicingId (voicing);
+                result.push_back (s);
+            }
+        }
+    }
+
+    // names: <style>_<key>_<pad>_... or, short, <pad>_<tag>_<label>
+    for (auto& s : result)
+    {
+        auto* st = findBuiltInStyle (s.styleId);
+        auto shortTag = s.shortTag.isNotEmpty() ? s.shortTag : (st != nullptr ? st->shortTag : juce::String());
+        if (opt.shortNames)
+        {
+            s.stemHead = {};
+            s.stemTail = (shortTag.isNotEmpty() ? shortTag + "_" : juce::String()) + s.label
+                         + (s.kind == "Chord" ? "_" + shortVoicing (s.voicing) : juce::String());
+        }
+        else
+        {
+            s.stemHead = safeFileName ((opt.prefix.isNotEmpty() ? opt.prefix : kitOrStyle.name)) + "_" + pitchClassName (tonic)
+                         + "_" + s.bankInfo.fromFirstOccurrenceOf (" ", false, false).upToFirstOccurrenceOf (" ", false, false);
+            s.stemTail = (kitOrStyle.isKit() ? s.tag + "_" : juce::String()) + s.kind + "_" + s.label
+                         + (s.kind == "Chord" ? "_" + s.voicing : juce::String());
+        }
+    }
+    renumberSamples (result);
+    return result;
+}
+
 std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt, juce::String& error)
 {
+    if (opt.scaleBank || style.scaleBankOnly)
+        return planScaleBanks (style, opt, error);
+
     if (! style.isKit())
         return planSingle (style, opt, error);
 

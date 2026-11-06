@@ -71,6 +71,12 @@ jobs:
           echo "rendered $n WAV files + $r in other registers"
           test "$n" -eq 18
           test "$r" -ge 30
+          # a chord scale bank: one sound across 16 pads in C minor
+          "${{ steps.bin.outputs.cli }}" --recipe soul-chords --scale-bank --key C --scale minor --count 16 --seed 5 --short-names --loudness --out demo-out/SoulChords_ScaleBank_Cminor
+          b=$(find demo-out/SoulChords_ScaleBank_Cminor -name '*.wav' | wc -l | tr -d ' ')
+          echo "scale bank: $b pads"
+          test "$b" -eq 16
+          grep -q "SCALE BANKS" demo-out/SoulChords_ScaleBank_Cminor/_MPC_Setup.txt
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

@@ -40,6 +40,12 @@ MAKE YOUR FIRST KIT (about a minute)
   6. Copy the _Keepers folder to your MPC. _MPC_Setup.txt explains the pad settings.
 
 
+PLAY IN KEY WITHOUT 16 LEVELS (scale banks)
+  Pick a recipe (e.g. Soul Chords, 9th Chords, Moog / G-Funk Bass, Funky Lead), pick a Key,
+  set "Scale banks: style's type", Samples 64 -> 4 banks. Each Bank_ folder is one sound:
+  file 01 on Pad 1 ... file 16 on Pad 16. _MPC_Setup.txt shows the pad map.
+
+
 SOMETHING WRONG?
   Click "Diagnostics" (top right) > "Run Self-Test" > "Copy Report", and send the report.
   Load your VST3 first so the self-test checks it too.

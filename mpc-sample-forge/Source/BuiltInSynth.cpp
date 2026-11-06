@@ -17,6 +17,10 @@ static const std::vector<std::tuple<Engine, const char*, const char*>>& engineTa
         { Engine::ComboOrgan, "comboorgan", "ComboOrgan" },
         { Engine::Harp,       "harp",       "Harp" },
         { Engine::Brass,      "brass",      "Brass" },
+        { Engine::Lead,       "lead",       "Lead" },
+        { Engine::Whistle,    "whistle",    "Whistle" },
+        { Engine::Bass,       "bass",       "Bass" },
+        { Engine::MoogBass,   "moogbass",   "MoogBass" },
     };
     return t;
 }
@@ -215,6 +219,26 @@ public:
                 filter.clear();
                 attackSec = 0.012 + 0.03 * (1.0 - bright);
                 decayTau = (0.4 + 0.8 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Lead:
+                filter.clear();
+                attackSec = 0.004 + 0.02 * (1.0 - bright);
+                decayTau = (0.5 + 1.5 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Whistle:
+                attackSec = 0.012 + 0.015 * colour;
+                break;
+
+            case Engine::Bass:
+                filter.clear();
+                decayTau = (0.35 + 0.9 * decayAmt) * noteScale;
+                break;
+
+            case Engine::MoogBass:
+                filter.clear(); filter2.clear();
+                decayTau = (0.5 + 1.0 * decayAmt) * noteScale;
                 break;
 
             case Engine::Harp:
@@ -442,6 +466,61 @@ private:
                 auto x = filter.process (saws * 0.33f + 0.5f * horn).first;
                 amp = (float) (juce::jmin (1.0, t / attackSec) * (0.7 + 0.3 * std::exp (-t / decayTau)));
                 return x * amp * 1.2f;
+            }
+
+            case Engine::Lead:
+            {
+                // mono synth lead: saw + pulse, filter "blip", vibrato that comes in after the attack
+                auto vibDepth = 0.004 * (0.3 + extra) * juce::jlimit (0.0, 1.0, (t - 0.25) / 0.3);
+                auto vib = 1.0 + vibDepth * std::sin (twoPi * 5.5 * t);
+                auto cents = (3.0 + 8.0 * detune) / 1200.0;
+                auto a = blepSaw (phases[0], inc * vib * std::pow (2.0, cents));
+                auto b = blepPulse (phases[1], inc * vib * std::pow (2.0, -cents), 0.3 + 0.4 * colour);
+                auto fenv = std::exp (-t / 0.2);
+                filter.set (freq * (2.0 + 6.0 * bright) + freq * 8.0 * bright * fenv + 200.0, 0.9 + 1.2 * colour, sr);
+                auto x = filter.process (0.5f * (a + b)).first;
+                amp = (float) (juce::jmin (1.0, t / attackSec) * (0.8 + 0.2 * std::exp (-t / 0.3)) * std::exp (-t / (decayTau * 4.0)));
+                return x * amp * 1.2f;
+            }
+
+            case Engine::Whistle:
+            {
+                // G-funk "whistle" lead: near-sine Moog lead that scoops up into the note, then sings with vibrato
+                auto scoop = std::pow (2.0, -0.5 / 12.0 * std::exp (-t / 0.015)); // starts ~50 cents flat, settles in ~40 ms
+                auto vibDepth = 0.006 * (0.4 + 0.6 * extra) * juce::jlimit (0.0, 1.0, (t - 0.2) / 0.35);
+                auto f = inc * scoop * (1.0 + vibDepth * std::sin (twoPi * 5.8 * t));
+                phase += f; if (phase >= 1.0) phase -= 1.0;
+                auto x = (float) (std::sin (twoPi * phase) + (0.08 + 0.12 * bright) * std::sin (2.0 * twoPi * phase));
+                amp = (float) juce::jmin (1.0, t / attackSec);
+                return x * amp * 0.9f;
+            }
+
+            case Engine::Bass:
+            {
+                // round bass: sine body + a little filtered saw for definition
+                auto body = (float) std::sin (twoPi * phase);
+                phase += inc; if (phase >= 1.0) phase -= 1.0;
+                auto saw = blepSaw (phases[0], inc);
+                filter.set (freq * (2.5 + 4.0 * bright) + 80.0, 0.8, sr);
+                auto edge = filter.process (saw).first;
+                amp = (float) (juce::jmin (1.0, t / 0.003) * std::exp (-t / decayTau));
+                if (amp < 0.0003f && t > 0.05) done = true;
+                return (0.8f * body + (0.25f + 0.3f * colour) * edge) * amp;
+            }
+
+            case Engine::MoogBass:
+            {
+                // Moog-style bass: saw + square into a resonant 4-pole low-pass with a snappy envelope, a touch of drive
+                auto a = blepSaw (phases[0], inc);
+                auto b = blepPulse (phases[1], inc * (1.0 + 0.002 * detune), 0.5);
+                auto fenv = std::exp (-t / (0.06 + 0.18 * extra));
+                auto cutoff = freq * (1.2 + 10.0 * bright * fenv) + 60.0;
+                filter.set (cutoff, 0.54, sr);
+                filter2.set (cutoff, 1.3 + 2.0 * colour, sr);
+                auto x = filter2.process (filter.process (0.5f * (a + b)).first).first;
+                x = (float) std::tanh (1.6 * x);
+                amp = (float) (juce::jmin (1.0, t / 0.002) * (0.75 + 0.25 * std::exp (-t / 0.15)) * std::exp (-t / (decayTau * 3.0)));
+                return x * amp * 1.1f;
             }
 
             case Engine::Harp:

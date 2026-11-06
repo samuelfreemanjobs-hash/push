@@ -73,6 +73,33 @@ juce::String BatchJob::mpcSetupSheet() const
         t << "  Files (" << files.size() << "):\n    " << files.joinIntoString ("\n    ") << "\n\n";
     }
 
+    if (! specs.empty() && specs.front().pad > 0)
+    {
+        t << "SCALE BANKS - every Bank_ folder is ONE sound, laid out across the pads in key.\n"
+          << "Load a bank into a drum program in order: file 01 on Pad 1 ... file 16 on Pad 16.\n"
+          << "No 16 Levels needed - every pad is already the right note / chord.\n\n";
+        for (size_t b = 0; b * 16 < specs.size(); ++b)
+        {
+            const auto& first = specs[b * 16];
+            auto* st = findBuiltInStyle (first.styleId);
+            t << "Bank_" << juce::String::charToString ((juce::juce_wchar) ('A' + (int) b % 26)) << ": "
+              << (st != nullptr ? st->name : first.tag) << "  (" << first.bankInfo << ")\n";
+            // the MPC's 4x4 grid: pads 13-16 on top, 1-4 at the bottom
+            for (int row = 3; row >= 0; --row)
+            {
+                t << "   ";
+                for (int col = 0; col < 4; ++col)
+                {
+                    auto i = b * 16 + (size_t) (row * 4 + col);
+                    auto cell = i < specs.size() ? juce::String (row * 4 + col + 1).paddedLeft ('0', 2) + " " + specs[i].label : juce::String();
+                    t << cell.paddedRight (' ', 18);
+                }
+                t << "\n";
+            }
+            t << "\n";
+        }
+    }
+
     if (! request.registers.empty())
     {
         t << "Register sets: every sample is also in ";

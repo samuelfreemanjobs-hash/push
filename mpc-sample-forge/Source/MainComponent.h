@@ -66,7 +66,7 @@ namespace forge
 
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
-        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox;
+        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox;
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },

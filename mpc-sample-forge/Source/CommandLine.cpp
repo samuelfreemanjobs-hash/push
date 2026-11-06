@@ -51,6 +51,12 @@ juce::String cliHelpText()
       << "                            harshness, clicks) and keep only the best, skipping\n"
       << "                            near-duplicates. Writes _smart_pick.csv with every decision.\n"
       << "  --pick-factor <2-6>       candidates per kept sample (default 3)\n\n"
+      << "Scale banks (play in key without 16 Levels > Tune):\n"
+      << "  --scale-bank              each bank of 16 pads is one sound climbing the scale\n"
+      << "                            (uses --key / --scale; random key = one key for all banks).\n"
+      << "                            --count 64 = 4 banks\n"
+      << "  --bank-type <notes|chords> single notes per degree, or the diatonic chord of each\n"
+      << "                            degree (default: the style's)\n\n"
       << "MPC Sample friendly output:\n"
       << "  --registers <list>        also render every kept sample in other registers, in\n"
       << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
@@ -143,7 +149,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     if (args.contains ("--list-styles"))
     {
         for (auto& s : builtInStyles())
-            out (s.id.paddedRight (' ', 18) + s.name.paddedRight (' ', 18) + s.description);
+            out (s.id.paddedRight (' ', 18) + s.name.paddedRight (' ', 30) + s.description);
         return onDone (0);
     }
 
@@ -212,6 +218,10 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.normalise  = ! args.contains ("--no-normalize");
     req.render.maxTailSec = option (args, "--tail", "6").getDoubleValue();
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
+    req.plan.scaleBank = args.contains ("--scale-bank") || args.contains ("--bank-type");
+    req.plan.bankType = option (args, "--bank-type").toLowerCase();
+    if (req.plan.bankType.isNotEmpty() && req.plan.bankType != "notes" && req.plan.bankType != "chords")
+        return fail ("--bank-type must be notes or chords");
     req.render.loudnessMatch = args.contains ("--loudness");
     req.plan.shortNames = args.contains ("--short-names");
     if (args.contains ("--registers"))
@@ -246,9 +256,19 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     if (req.render.sampleRate < 8000 || req.render.sampleRate > 192000) return fail ("bad --rate");
     if (req.render.bitDepth != 16 && req.render.bitDepth != 24) return fail ("--bits must be 16 or 24");
 
+    // Scale banks are complete 16-pad sets: picking or re-registering would break them up
+    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
+    if (banks)
+    {
+        req.splitBanks = true;
+        if (args.contains ("--smart-pick") || ! req.registers.empty())
+            std::cerr << "note: Smart Pick and --registers are off for scale banks (each bank already spans the scale)" << std::endl;
+        req.registers.clear();
+    }
+
     // Smart Pick: plan more candidates than needed, keep the best after rendering
     const int wanted = juce::jlimit (1, 2000, req.plan.count);
-    if (args.contains ("--smart-pick") || args.contains ("--pick-factor"))
+    if (! banks && (args.contains ("--smart-pick") || args.contains ("--pick-factor")))
     {
         auto factor = juce::jlimit (2, 6, option (args, "--pick-factor", "3").getIntValue());
         req.plan.count = juce::jmin (2000, wanted * factor);

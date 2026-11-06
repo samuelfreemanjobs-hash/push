@@ -136,6 +136,16 @@ MainComponent::MainComponent()
     scaleBox.setSelectedId (1);
     addAndMakeVisible (scaleBox);
 
+    bankBox.addItem ("Scale banks: off", 1);
+    bankBox.addItem ("Scale banks: style's type", 2);
+    bankBox.addItem ("Scale banks: notes", 3);
+    bankBox.addItem ("Scale banks: chords", 4);
+    bankBox.setSelectedId (settings->getIntValue ("scaleBank", 1), juce::dontSendNotification);
+    bankBox.setTooltip ("Each bank of 16 pads is one sound climbing your key's scale - single notes, or the diatonic chord "
+                        "of each degree - so every pad is in tune without 16 Levels. Samples 64 = 4 banks.");
+    bankBox.onChange = [this] { props.getUserSettings()->setValue ("scaleBank", bankBox.getSelectedId()); lastPlan.clear(); };
+    addAndMakeVisible (bankBox);
+
     countSlider.setRange (1, 500, 1);
     countSlider.setValue (100);
     addAndMakeVisible (countSlider);
@@ -284,6 +294,7 @@ MainComponent::MainComponent()
     log ("16 Levels kits: pick a recipe from the guide (Jet Life EP Bell ... Rhodes Bass) or a kit (West Coast, Memphis,");
     log ("Atlanta, Recipe Guide Palette), set '16 Levels root' to \"Recipe's own root\" and tick '16-pad banks'.");
     log ("Each batch includes _MPC_Setup.txt with the pad settings (mute group, tune, phrasing) for every recipe.");
+    log ("Scale banks: pick a key + 'Scale banks' and every bank of 16 pads is one sound across the scale, in tune on every pad.");
     setSize (980, 760);
 }
 
@@ -342,7 +353,8 @@ void MainComponent::resized()
     keyBox.setBounds (r.removeFromLeft (150)); r.removeFromLeft (6);
     scaleBox.setBounds (r.removeFromLeft (170)); r.removeFromLeft (20);
     countLabel.setBounds (r.removeFromLeft (70));
-    countSlider.setBounds (r.removeFromLeft (150));
+    countSlider.setBounds (r.removeFromLeft (150)); r.removeFromLeft (12);
+    bankBox.setBounds (r.removeFromLeft (220));
 
     r = row();
     seedLabel.setBounds (r.removeFromLeft (labelW));
@@ -576,6 +588,8 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.render.normalise = levelBox.getSelectedId() != 3;
     req.render.loudnessMatch = levelBox.getSelectedId() == 1;
     req.plan.shortNames = shortNamesToggle.getToggleState();
+    req.plan.scaleBank = bankBox.getSelectedId() > 1;
+    req.plan.bankType = bankBox.getSelectedId() == 3 ? "notes" : bankBox.getSelectedId() == 4 ? "chords" : "";
     switch (registersBox.getSelectedId())
     {
         case 2: req.registers = { -12 }; break;
@@ -601,7 +615,15 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
 
     juce::String error;
     const int wanted = req.plan.count;
-    if (smartPickToggle.getToggleState())
+    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
+    if (banks)
+    {
+        req.splitBanks = true; // one sound per 16-pad bank
+        if (smartPickToggle.getToggleState() || ! req.registers.empty())
+            log ("Scale banks: Smart Pick and Registers are skipped - each bank is a complete 16-pad set across the scale.");
+        req.registers.clear();
+    }
+    if (! banks && smartPickToggle.getToggleState())
     {
         req.plan.count = juce::jmin (2000, wanted * 3);
         req.smartPickTarget = wanted;
@@ -668,7 +690,7 @@ void MainComponent::setBusy (bool busy)
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
-                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton,
+                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");

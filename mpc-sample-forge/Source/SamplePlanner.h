@@ -25,6 +25,8 @@ namespace forge
         Processing processing;      // trim / envelope / FX from the style
         juce::String styleId, tag;  // which style (or kit member) made this sample
         juce::String shortTag;      // compact tag for short file names
+        int pad = 0;                // scale banks: pad 1-16 inside its bank (also the number in the file name)
+        juce::String bankInfo;      // scale banks: e.g. "C minor - chords"
         std::vector<NoteEvent> notes;
 
         double holdSec() const;
@@ -42,6 +44,8 @@ namespace forge
         static constexpr int styleRoot = -2;
         juce::String engine;           // override the style's engine (built-in synth only)
         bool builtIn = false;          // rendering with the built-in synth (engine names go in file names)
+        bool scaleBank = false;        // 16 pads per sound, climbing the scale (notes or diatonic chords)
+        juce::String bankType;         // "notes" / "chords" (empty = the style's)
         bool shortNames = false;       // "014_EPBell_C3" instead of "JetLifeEPBell_C3_014_Key_C3" (easier on a small screen)
     };
 

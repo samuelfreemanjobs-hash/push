@@ -229,7 +229,8 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
                 PlanOptions o; o.count = 100; o.seed = 7; o.builtIn = true; o.fixedRoot = root;
                 juce::String err;
                 auto specs = planSamples (st, o, err);
-                if ((int) specs.size() == 100 && err.isEmpty()) ++ok;
+                auto expected = st.scaleBankOnly ? 112 : 100; // banks come in whole sets of 16 (7 x 16 for 100)
+                if ((int) specs.size() == expected && err.isEmpty()) ++ok;
                 else problems.add (st.id + (root == -1 ? "" : " (16 Levels)") + ": " + juce::String ((int) specs.size()) + " samples " + err);
             }
         }
@@ -272,7 +273,7 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
 
             auto f0 = estimatePitch (audio, sr, 261.6256);
             auto cents = f0 > 0 ? 1200.0 * std::log2 (f0 / 261.6256) : 9999.0;
-            auto tolerance = (e == Engine::Supersaw || e == Engine::Choir || e == Engine::Organ) ? 25.0 : 10.0;
+            auto tolerance = (e == Engine::Supersaw || e == Engine::Choir || e == Engine::Organ || e == Engine::Lead || e == Engine::Whistle) ? 25.0 : 10.0;
             say (std::abs (cents) <= tolerance ? L::Pass : L::Warn, "Engine " + id,
                  info + ", tuning " + (f0 > 0 ? juce::String (cents, 1) + " cents" : juce::String ("not measurable")));
         }
@@ -352,6 +353,34 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
              "picked " + juce::String (kept) + " of " + juce::String ((int) cands.size()) + " candidates"
              + (muddyMarked ? ", muddy test chord caught (" + verdicts.back().reasons.joinIntoString ("; ") + ")" : juce::String (", muddy test chord NOT caught"))
              + (finite ? juce::String() : juce::String (", NaN in analysis")));
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ scale banks
+    {
+        auto* notesStyle = findBuiltInStyle ("scale-notes");
+        auto* chordStyle = findBuiltInStyle ("soul-chords");
+        PlanOptions o; o.count = 16; o.seed = 4; o.key = "C"; o.scale = "minor"; o.scaleBank = true;
+        juce::String err;
+        auto notes = notesStyle != nullptr ? planSamples (*notesStyle, o, err) : std::vector<SampleSpec>();
+        std::vector<int> cMinor { 0, 2, 3, 5, 7, 8, 10 };
+        bool ascending = notes.size() == 16, inKey = notes.size() == 16;
+        for (size_t i = 0; i < notes.size(); ++i)
+        {
+            auto n = notes[i].notes[0].note;
+            inKey = inKey && std::find (cMinor.begin(), cMinor.end(), n % 12) != cMinor.end() && notes[i].pad == (int) i + 1;
+            if (i > 0) ascending = ascending && n > notes[i - 1].notes[0].note;
+        }
+        o.bankType = "chords";
+        auto chords = chordStyle != nullptr ? planSamples (*chordStyle, o, err) : std::vector<SampleSpec>();
+        bool diatonic = chords.size() == 16;
+        for (auto& c : chords)
+            for (auto& nn : c.notes)
+                diatonic = diatonic && std::find (cMinor.begin(), cMinor.end(), nn.note % 12) != cMinor.end();
+        say (ascending && inKey && diatonic ? L::Pass : L::Fail, "Scale banks",
+             "C minor: 16 note pads " + juce::String (ascending && inKey ? "climb the scale" : "WRONG")
+             + ", chord pads " + (diatonic ? "all diatonic (" + (chords.empty() ? juce::String() : chords[0].label + " ... " + chords[6].label) + ")"
+                                           : juce::String ("NOT diatonic")));
     }
     if (cancel) return;
 

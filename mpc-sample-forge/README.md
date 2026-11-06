@@ -7,7 +7,7 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
 
 * **Hosts VST3 instruments** (pianos, Rhodes, synths, pads, organs and so on). Open the plugin's
   own window to pick or tweak a patch, then render with it.
-* **33 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
+* **46 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
   Drill, Modern R&B, Gospel, Deep House, Jazz, Boom Bap, Afrobeats, Pop, Cinematic, Ambient
   and Synthwave. There are also 6 **one-shot recipe styles** for 16 Levels: Bell Tines,
   Organ Stabs, Plucks, Choir Notes, Detuned Synth and One-Shot Palette. You can also
@@ -101,6 +101,42 @@ Pick, the planner now avoids muddy low voicings when it has other options.
 * **Export Keepers** copies only your keepers into `_Keepers/Bank_A…`, numbered in your pad
   order, with the setup sheet.
 * **Move Rejects to Trash** asks first, and the files can be restored from the Trash.
+
+## Scale banks: every pad in key, no 16 Levels needed
+
+Choose **Scale banks** in the app, or `--scale-bank` with `--key` / `--scale`. **Each `Bank_X`
+folder is one sound laid out across 16 pads.** Load file 01 on Pad 1 … file 16 on Pad 16.
+
+* **Note banks:** pads 1→16 climb the scale, e.g. C minor from C2 to D4. Every pad is a real
+  render at that pitch, so there's none of 16 Levels' grain or dullness.
+* **Chord banks:** the diatonic chord of each scale degree, labelled with its roman numeral,
+  e.g. `i-Cm7`, `ii-Dm7b5`, `III-Ebmaj7`. Pads 8–14 repeat the chords in another voicing, and
+  pads 15–16 go an octave up. You can play progressions straight off the pads, e.g. ii–V–I.
+* `Samples 64` = 4 banks, each a new sound (or, with a kit, the next recipe), all in the same key.
+* `_MPC_Setup.txt` prints a pad map of each bank, laid out like the MPC's 4×4 grid.
+* Recipes that need it (pitched down with varispeed) are planned so they still *sound* in your key.
+* Smart Pick and register sets are skipped for banks, since each bank is already a complete set
+  across the scale.
+
+### More recipes
+
+| Recipe (`--recipe`) | Bank | Sound |
+|---|---|---|
+| `lead-synth` | notes | Mono synth lead (saw + pulse, filter blip, delayed vibrato), 1/8-dotted delay |
+| `gfunk-lead` | notes | G-funk "whistle": near-sine lead that scoops into each note, vibrato, minor pentatonic |
+| `bassline` | notes | Round bass (sine + filtered saw), tube warmth |
+| `moog-bass` | notes | Moog-style resonant 4-pole bass with filter snap and drive (Dorian) |
+| `soul-chords` | chords | Rhodes maj7 / m7 / m9 / 9 / 6-9, tape warmth |
+| `ninth-chords` | chords | 9ths only (where a 9th doesn't fit the key, e.g. iii and vii in major, a 7th is used) |
+| `scale-notes` | always a note bank | Clean keys, one bank per sound |
+| `screw-rnb` | chords | Slowed R&B (−4 st varispeed), dark filter, wobble, dark hall |
+| `trap-scale` | always a note bank | Harmonic-minor bell melodies, short reverb |
+| `gospel-rnb-90s` | chords | maj9 / 13 / m11 / 9sus4 / 7#9 / 6-9, spread and rootless |
+| `vaporwave` | chords | DX-style EP slowed −3 st, thick chorus, hall |
+| `chillwave` | chords | Soft detuned synth, tape, wobble, hall |
+| `phonkwave` | chords | Phrygian minor, −3 st, 12-bit, wow & flutter, hiss |
+
+New built-in engines: `lead`, `whistle`, `bass` and `moogbass`. All four are in tune to within a few cents.
 
 ## MPC Sample friendly output
 
@@ -338,6 +374,8 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--max-length <sec>` | Override every recipe's end point (default: the recipe's; 0 = no cap) |
 | `--smart-pick` | Render 3× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
 | `--pick-factor <2-6>` | Candidates per kept sample for Smart Pick (default 3) |
+| `--scale-bank` | 16 pads per sound climbing the key's scale (use with `--key`, `--scale`) |
+| `--bank-type <notes\|chords>` | Note or chord banks (default: the style's) |
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |

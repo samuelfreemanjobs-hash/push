@@ -44,6 +44,10 @@ namespace forge
             juce::String phrasing;                         // 16 Levels phrasing strategy
         } pad;
 
+        juce::String scaleBank;                            // "notes" or "chords": what a scale bank of this style holds
+        bool scaleBankOnly = false;                        // this recipe is always rendered as scale banks
+
+        juce::String bankType() const { return scaleBank.isNotEmpty() ? scaleBank : (chordRatio >= 0.5f ? "chords" : "notes"); }
         bool isKit() const { return ! kit.empty(); }
 
         juce::var toVar() const;

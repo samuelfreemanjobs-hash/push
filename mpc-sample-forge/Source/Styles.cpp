@@ -319,7 +319,156 @@ static const char* builtInStyleJson = R"JSON(
  { "id": "guide-palette", "name": "Recipe Guide Palette (all 9)", "tag": "GuidePalette", "short": "Guide",
    "description": "Kit: all nine guide recipes for puzzle-piece layering (e.g. Rhodes Bass on pad 1, EP Bell on pad 2, Polyester Pluck on pad 3).",
    "kit": { "rhodes-bass": 1, "jetlife-ep-bell": 1, "polyester-pluck": 1, "memphis-organ": 1, "phonk-cowbell": 1,
-            "zaytoven-organ": 1, "luxury-harp": 1, "screwed-choir": 1, "trap-brass": 1 } }
+            "zaytoven-organ": 1, "luxury-harp": 1, "screwed-choir": 1, "trap-brass": 1 } },
+
+ { "id": "lead-synth", "name": "Lead Instrument", "tag": "LeadSynth", "short": "Lead",
+   "description": "Mono synth lead (saw + pulse, filter blip, delayed vibrato) as single notes; scale banks give a playable lead across 16 pads.",
+   "engine": "lead", "root": 72, "scale": "minor", "scaleBank": "notes",
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 8, "octave": 1, "fifth": 0, "stab": 0 },
+   "chordRootRange": [60, 71], "keyRange": [60, 84], "velocity": [100, 120], "hold": [0.4, 0.7], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 0.9, "fxTailMs": 200,
+                   "fx": [ { "type": "lowpass", "freq": 7000, "poles": 2 },
+                           { "type": "chorus", "rate": 0.6, "depth": 0.2, "mix": 0.3 },
+                           { "type": "delay", "sync": "1/8d", "feedback": 0.25, "mix": 0.18 },
+                           { "type": "reverb", "kind": "plate", "decay": 0.8, "mix": 0.12 } ] },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Lead lines straight across the scale bank; the Mute Group keeps it mono like a real lead synth." } },
+
+ { "id": "gfunk-lead", "name": "Funky Lead (G-Funk Whistle)", "tag": "FunkyLead", "short": "FunkLead",
+   "description": "The West Coast whistle: a near-sine Moog lead that scoops up into each note and sings with vibrato. Minor pentatonic, high register.",
+   "engine": "whistle", "root": 79, "scale": "minorpentatonic", "scaleBank": "notes",
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 8, "octave": 1, "fifth": 0, "stab": 0 },
+   "chordRootRange": [72, 83], "keyRange": [72, 93], "velocity": [100, 115], "hold": [0.5, 0.8], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 1.0, "fxTailMs": 250,
+                   "fx": [ { "type": "chorus", "rate": 0.5, "depth": 0.25, "mix": 0.35 },
+                           { "type": "tape", "drive": 0.25 },
+                           { "type": "reverb", "kind": "plate", "decay": 1.2, "mix": 0.18 } ] },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "High, sliding minor-pentatonic phrases over the bass - the classic G-funk whistle." } },
+
+ { "id": "bassline", "name": "Bassline", "tag": "Bassline", "short": "Bass",
+   "description": "Round bass (sine body + filtered saw edge), tight and dry for basslines that sit under 808s and kicks.",
+   "engine": "bass", "root": 36, "scale": "minor", "scaleBank": "notes",
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 8, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [28, 39], "keyRange": [28, 52], "velocity": [105, 120], "hold": [0.35, 0.5], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 0.6,
+                   "fx": [ { "type": "lowpass", "freq": 2500, "poles": 2 }, { "type": "tube", "drive": 0.3 } ] },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Walk the bass across pads 1-8; the Mute Group stops notes from overlapping." } },
+
+ { "id": "moog-bass", "name": "Moog / G-Funk Bass", "tag": "MoogBass", "short": "MoogBass",
+   "description": "Saw + square through a resonant 4-pole filter with a snappy envelope and drive: the bouncy G-funk synth bass.",
+   "engine": "moogbass", "root": 33, "scale": "dorian", "scaleBank": "notes",
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 8, "octave": 3, "fifth": 0, "stab": 0 },
+   "chordRootRange": [26, 37], "keyRange": [26, 48], "velocity": [110, 127], "hold": [0.25, 0.45], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 0.5,
+                   "fx": [ { "type": "overdrive", "drive": 0.25, "tone": 3500 }, { "type": "lowpass", "freq": 3500, "poles": 2 } ] },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Bouncy lines with octave jumps (pad 1 to pad 8 is an octave in a 7-note scale), G-funk style." } },
+
+ { "id": "soul-chords", "name": "Soul Chords", "tag": "SoulChords", "short": "Soul",
+   "description": "Warm Rhodes soul chords: maj7, m7, m9, dominant 9ths and 6/9s with gentle rolls and tape warmth.",
+   "engine": "epiano", "root": 60, "scale": "major", "scaleBank": "chords",
+   "chords": { "maj7": 4, "m7": 4, "m9": 3, "9": 2, "69": 2, "7": 2, "maj9": 2 },
+   "voicings": { "close": 2, "drop2": 3, "rootless": 2, "inv1": 1 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 4, "octave": 1, "fifth": 0, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [48, 72], "velocity": [80, 105], "hold": [1.0, 1.6], "stabChance": 0.1, "stabHold": 0.3, "strumMs": 20,
+   "processing": { "maxLength": 1.8,
+                   "fx": [ { "type": "tape", "drive": 0.3 }, { "type": "lowpass", "freq": 6500, "poles": 2 },
+                           { "type": "chorus", "rate": 0.4, "depth": 0.15, "mix": 0.2 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Chord banks: pads 1-7 are the scale's chords (I ii iii IV V vi vii), pads 8-14 the same chords re-voiced." } },
+
+ { "id": "ninth-chords", "name": "9th Chords", "tag": "NinthChords", "short": "Ninth",
+   "description": "Nothing but 9ths: maj9, m9, dominant 9, 9sus4, 6/9 and minor-major 9, mostly rootless and drop-2.",
+   "engine": "epiano", "root": 60, "scale": "major", "scaleBank": "chords",
+   "chords": { "maj9": 4, "m9": 4, "9": 3, "9sus4": 2, "69": 2, "mmaj9": 1 },
+   "voicings": { "rootless": 4, "drop2": 3, "spread": 1 }, "chordRatio": 1.0,
+   "keyTypes": { "note": 1, "octave": 0, "fifth": 0, "stab": 0 },
+   "chordRootRange": [45, 56], "keyRange": [45, 72], "velocity": [80, 105], "hold": [1.2, 1.8], "stabChance": 0.05, "stabHold": 0.3, "strumMs": 25,
+   "processing": { "maxLength": 2.0, "fxTailMs": 150,
+                   "fx": [ { "type": "lowpass", "freq": 7000, "poles": 2 }, { "type": "reverb", "kind": "plate", "decay": 0.8, "mix": 0.1 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Every pad is a 9th chord of the key: try ii-V-I (pads 2, 5, 1) or vi-ii-V-I." } },
+
+ { "id": "scale-notes", "name": "Each Note in Scale", "tag": "ScaleNotes", "short": "Notes",
+   "description": "Always a scale bank: one clean key sound per bank, pads 1-16 climbing the scale - melodies without 16 Levels.",
+   "engine": "epiano", "root": 60, "scale": "minor", "scaleBank": "notes", "scaleBankOnly": true,
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 1, "octave": 0, "fifth": 0, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [48, 72], "velocity": [100, 110], "hold": [0.5, 0.7], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 1.0 },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Pads 1-16 climb the scale: play melodies directly, every pad in key." } },
+
+ { "id": "screw-rnb", "name": "DJ Screw R&B Chords", "tag": "ScrewRnB", "short": "ScrewRnB",
+   "description": "Slowed, syrupy R&B chords: minor 7/9/11 and maj7s on Rhodes, varispeeded -4 st, dark filter, tape wobble and a dark hall.",
+   "engine": "epiano", "root": 60, "scale": "minor", "scaleBank": "chords",
+   "chords": { "m7": 4, "m9": 4, "maj7": 3, "m11": 2, "9sus4": 2, "maj9": 2 },
+   "voicings": { "rootless": 3, "drop2": 3, "spread": 2 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 4, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [48, 72], "velocity": [70, 95], "hold": [1.4, 2.0], "stabChance": 0, "stabHold": 0.3, "strumMs": 30,
+   "processing": { "maxLength": 2.4, "attackMs": 15, "pitchShift": -4, "fxTailMs": 300,
+                   "fx": [ { "type": "lowpass", "freq": 3000, "poles": 4 }, { "type": "wowflutter", "amount": 0.3 },
+                           { "type": "tape", "drive": 0.35 }, { "type": "chorus", "rate": 0.4, "depth": 0.3, "mix": 0.3 },
+                           { "type": "reverb", "kind": "darkhall", "decay": 2.0, "mix": 0.25 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Slow R&B progressions; resample and use Half Speed (Shift + Pad 6) for the full chopped & screwed drag." } },
+
+ { "id": "trap-scale", "name": "Trap Scale", "tag": "TrapScale", "short": "TrapScl",
+   "description": "Always a scale bank: dark harmonic-minor bell melodies for trap, high-passed with a short reverb.",
+   "engine": "bell", "root": 72, "scale": "harmonicminor", "scaleBank": "notes", "scaleBankOnly": true,
+   "chords": { "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 0.0,
+   "keyTypes": { "note": 1, "octave": 0, "fifth": 0, "stab": 0 },
+   "chordRootRange": [60, 71], "keyRange": [60, 84], "velocity": [100, 120], "hold": [0.25, 0.4], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
+   "processing": { "maxLength": 0.8, "fxTailMs": 200,
+                   "fx": [ { "type": "highpass", "freq": 200, "poles": 2 }, { "type": "reverb", "kind": "plate", "decay": 0.9, "mix": 0.2 } ] },
+   "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Dark melodies over 808s; the raised 7th (pad 7) gives harmonic minor its trap tension." } },
+
+ { "id": "gospel-rnb-90s", "name": "90s Gospel R&B Chords", "tag": "GospelRnB", "short": "GospelRB",
+   "description": "90s gospel-flavoured R&B: maj9, 13, m11, 9sus4, 7#9 and 6/9 chords, spread and rootless on Rhodes.",
+   "engine": "epiano", "root": 60, "scale": "major", "scaleBank": "chords",
+   "chords": { "maj9": 4, "13": 3, "m11": 3, "9sus4": 3, "7s9": 2, "69": 2, "maj13": 2, "m9": 3 },
+   "voicings": { "spread": 3, "rootless": 3, "drop2": 2 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 3, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [45, 57], "keyRange": [45, 72], "velocity": [85, 110], "hold": [1.2, 1.8], "stabChance": 0.1, "stabHold": 0.3, "strumMs": 25,
+   "processing": { "maxLength": 2.0, "fxTailMs": 200,
+                   "fx": [ { "type": "tape", "drive": 0.2 }, { "type": "reverb", "kind": "plate", "decay": 1.0, "mix": 0.15 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Classic moves: IV-iii-ii-I and ii-V-I with 9sus4 turnarounds." } },
+
+ { "id": "vaporwave", "name": "Vaporwave Chords", "tag": "Vaporwave", "short": "Vapor",
+   "description": "Slowed 80s DX-style electric piano: maj7/maj9/m7/6-9, varispeeded -3 st, thick chorus, tape wobble and a big hall.",
+   "engine": "epbell", "root": 60, "scale": "major", "scaleBank": "chords",
+   "chords": { "maj7": 4, "maj9": 4, "m7": 3, "m9": 2, "add9": 2, "69": 2 },
+   "voicings": { "close": 2, "drop2": 2, "open": 2 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 3, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [50, 61], "keyRange": [50, 74], "velocity": [75, 100], "hold": [1.6, 2.2], "stabChance": 0, "stabHold": 0.3, "strumMs": 15,
+   "processing": { "maxLength": 2.6, "attackMs": 10, "pitchShift": -3, "fxTailMs": 400,
+                   "fx": [ { "type": "lowpass", "freq": 6000, "poles": 2 }, { "type": "chorus", "rate": 0.35, "depth": 0.5, "mix": 0.5 },
+                           { "type": "wowflutter", "amount": 0.3 }, { "type": "reverb", "kind": "hall", "decay": 2.5, "mix": 0.35 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Slow maj7 progressions (IV-iii-ii-I); let the hall ring between hits." } },
+
+ { "id": "chillwave", "name": "Chillwave Chords", "tag": "Chillwave", "short": "Chillw",
+   "description": "Hazy synth chords: maj7, add9, sus2, m7 and maj9 on a soft detuned synth with tape saturation, wobble and hall.",
+   "engine": "supersaw", "root": 60, "scale": "major", "scaleBank": "chords",
+   "chords": { "maj7": 4, "add9": 3, "sus2": 3, "m7": 3, "maj9": 3 },
+   "voicings": { "open": 3, "spread": 2, "close": 1 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 3, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [50, 61], "keyRange": [50, 74], "velocity": [70, 95], "hold": [1.8, 2.4], "stabChance": 0, "stabHold": 0.3, "strumMs": 0,
+   "processing": { "maxLength": 2.8, "attackMs": 40, "fxTailMs": 400,
+                   "fx": [ { "type": "lowpass", "freq": 4000, "poles": 2 }, { "type": "tape", "drive": 0.3 },
+                           { "type": "wowflutter", "amount": 0.25 }, { "type": "chorus", "rate": 0.3, "depth": 0.4, "mix": 0.4 },
+                           { "type": "reverb", "kind": "hall", "decay": 2.2, "mix": 0.3 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Long, washy chords: let them overlap (no Mute Group) for a dreamy bed." } },
+
+ { "id": "phonkwave", "name": "Phonkwave Chords", "tag": "Phonkwave", "short": "PhonkW",
+   "description": "Phonk meets vaporwave: eerie phrygian minor chords on keys, varispeeded -3 st, 12-bit, wow & flutter, cassette hiss.",
+   "engine": "epiano", "root": 60, "scale": "phrygian", "scaleBank": "chords",
+   "chords": { "m7": 4, "min": 3, "m9": 3, "mmaj7": 2, "dim": 2, "m7b5": 2 },
+   "voicings": { "close": 3, "inv1": 2, "open": 2 }, "chordRatio": 0.85,
+   "keyTypes": { "note": 3, "octave": 2, "fifth": 0, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [48, 72], "velocity": [90, 110], "hold": [1.0, 1.5], "stabChance": 0.1, "stabHold": 0.25, "strumMs": 0,
+   "processing": { "maxLength": 1.6, "pitchShift": -3, "fxTailMs": 250,
+                   "fx": [ { "type": "lowpass", "freq": 3500, "poles": 4 }, { "type": "bitcrush", "bits": 12 },
+                           { "type": "wowflutter", "amount": 0.4 }, { "type": "hiss", "levelDb": -44 },
+                           { "type": "reverb", "kind": "room", "decay": 0.8, "mix": 0.2 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Eerie phrygian progressions (i-II is the classic phonk move); pitch the pad down for more drift." } }
 ]
 )JSON";
 
@@ -371,6 +520,8 @@ juce::var Style::toVar() const
     o->setProperty ("engine", engine);
     if (tag.isNotEmpty()) o->setProperty ("tag", tag);
     if (shortTag.isNotEmpty()) o->setProperty ("short", shortTag);
+    if (scaleBank.isNotEmpty()) o->setProperty ("scaleBank", scaleBank);
+    if (scaleBankOnly) o->setProperty ("scaleBankOnly", true);
     if (root >= 0) o->setProperty ("root", root);
     if (isKit()) o->setProperty ("kit", weightsToVar (kit));
 
@@ -507,6 +658,14 @@ bool Style::fromVar (const juce::var& v, Style& s, juce::String& error)
     s.tag = safeTag (v.getProperty ("tag", s.name).toString());
     s.shortTag = safeTag (v.getProperty ("short", v.hasProperty ("tag") ? s.tag.substring (0, 9) : juce::String()).toString());
     s.root = v.hasProperty ("root") ? juce::jlimit (0, 127, (int) v["root"]) : -1;
+
+    s.scaleBank = v["scaleBank"].toString().toLowerCase();
+    if (s.scaleBank.isNotEmpty() && s.scaleBank != "notes" && s.scaleBank != "chords")
+    {
+        error = "style '" + s.id + "': \"scaleBank\" must be \"notes\" or \"chords\"";
+        return false;
+    }
+    s.scaleBankOnly = (bool) v.getProperty ("scaleBankOnly", false);
 
     auto pad = v["pad"];
     s.pad.tune      = juce::jlimit (-36, 36, (int) pad.getProperty ("tune", 0));
