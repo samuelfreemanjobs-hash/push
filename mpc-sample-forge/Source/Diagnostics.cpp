@@ -6,6 +6,7 @@
 #include "ProgressionLibrary.h"
 #include "PresetSweep.h"
 #include "RenderQueue.h"
+#include "RecipeCard.h"
 #include <cmath>
 
 namespace forge
@@ -526,6 +527,27 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
         say (ok ? L::Pass : L::Fail, "Chord palette + octaves",
              juce::String (ok ? "palette chords parse and plan exactly" : "PALETTE WRONG") + "; Octave 4: "
              + juce::String ((int) inOct.size() - outside) + "/" + juce::String ((int) inOct.size()) + " samples start in C4-B4");
+    }
+
+    // ------------------------------------------------------------ recipe cards
+    {
+        const juce::String forge = "=== FORGE CARD ===\nname: Test Card\ncode: TC\nkey: D major\ntempo: 92\nsound: electric piano + pad\n"
+                                   "fx: chorus 15, plate 20\nCH A6/9 = A2 C#3 E3 F#3 B3\nLEAD = F#5 C#6\nSOFT = D5 | velocity 60\n"
+                                   "TEXTURE REVERSE_PAD_SWELL = D3 A3\nMELODY = F#5/q A5/e C#6/e B5/h\n=== END ===\n";
+        const juce::String book = juce::CharPointer_UTF8 ("1. Blue Hour\n- Key: D major\n- Tempo: 92 BPM\n"
+                                  "Bar\tChord\tExact notes\n1\tDmaj9\tD3 \xc2\xb7 F\xe2\x99\xaf" "3 \xc2\xb7 A3 \xc2\xb7 C\xe2\x99\xaf" "4 \xc2\xb7 E4\n"
+                                  "1\t1: F\xe2\x99\xaf" "5 q; 2: A5 e; 2&: C\xe2\x99\xaf" "6 e\n"
+                                  "DL_BH_Dmaj9_CH.wav\nDL_BH_Fs5_LEAD.wav\nDL_BH_A5_SOFT.wav\nDL_BH_CHORDS.mid\n");
+        auto a = parseRecipeCards (forge);
+        auto b = parseRecipeCards (book);
+        bool ok = a.size() == 1 && a[0].items.size() == 5 && a[0].items[0].notes == std::vector<int> { 45, 49, 52, 54, 59 }   // A2 = MIDI 45 (C4 = 60)
+                  && a[0].items[0].fileName == "TC_A69_CH" && a[0].items[1].fileName == "TC_Fs5_LEAD" && a[0].items[3].velocity == 60
+                  && a[0].items[4].reverse && a[0].melody.size() == 4 && a[0].fx.isArray();
+        bool okBook = b.size() == 1 && b[0].code == "DL_BH" && b[0].items.size() == 3 && b[0].items[0].fileName == "DL_BH_Dmaj9_CH"
+                      && b[0].items[0].notes == std::vector<int> { 50, 54, 57, 61, 64 } && b[0].items[1].notes == std::vector<int> { 78 }
+                      && b[0].items[2].velocity == 60 && b[0].melody.size() == 3 && std::abs (b[0].tempo - 92.0) < 0.01;
+        say (ok && okBook ? L::Pass : L::Fail, "Recipe cards",
+             juce::String (ok ? "FORGE CARD read exactly" : "FORGE CARD WRONG") + "; " + (okBook ? "book page read (chords, notes, names, melody)" : "BOOK PAGE WRONG"));
     }
 
     // ------------------------------------------------------------ trap progression library

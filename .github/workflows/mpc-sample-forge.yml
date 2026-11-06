@@ -120,6 +120,12 @@ jobs:
           "${{ steps.bin.outputs.cli }}" --recipe neo-soul --count 16 --round-robins 4 --seed 3 --short-names --out demo-out/NeoSoul_RoundRobin
           test "$(find demo-out/NeoSoul_RoundRobin -name '*.wav' | wc -l | tr -d ' ')" -eq 64
           test -d demo-out/NeoSoul_RoundRobin/Round_Robin/Take_4
+          # a recipe card from a recipe book page: exact notes, the card's own file names, .mid files
+          "${{ steps.bin.outputs.cli }}" --card Tests/cards/DiskLordz_Installment01_sample.txt --out demo-out/RecipeCard_DL_BHC
+          test "$(ls demo-out/RecipeCard_DL_BHC/*.wav | wc -l | tr -d ' ')" -eq 16
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_A69_CH.wav
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_Fs5_LEAD.wav
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_MELODY.mid
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

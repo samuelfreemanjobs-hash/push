@@ -153,6 +153,54 @@ octave(s) you pick: `Octave 2 (C2-B2)` ... or `Octaves 2-3`. Very wide jazz voic
 Command line: `--octaves 2-3`, `--palette "Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3"` (chord symbol,
 `@` octave, `:` voicing, `/` inversion).
 
+## Recipe Cards: render a recipe book page exactly
+
+Click **Recipe Cards** (top right) and paste a page from your recipe book - e.g. a daily ChatGPT
+installment, one recipe or several. The right side shows exactly which files each recipe will make,
+with their notes. **Render this card** renders them; **Queue all cards** puts every recipe in the
+render queue and starts it.
+
+What it reads:
+
+* **Chord tables** with exact notes (`1  Dmaj9  D3 · F♯3 · A3 · C♯4 · E4`) - rendered with exactly
+  those notes as one-bar chord hits.
+* **Melody tables** (`1: F♯5 q; 2: A5 e; 2&: C♯6 e ...`) - written as a `.mid` file, and each melody
+  note as a single-note sample if the page doesn't list the files.
+* **File-name lists** (`DL_BHC_Dmaj9_CH.wav`, `..._Fs5_LEAD.wav`, `..._A5_SOFT.wav`, textures such as
+  `..._WARM_PAD_SWELL.wav` / `REVERSE_PAD_SWELL` / `GLASS_SHIMMER`, `..._CHORDS.mid`, `..._MELODY.mid`) -
+  the files get exactly those names. SOFT notes are soft velocity; REVERSE textures play backwards;
+  GLASS / SHIMMER get an octave-up shimmer.
+* **Key, tempo, "Main sound"** (electric piano, pad, strings, bell, brass, organ, synth ... -> the
+  built-in engines) and **sound design** (chorus %, dotted-eighth delay, plate / hall reverb,
+  high-pass / low-pass Hz, tape).
+
+Note names: books and ChatGPT use standard names (**C4 = middle C**); the MPC calls middle C **C3**.
+The preview shows both, and the menu switches if a card uses MPC names. Sound can be the card's
+(built-in synth), the main window's engine, or your loaded VST3; FX the card's or the recipe's. Format,
+level, length and Takes come from the main window. Files go to `Recipe Cards/<code>`.
+
+**Most reliable: a FORGE CARD block.** Click **Copy ChatGPT prompt** and add it to your recipe book's
+instructions; every recipe then ends with a block like this, which the app reads exactly:
+
+```
+=== FORGE CARD ===
+name: Blue Hour Convertible
+code: DL_BHC
+key: D major
+tempo: 92
+sound: soft electric piano + slow analog pad
+fx: chorus 15, delay 1/8d 10, plate 20, highpass 120
+CH Dmaj9 = D3 F#3 A3 C#4 E4
+CH A6/9 = A2 C#3 E3 F#3 B3
+LEAD = D5 E5 F#5 A5 B5 C#6
+SOFT = D5 F#5 A5 | velocity 60
+TEXTURE WARM_PAD_SWELL = D3 A3 F#4 | attack 800 | hold 4
+MELODY = F#5/q A5/e C#6/e B5/q A5/q | F#5/q E5/e F#5/e A5/q F#5/q
+=== END ===
+```
+
+Command line: `mpcforge --card page.txt [--card-index 2] [--card-info]`.
+
 ## The Style menu
 
 Recipes are grouped: **Genres**, **Kits**, **Progressions & chord sets** (Trap Progressions is here),
@@ -646,6 +694,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
 | `--octaves <n\|lo-hi>` | Keep every sample's lowest note in these MPC octaves, e.g. `2` or `2-3` |
+| `--card <file.txt>` | Render a recipe card / recipe book page with its exact notes and names (`--card-index`, `--card-info`) |
 | `--palette "<chords>"` | Render exactly these: `Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3` |
 | `--round-robins <2-4>` | Also render 2-4 slightly different takes of every sample (`Round_Robin/Take_2` ...) |
 | `--queue [file.json]` | Render every waiting batch of the app's render queue (or a queue file) |
@@ -755,6 +804,8 @@ Source/PresetSweep.*     Preset Sweep: collect presets, test-render, score, rend
 Source/PresetSweepPanel.* the Preset Sweep window
 Source/RenderQueue.*     queue items (saved settings + instrument state), queue file
 Source/QueuePanel.*      the Render Queue window
+Source/RecipeCard.*      reads recipe cards / recipe book pages, plans them, writes their .mid files
+Source/RecipeCardPanel.* the Recipe Cards window
 Source/BuiltInSynth.*    built-in synth (27 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)

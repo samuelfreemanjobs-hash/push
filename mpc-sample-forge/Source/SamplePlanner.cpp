@@ -1,6 +1,7 @@
 #include "SamplePlanner.h"
 #include "BuiltInSynth.h"
 #include "ProgressionLibrary.h"
+#include "RecipeCard.h"
 #include <set>
 #include <map>
 #include <numeric>
@@ -1149,7 +1150,7 @@ static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const Pla
     A scale bank moves as one, so it still climbs pad by pad. */
 static void fitToOctaves (std::vector<SampleSpec>& specs, const PlanOptions& opt)
 {
-    if (opt.octaveLow < 0 || opt.fixedRoot != -1 || opt.usePalette) return;
+    if (opt.octaveLow < 0 || opt.fixedRoot != -1 || opt.usePalette || opt.useCard) return;
     const int lo = juce::jlimit (0, 8, opt.octaveLow), hi = juce::jlimit (lo, 8, opt.octaveHigh < 0 ? lo : opt.octaveHigh);
     const int low = 12 * (lo + 2), high = 12 * (hi + 2) + 11;
     auto lowest = [] (const SampleSpec& s) { int m = 127; for (auto& n : s.notes) m = std::min (m, n.note); return m; };
@@ -1216,6 +1217,12 @@ std::vector<SampleSpec> planSamples (const Style& styleIn, const PlanOptions& op
 
 static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const PlanOptions& opt, juce::String& error)
 {
+    if (opt.useCard)
+    {
+        auto cards = parseRecipeCards (opt.cardText, opt.cardMpcNotation);
+        if (! juce::isPositiveAndBelow (opt.cardIndex, (int) cards.size())) { error = "no recipe card " + juce::String (opt.cardIndex + 1) + " in the text"; return {}; }
+        return planCard (cards[(size_t) opt.cardIndex], styleIn, opt, error);
+    }
     if (opt.usePalette)
         return planPalette (styleIn, opt, error);
     const Style style = withOctaveRange (styleIn, opt);

@@ -437,7 +437,7 @@ namespace
 juce::StringArray effectTypes()
 {
     return { "lowpass", "highpass", "bandpass", "peak", "tape", "tube", "overdrive", "bitcrush", "wowflutter",
-             "hiss", "chorus", "widen", "compressor", "reverb", "delay", "shimmer", "rotary", "gain" };
+             "hiss", "chorus", "widen", "compressor", "reverb", "delay", "shimmer", "rotary", "gain", "reverse" };
 }
 
 bool validateFx (const juce::var& fx, juce::String& error)
@@ -526,6 +526,24 @@ void applyFxChain (juce::AudioBuffer<float>& b, double sr, const juce::var& fx, 
         else if (type == "shimmer")    delay (b, sr, o, tempo, true);
         else if (type == "rotary")     rotary (b, sr, o);
         else if (type == "gain")       b.applyGain (juce::Decibels::decibelsToGain ((float) num (o, "db", 0)));
+        else if (type == "reverse")
+        {
+            // play it backwards (a reverse swell): drop the near-silent start the old tail leaves, then short fades
+            const int n = b.getNumSamples();
+            for (int ch = 0; ch < b.getNumChannels(); ++ch) b.reverse (ch, 0, n);
+            const auto peak = b.getMagnitude (0, n);
+            int start = 0;
+            while (start < n - 1 && b.getMagnitude (start, 1) < peak * 0.001f) ++start;
+            if (start > 0 && n - start > 16)
+            {
+                juce::AudioBuffer<float> trimmed (b.getNumChannels(), n - start);
+                for (int ch = 0; ch < b.getNumChannels(); ++ch) trimmed.copyFrom (ch, 0, b, ch, start, n - start);
+                b = std::move (trimmed);
+            }
+            const int fadeIn = juce::jmin (b.getNumSamples() / 4, (int) (sr * 0.005)), fadeOut = juce::jmin (b.getNumSamples() / 4, (int) (sr * 0.01));
+            b.applyGainRamp (0, fadeIn, 0.0f, 1.0f);
+            b.applyGainRamp (b.getNumSamples() - fadeOut, fadeOut, 1.0f, 0.0f);
+        }
     }
 }
 }

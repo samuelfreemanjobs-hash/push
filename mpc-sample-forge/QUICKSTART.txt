@@ -56,6 +56,12 @@ WHAT WILL GENERATE MAKE?
   rendered with the recipe's FX ("Hear with FX"), so it sounds like the files.
   Octaves menu (Engine row): keep everything in the octave(s) you want (C3 = middle C).
 
+RECIPE CARDS (your recipe book / daily ChatGPT installment)
+  Click "Recipe Cards", paste the page. It shows exactly which files it will make (exact chord
+  notes, lead + soft notes, textures, .mid files, with the book's own file names). "Render this
+  card", or "Queue all cards". "Copy ChatGPT prompt" = the instruction that makes ChatGPT end
+  every recipe with a FORGE CARD block the app reads exactly.
+
 CHORD GRID + PALETTE (more control)
   Under the 7 key chords: press a Root (C ... B) and a Type (Maj, m, 7, M7, m9, 13, sus4, dim,
   6/9, Note ...) to hear a chord. Pick Oct / inversion / voicing. "+ Palette" keeps it exactly as

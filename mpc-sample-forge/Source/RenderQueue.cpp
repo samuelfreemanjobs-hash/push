@@ -1,4 +1,5 @@
 #include "RenderQueue.h"
+#include "RecipeCard.h"
 
 namespace forge
 {
@@ -9,6 +10,11 @@ juce::String QueueItem::describe() const
                      : r.plan.fixedRoot == PlanOptions::styleRoot ? juce::String ("16 Levels")
                      : r.plan.key == "random" ? juce::String ("random keys") : r.plan.key + " " + (r.plan.scale.isNotEmpty() ? r.plan.scale : r.style.scale);
     juce::String text = r.style.name + "  |  " + key + "  |  " + juce::String (r.plan.count) + " samples";
+    if (r.plan.useCard)
+    {
+        auto cards = parseRecipeCards (r.plan.cardText, r.plan.cardMpcNotation);
+        text = "Recipe card: " + (juce::isPositiveAndBelow (r.plan.cardIndex, (int) cards.size()) ? cards[(size_t) r.plan.cardIndex].name : juce::String ("?"));
+    }
     if (r.plan.usePalette) text = r.style.name + "  |  your chord palette (" + juce::String ((int) r.plan.palette.size()) + " picks)";
     if (r.plan.octaveLow >= 0 && ! r.plan.usePalette)
         text << "  |  Oct " << r.plan.octaveLow << (r.plan.octaveHigh > r.plan.octaveLow ? "-" + juce::String (r.plan.octaveHigh) : juce::String());
@@ -46,6 +52,11 @@ juce::var queueItemToVar (const QueueItem& item)
     p->setProperty ("shortNames", r.plan.shortNames);   p->setProperty ("progressionNumber", r.plan.progressionNumber);
     p->setProperty ("octaveLow", r.plan.octaveLow);     p->setProperty ("octaveHigh", r.plan.octaveHigh);
     p->setProperty ("usePalette", r.plan.usePalette);
+    p->setProperty ("useCard", r.plan.useCard);
+    p->setProperty ("cardText", r.plan.cardText);
+    p->setProperty ("cardIndex", r.plan.cardIndex);
+    p->setProperty ("cardMpcNotation", r.plan.cardMpcNotation);
+    p->setProperty ("cardUseRecipeFx", r.plan.cardUseRecipeFx);
     juce::Array<juce::var> pal;
     for (auto& c : r.plan.palette) pal.add (c.toString());
     p->setProperty ("palette", pal);
@@ -100,6 +111,11 @@ bool queueItemFromVar (const juce::var& v, QueueItem& item, juce::String& error)
     r.plan.octaveLow = (int) p.getProperty ("octaveLow", -1);
     r.plan.octaveHigh = (int) p.getProperty ("octaveHigh", -1);
     r.plan.usePalette = (bool) p["usePalette"];
+    r.plan.useCard = (bool) p["useCard"];
+    r.plan.cardText = p["cardText"].toString();
+    r.plan.cardIndex = (int) p.getProperty ("cardIndex", 0);
+    r.plan.cardMpcNotation = (bool) p["cardMpcNotation"];
+    r.plan.cardUseRecipeFx = (bool) p["cardUseRecipeFx"];
     if (auto* pal = p["palette"].getArray())
         for (auto& x : *pal) { PaletteChord c; if (PaletteChord::fromString (x.toString(), c)) r.plan.palette.push_back (c); }
 

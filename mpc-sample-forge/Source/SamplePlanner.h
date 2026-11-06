@@ -72,6 +72,11 @@ namespace forge
         int progressionNumber = 0;     // progression-library recipes: only this set (1-20), 0 = a mix chosen by the seed
         int octaveLow = -1, octaveHigh = -1; // keep every chord root / note in these MPC octaves (-1 = the recipe's ranges)
         bool usePalette = false;       // render exactly `palette` (the chord grid's picks) instead of the recipe's random picks
+        bool useCard = false;          // render a recipe card (cardText, card number cardIndex) - exact notes and file names
+        juce::String cardText;
+        int cardIndex = 0;
+        bool cardMpcNotation = false;  // the card's note names are MPC style (C3 = middle C) unless it says otherwise
+        bool cardUseRecipeFx = false;  // ignore the card's effects and use the recipe's
         std::vector<PaletteChord> palette;
     };
 

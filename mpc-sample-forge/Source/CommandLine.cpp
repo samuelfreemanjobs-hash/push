@@ -1,5 +1,6 @@
 #include "CommandLine.h"
 #include "ProgressionLibrary.h"
+#include "RecipeCard.h"
 #include "BuiltInSynth.h"
 #include "Diagnostics.h"
 #include "Analysis.h"
@@ -96,6 +97,11 @@ juce::String cliHelpText()
       << "                            (C3 = middle C)\n"
       << "  --palette \"<chords>\"      render exactly these, nothing random: chord symbols with optional\n"
       << "                            @octave :voicing /inversion, e.g. \"Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3\"\n"
+      << "  --card <file.txt>         render a recipe card (FORGE CARD block, or a recipe book's text) with\n"
+      << "                            its exact notes and file names; --card-index <n> picks the card\n"
+      << "                            (default 1); --card-info lists what each card will make;\n"
+      << "                            --card-mpc-notes = the card's notes use MPC names (C3 = middle C);\n"
+      << "                            --card-recipe-fx = use the --style recipe's FX, not the card's\n"
       << "  --round-robins <2-4>      also render 2-4 slightly different takes of every sample\n"
       << "                            (velocity, timing, length) into Round_Robin/Take_2 ...\n\n"
       << "Audio:\n"
@@ -308,6 +314,21 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         if (req.plan.octaveLow < 0 || req.plan.octaveLow > 7 || req.plan.octaveHigh < req.plan.octaveLow || req.plan.octaveHigh > 7)
             return fail ("--octaves wants e.g. 2 or 2-3 (MPC octaves: C3 = middle C)");
     }
+    if (args.contains ("--card"))
+    {
+        auto f = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--card"));
+        if (! f.existsAsFile()) return fail ("--card: file not found " + f.getFullPathName());
+        req.plan.cardText = f.loadFileAsString();
+        req.plan.useCard = true;
+        req.plan.cardIndex = juce::jmax (1, option (args, "--card-index", "1").getIntValue()) - 1;
+        req.plan.cardMpcNotation = args.contains ("--card-mpc-notes");
+        req.plan.cardUseRecipeFx = args.contains ("--card-recipe-fx");
+        auto cards = parseRecipeCards (req.plan.cardText, req.plan.cardMpcNotation);
+        if (cards.empty()) return fail ("--card: no recipe cards found in " + f.getFileName());
+        if (args.contains ("--plan-only") || args.contains ("--card-info"))
+            for (auto& c : cards) out (c.describe());
+        if (args.contains ("--card-info")) return onDone (0);
+    }
     if (args.contains ("--palette"))
     {
         for (auto& token : juce::StringArray::fromTokens (option (args, "--palette"), " ,;", "\""))
@@ -404,6 +425,16 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         ? juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--out"))
         : juce::File::getSpecialLocation (juce::File::userHomeDirectory)
               .getChildFile ("MPC Sample Forge").getChildFile (safeFileName (req.style.name));
+    if (req.plan.useCard)
+    {
+        auto cards = parseRecipeCards (req.plan.cardText, req.plan.cardMpcNotation);
+        if (! args.contains ("--out"))
+            req.outputFolder = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getChildFile ("MPC Sample Forge")
+                                   .getChildFile ("Recipe Cards").getChildFile (safeFileName (cards[(size_t) req.plan.cardIndex].code));
+        req.outputFolder.createDirectory();
+        auto midi = writeCardMidi (cards[(size_t) req.plan.cardIndex], req.outputFolder);
+        if (! midi.isEmpty()) out ("MIDI: " + midi.joinIntoString (", "));
+    }
 
     // -------------------------------------------------------- the instrument
     if (! useBuiltIn)
@@ -578,6 +609,7 @@ void CliRunner::runQueueNext()
     for (auto& n : notes) out (n);
     item.status = "running";
     item.doneFolder = req.outputFolder;
+    if (req.plan.useCard) writeCardMidiForPlan (req.plan, req.outputFolder);
     saveQueue (queueFile, queueItems);
 
     job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));

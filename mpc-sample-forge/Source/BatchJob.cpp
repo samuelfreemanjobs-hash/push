@@ -202,8 +202,16 @@ bool planBatch (BatchRequest& req, bool smartPick, std::vector<SampleSpec>& spec
 {
     juce::String error;
     const int wanted = req.plan.count;
-    const bool banks = ! req.plan.usePalette && (req.plan.scaleBank || req.style.scaleBankOnly);
+    const bool exact = req.plan.usePalette || req.plan.useCard;   // exactly what was asked for
+    const bool banks = ! exact && (req.plan.scaleBank || req.style.scaleBankOnly);
     req.smartPickTarget = 0;
+    if (req.plan.useCard)
+    {
+        smartPick = false;
+        req.variety = 0;
+        req.plan.scaleBank = false;
+        req.splitBanks = false;
+    }
     if (req.plan.usePalette)
     {
         // exactly the chords you picked: nothing chosen for you, nothing dropped as "too similar"

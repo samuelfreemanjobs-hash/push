@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "PresetSweepPanel.h"
 #include "QueuePanel.h"
+#include "RecipeCardPanel.h"
 #include <map>
 #include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
@@ -95,6 +96,9 @@ MainComponent::MainComponent()
     queueButton.setTooltip ("The render queue: batches that render one after another while you're away");
     queueButton.onClick = [this] { openQueue(); };
     addAndMakeVisible (queueButton);
+    cardsButton.setTooltip ("Paste a recipe book page (e.g. your daily ChatGPT installment) and render it with its exact notes and file names");
+    cardsButton.onClick = [this] { openRecipeCards(); };
+    addAndMakeVisible (cardsButton);
     addQueueButton.setTooltip ("Save everything set up here (recipe, key, count, instrument + sound, format, takes ...) as a batch "
                                "in the render queue, to render later with the others");
     addQueueButton.onClick = [this] { addToQueue(); };
@@ -579,6 +583,7 @@ MainComponent::~MainComponent()
     planWatcher.reset();
     previewPlayer.setSource (nullptr);
     deviceManager.removeAudioCallback (&previewPlayer);
+    cardsWindow.reset();
     queueWindow.reset();
     queueRunning = false;
     sweepWindow.reset();
@@ -611,6 +616,8 @@ void MainComponent::resized()
     diagnosticsButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
     titleRow.removeFromRight (8);
     queueButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
+    titleRow.removeFromRight (8);
+    cardsButton.setBounds (titleRow.removeFromRight (130).reduced (0, 3));
     title.setBounds (titleRow);
     area.removeFromTop (12);
 
@@ -1085,7 +1092,7 @@ void MainComponent::setBusy (bool busy)
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &sweepButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &takesBox, &shortNamesToggle,
-                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox, &addQueueButton,
+                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox, &addQueueButton, &cardsButton,
                                                              &exportChordButton, &exportRowButton, &editStyleButton,
                                                              &varietyBox, &instancesBox, &size16, &size32, &size64, &moreButton,
                                                              &outButton, &planButton, &auditionButton, &auditionOctaveBox, &keyboard })
@@ -2040,6 +2047,7 @@ void MainComponent::runNextQueued()
     log ("==== Queue " + juce::String (queueRunNumber) + "/" + juce::String (queueRunTotal) + ": " + item.describe());
     queueCopies = item.instances;
     item.doneFolder = req.outputFolder;
+    if (req.plan.useCard) writeCardMidiForPlan (req.plan, req.outputFolder);
     startJob (std::move (req), std::move (specs), false);
 }
 
@@ -2055,6 +2063,75 @@ void MainComponent::queueItemFinished (bool ok, const juce::String& summary, con
     }
     saveQueueFile();
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe != nullptr) safe->runNextQueued(); });
+}
+
+//==============================================================================
+// Recipe cards
+
+bool MainComponent::buildCardRequest (const RecipeCardPanel::Options& o, int cardIndex, BatchRequest& req, std::vector<SampleSpec>& specs)
+{
+    if (! buildRequest (req, specs, true)) return false;   // format, length, takes ... from the main window
+    req.plan.usePalette = false;
+    req.plan.useCard = true;
+    req.plan.cardText = o.text;
+    req.plan.cardIndex = cardIndex;
+    req.plan.cardMpcNotation = o.mpcNotation;
+    req.plan.cardUseRecipeFx = o.useRecipeFx;
+    req.plan.engine = o.useMainEngine ? selectedEngine() : juce::String();
+    req.plan.octaveLow = req.plan.octaveHigh = -1;
+    req.registers.clear();
+    auto cards = parseRecipeCards (o.text, o.mpcNotation);
+    if (! juce::isPositiveAndBelow (cardIndex, (int) cards.size())) return false;
+    req.outputFolder = outputFolder.getChildFile ("Recipe Cards").getChildFile (safeFileName (cards[(size_t) cardIndex].code))
+                           .getNonexistentSibling (false);
+    juce::StringArray notes;
+    return planBatch (req, false, specs, notes);
+}
+
+void MainComponent::openRecipeCards()
+{
+    if (cardsWindow != nullptr) { cardsWindow->toFront (true); return; }
+    if (instrument == nullptr) return;
+    auto* panel = new RecipeCardPanel (instrument->getName(), dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr, props.getUserSettings());
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    panel->onRender = [safe] (const RecipeCardPanel::Options& opt)
+    {
+        if (safe == nullptr || safe->job != nullptr || safe->sweep != nullptr) return;
+        const auto& o = opt;
+        BatchRequest req;
+        std::vector<SampleSpec> specs;
+        if (! safe->buildCardRequest (o, opt.cardIndex, req, specs)) { safe->log ("Recipe card: nothing to render."); return; }
+        auto midi = writeCardMidiForPlan (req.plan, req.outputFolder);
+        safe->log ("RECIPE CARD: " + juce::String ((int) specs.size()) + " files" + (midi.isEmpty() ? juce::String() : " + " + midi.joinIntoString (", "))
+                   + " -> " + req.outputFolder.getFullPathName());
+        safe->startJob (std::move (req), std::move (specs), true);
+    };
+    panel->onQueueAll = [safe] (const RecipeCardPanel::Options& opt, int count)
+    {
+        if (safe == nullptr || safe->job != nullptr || safe->sweep != nullptr) return;
+        const auto& o = opt;
+        int added = 0;
+        for (int k = 0; k < count; ++k)
+        {
+            BatchRequest req;
+            std::vector<SampleSpec> specs;
+            if (! safe->buildCardRequest (o, k, req, specs)) continue;
+            QueueItem item;
+            item.request = req;
+            item.request.smartPickTarget = 0;
+            auto* inst = safe->instrument.get();
+            item.pluginPath = dynamic_cast<BuiltInSynth*> (inst) != nullptr ? juce::String() : safe->instrumentPath;
+            if (item.pluginPath.isNotEmpty()) inst->getStateInformation (item.pluginState);
+            item.instances = safe->instancesBox.getSelectedId();
+            safe->queue.push_back (item);
+            ++added;
+        }
+        safe->saveQueueFile();
+        safe->log ("Queued " + juce::String (added) + " recipe cards - starting the queue.");
+        safe->openQueue();
+        safe->startQueue();
+    };
+    cardsWindow = std::make_unique<ToolWindow> ("Recipe Cards", panel, [safe] { if (safe != nullptr) safe->cardsWindow.reset(); });
 }
 
 void MainComponent::openStyleEditor()
