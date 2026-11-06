@@ -2,8 +2,10 @@ name: MPC Sample Forge build
 
 on:
   push:
-    paths: [ "mpc-sample-forge/**", ".github/workflows/mpc-sample-forge.yml" ]
+    # Both filters are needed: listing only tags would stop branch pushes from building.
+    branches: [ "**" ]
     tags: [ "forge-v*" ]
+    paths: [ "mpc-sample-forge/**", ".github/workflows/mpc-sample-forge.yml" ]
   pull_request:
     paths: [ "mpc-sample-forge/**" ]
   workflow_dispatch:
