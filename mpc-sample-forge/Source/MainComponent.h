@@ -98,7 +98,8 @@ namespace forge
         juce::OwnedArray<juce::TextButton> chordButtons;
         juce::ComboBox chordOctaveBox, inversionBox;
         juce::TextButton exportChordButton { "Export chord" }, exportRowButton { "Export all 7" }, editStyleButton { "Edit Style..." };
-        juce::Label chordRowLabel;
+        juce::Label chordRowLabel, exportInfo;   // exportInfo: what Export chord will render (notes + octave)
+        void updateExportInfo();
         std::vector<DiatonicChord> currentChords;
         int selectedChord = 0;
         juce::ToggleButton smartPickToggle { "Smart Pick" }, shortNamesToggle { "Short names" };

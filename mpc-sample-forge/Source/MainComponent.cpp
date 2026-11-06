@@ -356,6 +356,10 @@ MainComponent::MainComponent()
     chordRowLabel.setText ("Chords", juce::dontSendNotification);
     chordRowLabel.setColour (juce::Label::textColourId, dim);
     addAndMakeVisible (chordRowLabel);
+    exportInfo.setFont (juce::FontOptions (13.0f));
+    exportInfo.setTooltip ("Exactly what Export chord renders: the chord, its notes and the octave (C3 = middle C on the MPC). "
+                           "The lowest note is also at the end of the file name.");
+    addAndMakeVisible (exportInfo);
     for (int i = 0; i < 7; ++i)
     {
         auto* b = chordButtons.add (new juce::TextButton());
@@ -375,7 +379,7 @@ MainComponent::MainComponent()
     inversionBox.setSelectedId (1, juce::dontSendNotification);
     inversionBox.setTooltip ("Play / export the chord inverted: the lowest notes move up an octave");
     inversionBox.onChange = [this] { updateChordRow(); };
-    exportChordButton.setTooltip ("Render the selected chord (this octave + inversion, with the recipe's processing) into 'Chord Picks'");
+    exportChordButton.setTooltip ("Render the selected chord - shown in the EXPORT line above (this octave + inversion, with the recipe's processing) into 'Chord Picks'");
     exportChordButton.onClick = [this] { exportChords ({ selectedChord }); };
     exportRowButton.setTooltip ("Render all 7 chords of the key (this octave + inversion) into 'Chord Picks'");
     exportRowButton.onClick = [this] { exportChords ({ 0, 1, 2, 3, 4, 5, 6 }); };
@@ -534,6 +538,8 @@ void MainComponent::resized()
     keyboard.setLowestVisibleKey (21);
     area.removeFromBottom (6);
     auto chordRow = area.removeFromBottom (30);
+    area.removeFromBottom (2);
+    exportInfo.setBounds (area.removeFromBottom (18).withTrimmedLeft (52));
     chordRowLabel.setBounds (chordRow.removeFromLeft (52));
     exportRowButton.setBounds (chordRow.removeFromRight (100)); chordRow.removeFromRight (4);
     exportChordButton.setBounds (chordRow.removeFromRight (100)); chordRow.removeFromRight (6);
@@ -1152,6 +1158,7 @@ const ProgressionSet* MainComponent::selectedProgressionSet (bool orFirst) const
 
 void MainComponent::updateChordRow()
 {
+    struct ShowInfo { MainComponent& m; ~ShowInfo() { m.updateExportInfo(); } } showInfo { *this };
     auto i = styleBox.getSelectedItemIndex();
     if (! juce::isPositiveAndBelow (i, styles.size())) return;
     const auto st = styles[i];
@@ -1205,6 +1212,22 @@ void MainComponent::updateChordRow()
     chordRowLabel.setText (pitchClassName (currentTonic()), juce::dontSendNotification);
     chordRowLabel.setTooltip ("Chords of " + pitchClassName (currentTonic()) + " " + (scaleBox.getSelectedId() > 1 ? scaleBox.getText() : st.scale)
                               + (keyBox.getSelectedId() <= 1 ? " (pick a Key to change it)" : ""));
+}
+
+void MainComponent::updateExportInfo()
+{
+    auto spec = chordSpec (selectedChord);
+    if (spec.notes.empty()) { exportInfo.setText ({}, juce::dontSendNotification); return; }
+    const int ps = spec.processing.pitchShift;
+    juce::StringArray notes;
+    for (auto& n : spec.notes) notes.add (midiNoteName (n.note + ps));
+    const int octave = chordOctaveBox.getSelectedId();
+    const auto first = chordSpec (0), last = chordSpec ((int) currentChords.size() - 1);
+    exportInfo.setText ("EXPORT  Octave " + juce::String (octave) + ":  " + spec.label + " " + inversionBox.getText().toLowerCase()
+                        + " = " + notes.joinIntoString (" ") + "      All " + juce::String ((int) currentChords.size()) + ": roots "
+                        + midiNoteName (first.rootNote) + " to " + midiNoteName (last.rootNote)
+                        + "      (C3 = middle C)", juce::dontSendNotification);
+    exportInfo.setColour (juce::Label::textColourId, accent.brighter (0.4f));
 }
 
 SampleSpec MainComponent::chordSpec (int index) const
@@ -1288,6 +1311,17 @@ void MainComponent::exportChords (const std::vector<int>& indices)
     auto scaleName = scaleBox.getSelectedId() > 1 ? scaleBox.getText() : req.style.scale;
     req.outputFolder = outputFolder.getChildFile ("Chord Picks")
                            .getChildFile (safeFileName (req.style.name) + "_" + pitchClassName (currentTonic()) + "_" + scaleName);
+    {
+        juce::StringArray what;
+        for (auto& sp : specs)
+        {
+            juce::StringArray notes;
+            for (auto& n : sp.notes) notes.add (midiNoteName (n.note + sp.processing.pitchShift));
+            what.add (sp.label + " (" + notes.joinIntoString (" ") + ")");
+        }
+        log ("Exporting in Octave " + juce::String (chordOctaveBox.getSelectedId()) + ", " + inversionBox.getText().toLowerCase()
+             + ": " + what.joinIntoString (", "));
+    }
     startJob (std::move (req), std::move (specs), false);
 }
 

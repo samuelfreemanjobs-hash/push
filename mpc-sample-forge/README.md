@@ -89,6 +89,9 @@ chord types wherever they fit the key.
   `Chord Picks/<recipe>_<key>_<scale>/`, e.g. `03_EPBell_III-Ebmaj7_inv1_G2.wav`. Earlier
   exports are never overwritten.
 * "Random keys" previews in C; pick a Key to change it.
+* The **EXPORT** line above the chord buttons shows exactly what will be exported: the octave,
+  the chord and its notes (e.g. `Octave 2: v-Gm root position = G2 Bb2 D3`, C3 = middle C).
+  The log repeats it on export, and the lowest note ends each file name (`…_G2.wav`).
 
 ## Progression banks
 
