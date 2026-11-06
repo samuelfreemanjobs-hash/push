@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "PresetSweepPanel.h"
 #include "QueuePanel.h"
+#include <map>
 #include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
@@ -52,6 +53,16 @@ namespace
         void closeButtonPressed() override { if (closed) juce::MessageManager::callAsync (closed); }
         std::function<void()> closed;
     };
+}
+
+static const std::vector<std::pair<const char*, const char*>>& gridTypes()
+{
+    static const std::vector<std::pair<const char*, const char*>> t {
+        { "maj", "Maj" }, { "min", "m" }, { "7", "7" }, { "maj7", "M7" }, { "m7", "m7" }, { "6", "6" },
+        { "m6", "m6" }, { "9", "9" }, { "maj9", "M9" }, { "m9", "m9" }, { "m11", "m11" }, { "13", "13" },
+        { "sus2", "sus2" }, { "sus4", "sus4" }, { "7sus4", "7sus4" }, { "add9", "add9" }, { "dim", "dim" }, { "dim7", "dim7" },
+        { "m7b5", "m7b5" }, { "aug", "aug" }, { "69", "6/9" }, { "7s9", "7#9" }, { "5", "5 (pow)" }, { "note", "Note" } };
+    return t;
 }
 
 MainComponent::MainComponent()
@@ -136,12 +147,48 @@ MainComponent::MainComponent()
         addAndMakeVisible (b);
 
     // ---------------------------------------------------------- style
-    styles = builtInStyles();
-    for (int i = 0; i < styles.size(); ++i)
-        styleBox.addItem (styles[i].name, i + 1);
+    {
+        // grouped under headings so a recipe is easy to find; the order of `styles` matches the menu
+        static const std::vector<std::pair<const char*, const char*>> groups {
+            { "Genres (a mix of chords and notes)", "neo-soul lofi trap drill rnb gospel house jazz boom-bap afrobeats pop cinematic ambient synthwave" },
+            { "Kits (several recipes in one batch)", "westcoast-kit memphis-kit atlanta-kit guide-palette one-shot-palette" },
+            { "Progressions & chord sets", "trap-progressions soul-chords ninth-chords screw-rnb gospel-rnb-90s smooth-jazz-chords rnb-80s-chords vaporwave chillwave phonkwave" },
+            { "Keys, electric piano & organ", "wiz-ep gfunk-ep jetlife-ep-bell wurli-keys clav-funk zaytoven-organ memphis-organ organ-stabs" },
+            { "Bells & music box", "bell-tines phonk-cowbell horror-musicbox" },
+            { "Strings, brass & horns", "ross-lux-strings ross-lux-brass jeezy-strings jeezy-brass trap-brass trap-brass-stabs trap-pizz pizz-strings luxury-harp smooth-jazz-sax" },
+            { "Synths & leads", "gucci-synth shawty-redd-synth juicyj-strip-synth lead-synth gfunk-lead talkbox-lead detuned-synth plucks polyester-pluck" },
+            { "Pads, choirs & textures", "smooth-jazz-pad sade-pad choir screwed-choir mellotron-flute" },
+            { "Bass & 808", "808-bass bassline moog-bass rhodes-bass log-drum" },
+            { "Scale banks (every pad in key)", "scale-notes trap-scale" } };
+        auto all = builtInStyles();
+        juce::StringArray used;
+        for (auto& [heading, ids] : groups)
+        {
+            bool headed = false;
+            for (auto& id : juce::StringArray::fromTokens (ids, " ", ""))
+                for (auto& st : all)
+                    if (st.id == id && ! used.contains (id))
+                    {
+                        if (! headed) { styleBox.addSectionHeading (heading); headed = true; }
+                        styles.add (st);
+                        styleBox.addItem (st.name, styles.size());
+                        used.add (id);
+                    }
+        }
+        bool otherHeaded = false;
+        for (auto& st : all)
+            if (! used.contains (st.id))
+            {
+                if (! otherHeaded) { styleBox.addSectionHeading ("Other"); otherHeaded = true; }
+                styles.add (st);
+                styleBox.addItem (st.name, styles.size());
+            }
+    }
     {
         juce::StringArray errors;
-        for (auto& mine : StyleEditor::loadUserStyles (errors))
+        auto mineList = StyleEditor::loadUserStyles (errors);
+        if (! mineList.isEmpty()) styleBox.addSectionHeading ("Your styles");
+        for (auto& mine : mineList)
         {
             styles.add (mine);
             styleBox.addItem (mine.name.endsWith ("(mine)") ? mine.name : mine.name + " (mine)", styles.size());
@@ -393,10 +440,10 @@ MainComponent::MainComponent()
         b->setTooltip ("Click to hear this chord through the current instrument (raw: the recipe's FX are added on export)");
         addAndMakeVisible (b);
     }
-    for (int oct = 1; oct <= 5; ++oct) chordOctaveBox.addItem ("Oct " + juce::String (oct) + " (C" + juce::String (oct) + ")", oct);
-    chordOctaveBox.setSelectedId (juce::jlimit (1, 5, settings->getIntValue ("chordOctave", 2)), juce::dontSendNotification);
+    for (int oct = 0; oct <= 6; ++oct) chordOctaveBox.addItem ("Oct " + juce::String (oct) + " (C" + juce::String (oct) + ")", oct + 1);
+    chordOctaveBox.setSelectedId (juce::jlimit (0, 6, settings->getIntValue ("chordOctave", 2)) + 1, juce::dontSendNotification);
     chordOctaveBox.setTooltip ("Which octave the chords are previewed and exported in (C3 = middle C on the MPC)");
-    chordOctaveBox.onChange = [this] { props.getUserSettings()->setValue ("chordOctave", chordOctaveBox.getSelectedId()); updateChordRow(); };
+    chordOctaveBox.onChange = [this] { props.getUserSettings()->setValue ("chordOctave", chordOctaveBox.getSelectedId() - 1); updateChordRow(); };
     inversionBox.addItem ("Root position", 1);
     inversionBox.addItem ("1st inversion", 2);
     inversionBox.addItem ("2nd inversion", 3);
@@ -405,7 +452,7 @@ MainComponent::MainComponent()
     inversionBox.setTooltip ("Play / export the chord inverted: the lowest notes move up an octave");
     inversionBox.onChange = [this] { updateChordRow(); };
     exportChordButton.setTooltip ("Render the selected chord - shown in the EXPORT line above (this octave + inversion, with the recipe's processing) into 'Chord Picks'");
-    exportChordButton.onClick = [this] { exportChords ({ selectedChord }); };
+    exportChordButton.onClick = [this] { exportSpecs ({ specForChord (currentGridChord(), 1) }, "the selected chord"); };
     exportRowButton.setTooltip ("Render all 7 chords of the key (this octave + inversion) into 'Chord Picks'");
     exportRowButton.onClick = [this] { exportChords ({ 0, 1, 2, 3, 4, 5, 6 }); };
     for (auto* c : std::initializer_list<juce::Component*> { &chordOctaveBox, &inversionBox, &exportChordButton, &exportRowButton })
@@ -416,9 +463,83 @@ MainComponent::MainComponent()
         cb->onChange = [this, previous] { if (previous) previous(); updateChordRow(); };
     }
 
+    // ---------------------------------------------------------- chord grid (DR-5 style) + palette
+    gridRootLabel.setText ("Root", juce::dontSendNotification);
+    gridTypeLabel.setText ("Type", juce::dontSendNotification);
+    for (auto* l : { &gridRootLabel, &gridTypeLabel }) { l->setColour (juce::Label::textColourId, dim); addAndMakeVisible (l); }
+    for (int r = 0; r < 12; ++r)
+    {
+        auto* b = rootButtons.add (new juce::TextButton (pitchClassName (r)));
+        b->setTooltip ("Root " + pitchClassName (r) + ": plays it with the selected type (brighter = in your key)");
+        b->onClick = [this, r] { gridRoot = r; playGridChord(); };
+        addAndMakeVisible (b);
+    }
+    for (size_t t = 0; t < gridTypes().size(); ++t)
+    {
+        auto id = juce::String (gridTypes()[t].first);
+        auto* b = typeButtons.add (new juce::TextButton (gridTypes()[t].second));
+        b->setTooltip (id == "note" ? juce::String ("A single note on the root") : "Chord type " + juce::String (gridTypes()[t].second)
+                                                                                + " (brighter = fits your key on this root)");
+        b->onClick = [this, id] { gridQuality = id; playGridChord(); };
+        addAndMakeVisible (b);
+    }
+    voicingBox.addItem ("Close", 1); voicingBox.addItem ("Drop 2", 2); voicingBox.addItem ("Open", 3);
+    voicingBox.addItem ("Spread", 4); voicingBox.addItem ("Rootless", 5); voicingBox.addItem ("Shell", 6);
+    voicingBox.setSelectedId (juce::jlimit (1, 6, settings->getIntValue ("gridVoicing", 1)), juce::dontSendNotification);
+    voicingBox.setTooltip ("How the chord's notes are spread (the lowest note stays in the selected octave)");
+    voicingBox.onChange = [this] { props.getUserSettings()->setValue ("gridVoicing", voicingBox.getSelectedId()); updateExportInfo(); };
+    addPaletteButton.setTooltip ("Add the selected chord - exactly as you hear it (octave, voicing, inversion) - to the palette");
+    addPaletteButton.onClick = [this] { addToPalette(); };
+    undoPaletteButton.onClick = [this] { if (! palette.empty()) { log ("- Palette: " + palette.back().describe()); palette.pop_back(); savePalette(); } };
+    clearPaletteButton.onClick = [this] { palette.clear(); savePalette(); log ("Palette cleared"); };
+    exportPaletteButton.setTooltip ("Render every chord in the palette (with the recipe's sound and FX) into 'Chord Picks'");
+    exportPaletteButton.setColour (juce::TextButton::buttonColourId, accent.darker (0.4f));
+    exportPaletteButton.onClick = [this] { exportSpecs (paletteSpecs(), "the palette"); };
+    usePaletteToggle.setTooltip ("Generate renders exactly the palette - nothing random (count, Smart Pick and Variety are ignored)");
+    usePaletteToggle.setToggleState (settings->getBoolValue ("usePalette", false), juce::dontSendNotification);
+    usePaletteToggle.onClick = [this] { props.getUserSettings()->setValue ("usePalette", usePaletteToggle.getToggleState()); planSignature = {}; };
+    exactPreviewToggle.setTooltip ("On: chord clicks and Audition are rendered exactly like the batch (recipe FX, length, envelope) - "
+                                   "what you hear is what you get. Off: played live on the instrument (instant, no FX).");
+    exactPreviewToggle.setToggleState (settings->getBoolValue ("exactPreview", true), juce::dontSendNotification);
+    exactPreviewToggle.onClick = [this] { props.getUserSettings()->setValue ("exactPreview", exactPreviewToggle.getToggleState()); };
+    paletteLabel.setColour (juce::Label::textColourId, text);
+    paletteLabel.setMinimumHorizontalScale (0.6f);
+    for (auto* c : std::initializer_list<juce::Component*> { &voicingBox, &addPaletteButton, &undoPaletteButton, &clearPaletteButton,
+                                                             &exportPaletteButton, &usePaletteToggle, &exactPreviewToggle, &paletteLabel })
+        addAndMakeVisible (c);
+    for (auto& item : juce::StringArray::fromTokens (settings->getValue ("palette"), ";", ""))
+    {
+        PaletteChord c;
+        if (PaletteChord::fromString (item, c)) palette.push_back (c);
+    }
+
+    // ---------------------------------------------------------- octaves for Generate
+    octaveRangeBox.addItem ("Octaves: recipe's", 1);
+    for (int o = 0; o <= 6; ++o) octaveRangeBox.addItem ("Octave " + juce::String (o) + " (C" + juce::String (o) + "-B" + juce::String (o) + ")", 10 + o);
+    for (int o = 0; o <= 5; ++o) octaveRangeBox.addItem ("Octaves " + juce::String (o) + "-" + juce::String (o + 1), 100 + o * 10 + o + 1);
+    octaveRangeBox.setSelectedId (settings->getIntValue ("octaveRange", 1), juce::dontSendNotification);
+    if (octaveRangeBox.getSelectedId() == 0) octaveRangeBox.setSelectedId (1, juce::dontSendNotification);
+    octaveRangeBox.setTooltip ("Which octave(s) Generate makes notes and chords in: the lowest note of every sample lands there "
+                               "(C3 = middle C on the MPC). 'Recipe's' = each recipe's own range.");
+    octaveRangeBox.onChange = [this] { props.getUserSettings()->setValue ("octaveRange", octaveRangeBox.getSelectedId()); };
+    addAndMakeVisible (octaveRangeBox);
+
+    // ---------------------------------------------------------- what Generate will make
+    nextGenerateLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffd166));
+    nextGenerateLabel.setColour (juce::Label::backgroundColourId, panel);
+    nextGenerateLabel.setJustificationType (juce::Justification::topLeft);
+    nextGenerateLabel.setMinimumHorizontalScale (0.8f);
+    nextGenerateLabel.setFont (juce::FontOptions (12.5f));
+    nextGenerateLabel.setTooltip ("Exactly what the Generate button will render with the current settings. Audition Random plays samples from this list.");
+    addAndMakeVisible (nextGenerateLabel);
+    planWatcher = std::make_unique<juce::TimedCallback> ([this] { updatePlanSummary(); });
+    planWatcher->startTimer (400);
+    auditionOctaveBox.setVisible (false); // replaced by the Octaves menu, which Generate and Audition share
+
     // ---------------------------------------------------------- audio
     deviceManager.initialiseWithDefaultDevices (0, 2);
     deviceManager.addAudioCallback (&player);
+    deviceManager.addAudioCallback (&previewPlayer);  // exact previews play alongside the live instrument
     for (auto& m : juce::MidiInput::getAvailableDevices())
     {
         deviceManager.setMidiInputDeviceEnabled (m.identifier, true);
@@ -427,8 +548,10 @@ MainComponent::MainComponent()
 
     {
         // a saved style may have been deleted since: fall back to the first one
-        auto saved = settings->getIntValue ("styleIndex", 0);
-        styleBox.setSelectedItemIndex (juce::isPositiveAndBelow (saved, styles.size()) ? saved : 0, juce::sendNotificationSync);
+        auto savedId = settings->getValue ("styleId");
+        int saved = 0;
+        for (int k = 0; k < styles.size(); ++k) if (styles[k].id == savedId) { saved = k; break; }
+        styleBox.setSelectedItemIndex (saved, juce::sendNotificationSync);
     }
 
     auto lastPlugin = settings->getValue ("plugin");
@@ -448,11 +571,14 @@ MainComponent::MainComponent()
     log ("Quick rounds: Batch 16, Generate, keep what you like in Review, then '+16 More'. Octave copies: make them for keepers in Review.");
     updateEstimate();
     updateChordRow();
-    setSize (980, 800);
+    setSize (980, 920);
 }
 
 MainComponent::~MainComponent()
 {
+    planWatcher.reset();
+    previewPlayer.setSource (nullptr);
+    deviceManager.removeAudioCallback (&previewPlayer);
     queueWindow.reset();
     queueRunning = false;
     sweepWindow.reset();
@@ -541,11 +667,12 @@ void MainComponent::resized()
 
     r = row();
     engineLabel.setBounds (r.removeFromLeft (labelW));
-    engineBox.setBounds (r.removeFromLeft (180)); r.removeFromLeft (20);
-    rootLabel.setBounds (r.removeFromLeft (110));
+    engineBox.setBounds (r.removeFromLeft (160)); r.removeFromLeft (10);
+    rootLabel.setBounds (r.removeFromLeft (100));
     rootBox.setBounds (r.removeFromLeft (150)); r.removeFromLeft (6);
-    lengthBox.setBounds (r.removeFromLeft (130)); r.removeFromLeft (12);
-    banksToggle.setBounds (r.removeFromLeft (140));
+    lengthBox.setBounds (r.removeFromLeft (120)); r.removeFromLeft (8);
+    banksToggle.setBounds (r.removeFromLeft (124)); r.removeFromLeft (6);
+    octaveRangeBox.setBounds (r);
 
     r = row();
     outLabel.setBounds (r.removeFromLeft (labelW));
@@ -561,17 +688,54 @@ void MainComponent::resized()
     addQueueButton.setBounds (r.removeFromRight (106)); r.removeFromRight (6);
     moreButton.setBounds (r.removeFromRight (80)); r.removeFromRight (6);
     reviewButton.setBounds (r.removeFromRight (78)); r.removeFromRight (6);
-    auditionOctaveBox.setBounds (r.removeFromRight (140)); r.removeFromRight (4);
     auditionButton.setBounds (r.removeFromRight (124)); r.removeFromRight (6);
     planButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     estimateLabel.setVisible (false); // the estimate shows inside the progress bar while idle
     progressBar.setBounds (r);
 
-    keyboard.setBounds (area.removeFromBottom (80));
+    keyboard.setBounds (area.removeFromBottom (64));
     keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f); // 88 keys = 52 white keys
     keyboard.setLowestVisibleKey (21);
     area.removeFromBottom (6);
-    auto chordRow = area.removeFromBottom (30);
+
+    // palette row
+    auto paletteRow = area.removeFromBottom (28);
+    area.removeFromBottom (4);
+    addPaletteButton.setBounds (paletteRow.removeFromLeft (90)); paletteRow.removeFromLeft (4);
+    undoPaletteButton.setBounds (paletteRow.removeFromLeft (56)); paletteRow.removeFromLeft (4);
+    clearPaletteButton.setBounds (paletteRow.removeFromLeft (56)); paletteRow.removeFromLeft (8);
+    exportPaletteButton.setBounds (paletteRow.removeFromRight (120)); paletteRow.removeFromRight (6);
+    usePaletteToggle.setBounds (paletteRow.removeFromRight (172)); paletteRow.removeFromRight (6);
+    paletteLabel.setBounds (paletteRow);
+
+    // chord types: two rows of 12
+    auto typeRow2 = area.removeFromBottom (24);
+    area.removeFromBottom (3);
+    auto typeRow1 = area.removeFromBottom (24);
+    area.removeFromBottom (3);
+    gridTypeLabel.setBounds (typeRow1.removeFromLeft (52));
+    typeRow2.removeFromLeft (52);
+    for (int t = 0; t < typeButtons.size(); ++t)
+    {
+        auto& rowArea = t < 12 ? typeRow1 : typeRow2;
+        auto w = rowArea.getWidth() / (12 - (t % 12));
+        typeButtons[t]->setBounds (rowArea.removeFromLeft (w).reduced (1, 0));
+    }
+
+    // roots + voicing + preview mode
+    auto rootRow = area.removeFromBottom (24);
+    area.removeFromBottom (4);
+    gridRootLabel.setBounds (rootRow.removeFromLeft (52));
+    exactPreviewToggle.setBounds (rootRow.removeFromRight (112)); rootRow.removeFromRight (4);
+    voicingBox.setBounds (rootRow.removeFromRight (110)); rootRow.removeFromRight (8);
+    for (int k = 0; k < rootButtons.size(); ++k)
+    {
+        auto w = rootRow.getWidth() / (12 - k);
+        rootButtons[k]->setBounds (rootRow.removeFromLeft (w).reduced (1, 0));
+    }
+
+    // the key's 7 chords + octave / inversion / export
+    auto chordRow = area.removeFromBottom (28);
     area.removeFromBottom (2);
     exportInfo.setBounds (area.removeFromBottom (18).withTrimmedLeft (52));
     chordRowLabel.setBounds (chordRow.removeFromLeft (52));
@@ -581,6 +745,8 @@ void MainComponent::resized()
     chordOctaveBox.setBounds (chordRow.removeFromRight (110)); chordRow.removeFromRight (6);
     auto bw = chordRow.getWidth() / 7;
     for (int i = 0; i < chordButtons.size(); ++i) chordButtons[i]->setBounds (chordRow.removeFromLeft (bw).reduced (2, 0));
+    area.removeFromBottom (4);
+    nextGenerateLabel.setBounds (area.removeFromBottom (44));
     area.removeFromBottom (6);
     logView.setBounds (area);
 }
@@ -741,6 +907,7 @@ void MainComponent::styleChanged()
                                + set->alt1.text + " / " + set->alt2.text + ".  " + set->tip, juce::dontSendNotification);
     if (progressionBox.isVisible() != library) { progressionBox.setVisible (library); resized(); }
     props.getUserSettings()->setValue ("styleIndex", i);
+    props.getUserSettings()->setValue ("styleId", styles[i].id);
     lastPlan.clear();
     applyLiveEngine();
     updateChordRow();
@@ -764,7 +931,7 @@ void MainComponent::loadStyleJson()
                           });
 }
 
-bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& specs)
+bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& specs, bool quiet)
 {
     auto i = styleBox.getSelectedItemIndex();
     if (! juce::isPositiveAndBelow (i, styles.size()) || instrument == nullptr) return false;
@@ -794,6 +961,13 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
         default: break;
     }
     req.roundRobins = juce::jlimit (1, 4, takesBox.getSelectedId());
+    {
+        auto o = octaveRangeBox.getSelectedId();
+        if (o >= 100) { req.plan.octaveLow = (o - 100) / 10; req.plan.octaveHigh = (o - 100) % 10; }
+        else if (o >= 10) req.plan.octaveLow = req.plan.octaveHigh = o - 10;
+    }
+    req.plan.usePalette = usePaletteToggle.getToggleState() && ! palette.empty();
+    if (req.plan.usePalette) req.plan.palette = palette;
     req.instrumentName = instrument->getName();
     req.plan.engine = selectedEngine();
     req.plan.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
@@ -811,8 +985,81 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
 
     juce::StringArray notes;
     const bool ok = planBatch (req, smartPickToggle.getToggleState(), specs, notes);
-    for (auto& n : notes) log (n);
+    if (! quiet) for (auto& n : notes) log (n);
     return ok;
+}
+
+static juce::String chordTypeOf (const SampleSpec& s)
+{
+    auto label = s.label;
+    if (s.kind == "KeyStab") return "triad stab";
+    if (label.contains ("-") && label.upToFirstOccurrenceOf ("-", false, false).containsOnly ("iIvVb#"))
+        label = label.fromFirstOccurrenceOf ("-", false, false);                       // "ii-Dm9" -> "Dm9"
+    if (label.contains ("-")) label = label.upToFirstOccurrenceOf ("-", false, false); // palette "Cm9-C2" -> "Cm9"
+    auto rootLen = label.length() > 1 && (label[1] == 'b' || label[1] == '#') ? 2 : 1;
+    auto type = label.substring (rootLen);
+    return type.isEmpty() ? juce::String ("maj") : type;
+}
+
+juce::String MainComponent::describePlan (const BatchRequest& req, const std::vector<SampleSpec>& specs) const
+{
+    if (specs.empty()) return "NEXT GENERATE: nothing can be planned with these settings.";
+    int chords = 0, singles = 0, lowest = 127, highest = 0;
+    std::map<juce::String, int> types;
+    for (auto& s : specs)
+    {
+        int low = 127;
+        for (auto& n : s.notes) low = std::min (low, n.note + s.processing.pitchShift);
+        lowest = std::min (lowest, low); highest = std::max (highest, low);
+        if (s.kind == "Chord" || s.kind == "Stab") { ++chords; ++types[chordTypeOf (s)]; }
+        else ++singles;
+    }
+    std::vector<std::pair<int, juce::String>> sorted;
+    for (auto& [t, n] : types) sorted.push_back ({ n, t });
+    std::sort (sorted.begin(), sorted.end(), [] (auto& a, auto& b) { return a.first > b.first; });
+    juce::StringArray top;
+    for (size_t k = 0; k < sorted.size() && k < 6; ++k) top.add (sorted[k].second + " x" + juce::String (sorted[k].first));
+    if (sorted.size() > 6) top.add ("+" + juce::String ((int) sorted.size() - 6) + " more types");
+
+    const bool picking = req.smartPickTarget > 0;
+    const int count = picking ? req.smartPickTarget : (int) specs.size();
+    auto scale = req.plan.scale.isNotEmpty() ? req.plan.scale : req.style.scale;
+    juce::String t = "NEXT GENERATE:  ";
+    if (req.plan.usePalette) t << "your palette, exactly as picked - " << (int) specs.size() << " samples";
+    else t << count << " samples of " << req.style.name;
+    if (! req.plan.usePalette)
+        t << (req.plan.fixedRoot >= 0 ? "  (16 Levels, all on " + midiNoteName (req.plan.fixedRoot) + ")"
+              : req.plan.key == "random" ? juce::String (" in random keys") : " in " + req.plan.key + " " + scale);
+    t << "  |  lowest notes " << midiNoteName (lowest) << " to " << midiNoteName (highest)
+      << "  |  " << (req.plan.builtIn ? "Built-in " + (req.plan.engine.isNotEmpty() ? req.plan.engine : req.style.engine) : req.instrumentName)
+      << ", seed " << juce::String (req.plan.seed);
+    if (req.roundRobins > 1) t << "  |  x" << req.roundRobins << " takes";
+    if (! req.registers.empty()) t << "  |  + octave copies";
+    t << "\n" << (picking ? "Smart Pick renders " + juce::String ((int) specs.size()) + " candidates - " : juce::String())
+      << chords << " chords" << (top.isEmpty() ? juce::String() : " (" + top.joinIntoString (", ") + ")")
+      << " + " << singles << " single notes" << (picking ? " - and keeps the best " + juce::String (req.smartPickTarget) : juce::String())
+      << ".  Audition Random plays from this exact list.";
+    return t;
+}
+
+void MainComponent::updatePlanSummary()
+{
+    if (job != nullptr || sweep != nullptr || instrument == nullptr) return;
+    BatchRequest req;
+    std::vector<SampleSpec> specs;
+    if (! buildRequest (req, specs, true)) { nextGenerateLabel.setText ("NEXT GENERATE: nothing can be planned with these settings.", juce::dontSendNotification); return; }
+    juce::String signature = req.style.id + "|" + juce::String (req.smartPickTarget) + "|" + req.instrumentName + "|" + juce::String (req.roundRobins)
+                             + "|" + juce::String ((int) req.registers.size());
+    for (auto& sp : specs)
+    {
+        signature << sp.fileStem << sp.engine;
+        for (auto& n : sp.notes) signature << n.note << ",";
+    }
+    if (signature == planSignature) return;
+    planSignature = signature;
+    lastPlan = specs;   // Audition plays from exactly what Generate will make
+    nextGenerateLabel.setText (describePlan (req, specs), juce::dontSendNotification);
+    updateEstimate();
 }
 
 void MainComponent::previewPlan()
@@ -828,46 +1075,9 @@ void MainComponent::previewPlan()
 void MainComponent::auditionSpec (int index)
 {
     if (! juce::isPositiveAndBelow (index, (int) lastPlan.size()) || job != nullptr) return;
-    auto spec = lastPlan[(size_t) index];
-
-    // play it in the chosen octave: the lowest note lands in that octave (60 = C3)
-    auto octaveId = auditionOctaveBox.getSelectedId();
-    int octave = octaveId == 2 ? chordOctaveBox.getSelectedId() : octaveId >= 10 ? octaveId - 10 : -99;
-    if (octave > -99 && ! spec.notes.empty())
-    {
-        int lowest = 127;
-        for (auto& n : spec.notes) lowest = std::min (lowest, n.note);
-        const int base = 12 * (octave + 2);
-        const int shift = -12 * (int) std::floor ((lowest - base) / 12.0);
-        SampleSpec moved;
-        if (shift != 0 && transposeSpec (spec, shift, moved)) spec = moved;
-    }
-    log ("> " + describeSpec (spec));
-
-    if (auto* b = dynamic_cast<BuiltInSynth*> (instrument.get()))
-    {
-        Engine r;
-        if (parseEngine (spec.engine, r)) b->setEngine (r);
-        b->setVariation (spec.variation);
-    }
-
-    auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    auto& collector = player.getMidiMessageCollector();
-    for (auto& n : spec.notes)
-    {
-        auto on = juce::MidiMessage::noteOn (1, n.note, (juce::uint8) n.velocity);
-        on.setTimeStamp (now);
-        collector.addMessageToQueue (on);
-        // schedule note-offs on the message thread
-        juce::Timer::callAfterDelay ((int) ((n.startSec + n.lengthSec) * 1000.0),
-                                     [safe = juce::Component::SafePointer<MainComponent> (this), note = n.note]
-                                     {
-                                         if (safe == nullptr) return;
-                                         auto off = juce::MidiMessage::noteOff (1, note);
-                                         off.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
-                                         safe->player.getMidiMessageCollector().addMessageToQueue (off);
-                                     });
-    }
+    // a sample from the exact list Generate will render (see the NEXT GENERATE line)
+    previewSpec (lastPlan[(size_t) index], "#" + juce::String (index + 1) + " of " + juce::String ((int) lastPlan.size()) + ": "
+                                            + lastPlan[(size_t) index].fileStem);
 }
 
 void MainComponent::setBusy (bool busy)
@@ -904,6 +1114,7 @@ void MainComponent::generateOrCancel()
     BatchRequest req;
     std::vector<SampleSpec> specs;
     if (! buildRequest (req, specs)) return;
+    log (describePlan (req, specs).upToFirstOccurrenceOf ("\n", false, false).replace ("NEXT GENERATE:", "GENERATING:"));
 
     startJob (std::move (req), std::move (specs), true);
 }
@@ -1248,89 +1459,240 @@ void MainComponent::updateChordRow()
                               + (keyBox.getSelectedId() <= 1 ? " (pick a Key to change it)" : ""));
 }
 
-void MainComponent::updateExportInfo()
+// The chord grid (Boss DR-5 style): pick a root, pick a type, hear it - exactly as it will be
+// exported. The 7 chord buttons above are shortcuts to the key's own chords.
+PaletteChord MainComponent::currentGridChord() const
 {
-    auto spec = chordSpec (selectedChord);
-    if (spec.notes.empty()) { exportInfo.setText ({}, juce::dontSendNotification); return; }
-    const int ps = spec.processing.pitchShift;
-    juce::StringArray notes;
-    for (auto& n : spec.notes) notes.add (midiNoteName (n.note + ps));
-    const int octave = chordOctaveBox.getSelectedId();
-    const auto first = chordSpec (0), last = chordSpec ((int) currentChords.size() - 1);
-    exportInfo.setText ("EXPORT  Octave " + juce::String (octave) + ":  " + spec.label + " " + inversionBox.getText().toLowerCase()
-                        + " = " + notes.joinIntoString (" ") + "      All " + juce::String ((int) currentChords.size()) + ": roots "
-                        + midiNoteName (first.rootNote) + " to " + midiNoteName (last.rootNote)
-                        + "      (C3 = middle C)", juce::dontSendNotification);
-    exportInfo.setColour (juce::Label::textColourId, accent.brighter (0.4f));
+    PaletteChord c;
+    c.rootPc = gridRoot;
+    c.quality = gridQuality;
+    c.octave = chordOctaveBox.getSelectedId() - 1;
+    c.inversion = c.isNote() ? 0 : juce::jmax (0, inversionBox.getSelectedId() - 1);
+    c.voicing = c.isNote() ? juce::String ("close") : voicingBox.getText().isEmpty() ? juce::String ("close") : voicingIdFromBox();
+    if (auto* q = findQuality (c.quality)) c.inversion = juce::jmin (c.inversion, (int) q->intervals.size() - 1);
+    return c;
+}
+
+juce::String MainComponent::voicingIdFromBox() const
+{
+    static const char* ids[] = { "close", "drop2", "open", "spread", "rootless", "shell" };
+    return ids[juce::jlimit (0, 5, voicingBox.getSelectedId() - 1)];
+}
+
+SampleSpec MainComponent::specForChord (const PaletteChord& c, int number) const
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) return {};
+    // planned exactly as Generate plans a palette: same sound, same notes, same processing
+    PlanOptions o;
+    o.usePalette = true;
+    o.palette = { c };
+    o.seed = seedEditor.getText().getLargeIntValue();          // the same timbre for preview and export
+    o.engine = selectedEngine();
+    o.shortNames = true;
+    juce::String err;
+    auto specs = planSamples (styles[i], o, err);
+    if (specs.empty()) return {};
+    auto s = specs.front();
+    auto tag = styles[i].shortTag.isNotEmpty() ? styles[i].shortTag : styles[i].tag;
+    s.stemHead = {};
+    s.stemTail = tag + "_" + s.label + (c.isNote() ? juce::String() : "_" + s.voicing);
+    s.index = number;
+    s.fileStem = safeFileName (juce::String (number).paddedLeft ('0', 2) + "_" + s.stemTail);
+    return s;
 }
 
 SampleSpec MainComponent::chordSpec (int index) const
 {
-    SampleSpec s;
-    auto i = styleBox.getSelectedItemIndex();
-    if (! juce::isPositiveAndBelow (index, (int) currentChords.size()) || ! juce::isPositiveAndBelow (i, styles.size())) return s;
-    const auto st = styles[i];
-    auto& c = currentChords[(size_t) index];
-    auto octave = chordOctaveBox.getSelectedId();
-    auto inversion = juce::jmin (inversionBox.getSelectedId() - 1, (int) c.intervals.size() - 1);
-    auto root = c.rootPc + 12 * (octave + 2);                // sounding root (60 = C3)
-    auto sounding = invertChord (root, c.intervals, inversion);
+    if (! juce::isPositiveAndBelow (index, (int) currentChords.size())) return {};
+    return specForChord (diatonicAsPalette (currentChords[(size_t) index]), index + 1);
+}
 
-    s.kind = "Chord";
-    s.label = c.roman + "-" + c.name;
-    s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
-    s.rootNote = root;
-    s.styleId = st.id; s.tag = st.tag; s.shortTag = st.shortTag;
-    s.processing = st.processing;
-    auto engine = selectedEngine();
-    s.engine = engine.isNotEmpty() && engine != "mixed" ? engine : (st.engine == "mixed" ? juce::String ("epiano") : st.engine);
-    s.variation = juce::Random::getSystemRandom().nextInt64();
-    auto velocity = (st.velocityLow + st.velocityHigh) / 2;
-    auto hold = (st.holdLow + st.holdHigh) * 0.5;
-    for (auto n : sounding) s.notes.push_back ({ n - st.processing.pitchShift, velocity, 0.0, hold }); // played so it sounds right after varispeed
-    auto tag = st.shortTag.isNotEmpty() ? st.shortTag : st.tag;
-    s.stemHead = {};
-    s.stemTail = tag + "_" + s.label + "_" + (inversion == 0 ? juce::String ("root") : "inv" + juce::String (inversion)) + "_" + midiNoteName (sounding.front());
-    s.index = index + 1;
-    s.fileStem = safeFileName (juce::String (index + 1).paddedLeft ('0', 2) + "_" + s.stemTail);
-    return s;
+PaletteChord MainComponent::diatonicAsPalette (const DiatonicChord& d) const
+{
+    PaletteChord c = currentGridChord();
+    c.rootPc = d.rootPc;
+    c.quality = "maj";
+    for (auto& q : allQualities())
+        if (q.intervals == d.intervals) { c.quality = q.id; break; }
+    if (findQuality (c.quality) != nullptr && findQuality (c.quality)->intervals != d.intervals)
+        c.quality = d.intervals.size() > 1 && d.intervals[1] == 3 ? "min" : "maj";
+    if (auto* q = findQuality (c.quality)) c.inversion = juce::jmin (c.inversion, (int) q->intervals.size() - 1);
+    return c;
+}
+
+void MainComponent::updateExportInfo()
+{
+    auto c = currentGridChord();
+    auto spec = specForChord (c, 1);
+    if (spec.notes.empty()) { exportInfo.setText ({}, juce::dontSendNotification); return; }
+    const int ps = spec.processing.pitchShift;
+    juce::StringArray notes;
+    for (auto& n : spec.notes) notes.add (midiNoteName (n.note + ps));
+    exportInfo.setText ("SELECTED  " + c.name() + (c.isNote() ? juce::String() : "  " + voicingBox.getText() + ", " + inversionBox.getText().toLowerCase())
+                        + "  =  " + notes.joinIntoString (" ") + "   (lowest note in Octave " + juce::String (c.octave) + "; C3 = middle C)"
+                        + "      Palette: " + juce::String ((int) palette.size()), juce::dontSendNotification);
+    exportInfo.setColour (juce::Label::textColourId, accent.brighter (0.4f));
+
+    // the grid shows what is selected, and which roots / types fit the key
+    const auto tonic = currentTonic();
+    const auto scale = currentScale();
+    const bool keyChosen = keyBox.getSelectedId() > 1;
+    for (int r = 0; r < rootButtons.size(); ++r)
+    {
+        const bool inKey = std::find (scale.begin(), scale.end(), ((r - tonic) % 12 + 12) % 12) != scale.end();
+        rootButtons[r]->setColour (juce::TextButton::buttonColourId,
+                                   r == gridRoot ? accent.withAlpha (0.75f) : (keyChosen && inKey) ? panel.brighter (0.35f) : panel.brighter (0.08f));
+    }
+    for (int t = 0; t < typeButtons.size(); ++t)
+    {
+        const auto id = juce::String (gridTypes()[(size_t) t].first);
+        bool fits = false;
+        if (id == "note") fits = std::find (scale.begin(), scale.end(), ((gridRoot - tonic) % 12 + 12) % 12) != scale.end();
+        else if (auto* q = findQuality (id)) fits = chordFitsScale (gridRoot, q->intervals, tonic, scale);
+        typeButtons[t]->setColour (juce::TextButton::buttonColourId,
+                                   id == gridQuality ? accent.withAlpha (0.75f) : (keyChosen && fits) ? panel.brighter (0.35f) : panel.brighter (0.08f));
+    }
+    juce::StringArray chips;
+    for (auto& p : palette) chips.add (p.describe());
+    paletteLabel.setText (palette.empty() ? juce::String ("Palette is empty: pick a root + type, then + Palette. Export Palette renders them; tick 'Generate uses palette' to make Generate render exactly these.")
+                                          : "Palette (" + juce::String ((int) palette.size()) + "):  " + chips.joinIntoString ("  |  "),
+                          juce::dontSendNotification);
+}
+
+void MainComponent::playGridChord()
+{
+    selectedChord = -1;
+    for (size_t k = 0; k < currentChords.size(); ++k)
+    {
+        auto d = diatonicAsPalette (currentChords[k]);
+        if (d.rootPc == gridRoot && d.quality == gridQuality) selectedChord = (int) k;
+    }
+    updateChordRow();
+    auto c = currentGridChord();
+    previewSpec (specForChord (c, 1), "Chord " + c.describe());
 }
 
 void MainComponent::playChord (int index)
 {
-    selectedChord = index;
-    updateChordRow();
-    if (job != nullptr) return;
-    auto spec = chordSpec (index);
-    if (spec.notes.empty()) return;
-    applyLiveEngine();
-    auto& collector = player.getMidiMessageCollector();
-    auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    for (auto& n : spec.notes)
+    if (! juce::isPositiveAndBelow (index, (int) currentChords.size())) return;
+    auto d = diatonicAsPalette (currentChords[(size_t) index]);
+    gridRoot = d.rootPc;
+    gridQuality = d.quality;
+    playGridChord();
+}
+
+/** Plays a sample: rendered exactly as Generate / Export renders it (recipe FX, trim, envelope),
+    or - with "Hear FX" off - played live on the instrument (instant, but without the recipe's processing). */
+void MainComponent::previewSpec (SampleSpec spec, const juce::String& what)
+{
+    if (spec.notes.empty() || job != nullptr || sweep != nullptr || instrument == nullptr) return;
+    const int ps = spec.processing.pitchShift;
+    juce::StringArray notes;
+    for (auto& n : spec.notes) notes.add (midiNoteName (n.note + ps));
+
+    if (! exactPreviewToggle.getToggleState())
     {
-        auto on = juce::MidiMessage::noteOn (1, n.note + spec.processing.pitchShift, (juce::uint8) n.velocity); // preview = sounding pitch
-        on.setTimeStamp (now);
-        collector.addMessageToQueue (on);
-        juce::Timer::callAfterDelay ((int) (n.lengthSec * 1000.0),
-            [safe = juce::Component::SafePointer<MainComponent> (this), note = on.getNoteNumber()]
-            {
-                if (safe == nullptr) return;
-                auto off = juce::MidiMessage::noteOff (1, note);
-                off.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
-                safe->player.getMidiMessageCollector().addMessageToQueue (off);
-            });
+        if (auto* b = dynamic_cast<BuiltInSynth*> (instrument.get()))
+        {
+            Engine r;
+            if (parseEngine (spec.engine, r)) b->setEngine (r);
+            b->setVariation (spec.variation);
+        }
+        auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+        auto& collector = player.getMidiMessageCollector();
+        for (auto& n : spec.notes)
+        {
+            auto on = juce::MidiMessage::noteOn (1, n.note + ps, (juce::uint8) n.velocity);
+            on.setTimeStamp (now + n.startSec);
+            collector.addMessageToQueue (on);
+            juce::Timer::callAfterDelay ((int) ((n.startSec + n.lengthSec) * 1000.0),
+                                         [safe = juce::Component::SafePointer<MainComponent> (this), note = n.note + ps]
+                                         {
+                                             if (safe == nullptr) return;
+                                             auto off = juce::MidiMessage::noteOff (1, note);
+                                             off.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+                                             safe->player.getMidiMessageCollector().addMessageToQueue (off);
+                                         });
+        }
+        log ("> " + what + "  =  " + notes.joinIntoString (" ") + "   (live, without the recipe's FX)");
+        return;
     }
-    log ("Chord " + spec.label + " (" + spec.voicing + ", " + midiNoteName (spec.notes.front().note + spec.processing.pitchShift) + " up)");
+
+    // render it offline, exactly like a batch, then play the result
+    auto* device = deviceManager.getCurrentAudioDevice();
+    RenderSettings rs;
+    rs.sampleRate = device != nullptr && device->getCurrentSampleRate() > 0 ? device->getCurrentSampleRate() : 44100.0;
+    rs.blockSize = 512;
+    rs.warmUpSec = 0;
+    rs.maxTailSec = 2.0;
+    rs.trimToSec = lengthBox.getSelectedId() == 1 ? -1.0 : lengthBox.getSelectedId() == 2 ? 0.0 : lengthBox.getSelectedId() / 1000.0;
+    player.setProcessor (nullptr);
+    if (auto* b = dynamic_cast<BuiltInSynth*> (instrument.get()))
+    {
+        b->reset();
+        Engine r;
+        if (parseEngine (spec.engine, r)) b->setEngine (r);
+        b->setVariation (spec.variation);
+    }
+    juce::AudioBuffer<float> audio;
+    juce::String error;
+    bool ok;
+    const auto started = juce::Time::getMillisecondCounterHiRes();
+    {
+        OfflineRenderer renderer (*instrument, rs);
+        ok = renderer.render (spec, audio, error);
+    }
+    player.setProcessor (instrument.get());
+    applyLiveEngine();
+    if (! ok) { log ("Preview failed: " + error); return; }
+
+    previewPlayer.setSource (nullptr);
+    previewSource = std::make_unique<juce::MemoryAudioSource> (audio, true, false);
+    previewPlayer.setSource (previewSource.get());
+    log ("> " + what + "  =  " + notes.joinIntoString (" ") + "   (exactly as it renders: " + juce::String (juce::roundToInt (audio.getNumSamples() * 1000.0 / rs.sampleRate))
+         + " ms with the recipe's FX" + (device == nullptr ? ", no audio output" : "") + ", rendered in "
+         + juce::String (juce::roundToInt (juce::Time::getMillisecondCounterHiRes() - started)) + " ms)");
+}
+
+void MainComponent::addToPalette()
+{
+    auto c = currentGridChord();
+    for (auto& p : palette)
+        if (p.toString() == c.toString()) { log ("Already in the palette: " + c.describe()); return; }
+    palette.push_back (c);
+    savePalette();
+    log ("+ Palette: " + c.describe() + "   (" + juce::String ((int) palette.size()) + ")");
+}
+
+void MainComponent::savePalette()
+{
+    juce::StringArray items;
+    for (auto& p : palette) items.add (p.toString());
+    props.getUserSettings()->setValue ("palette", items.joinIntoString (";"));
+    updateExportInfo();
+}
+
+std::vector<SampleSpec> MainComponent::paletteSpecs() const
+{
+    std::vector<SampleSpec> specs;
+    for (size_t k = 0; k < palette.size(); ++k) specs.push_back (specForChord (palette[k], (int) k + 1));
+    return specs;
 }
 
 void MainComponent::exportChords (const std::vector<int>& indices)
 {
-    if (job != nullptr || instrument == nullptr) return;
-    auto i = styleBox.getSelectedItemIndex();
-    if (! juce::isPositiveAndBelow (i, styles.size()) || currentChords.empty()) return;
-
     std::vector<SampleSpec> specs;
-    for (auto idx : indices) if (idx < (int) currentChords.size()) specs.push_back (chordSpec (idx));
+    for (auto idx : indices) if (juce::isPositiveAndBelow (idx, (int) currentChords.size())) specs.push_back (chordSpec (idx));
+    exportSpecs (std::move (specs), "the key's chords");
+}
+
+void MainComponent::exportSpecs (std::vector<SampleSpec> specs, const juce::String& what)
+{
+    if (job != nullptr || sweep != nullptr || instrument == nullptr) return;
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) return;
+    specs.erase (std::remove_if (specs.begin(), specs.end(), [] (const SampleSpec& s) { return s.notes.empty(); }), specs.end());
     if (specs.empty()) return;
 
     BatchRequest req;
@@ -1342,19 +1704,20 @@ void MainComponent::exportChords (const std::vector<int>& indices)
     req.render.bitDepth = bitsBox.getSelectedId();
     req.render.normalise = levelBox.getSelectedId() != 3;
     req.render.loudnessMatch = false; // single picks: keep their natural peak level
+    req.render.trimToSec = lengthBox.getSelectedId() == 1 ? -1.0 : lengthBox.getSelectedId() == 2 ? 0.0 : lengthBox.getSelectedId() / 1000.0;
+    req.roundRobins = juce::jlimit (1, 4, takesBox.getSelectedId());
     auto scaleName = scaleBox.getSelectedId() > 1 ? scaleBox.getText() : req.style.scale;
     req.outputFolder = outputFolder.getChildFile ("Chord Picks")
                            .getChildFile (safeFileName (req.style.name) + "_" + pitchClassName (currentTonic()) + "_" + scaleName);
     {
-        juce::StringArray what;
+        juce::StringArray list;
         for (auto& sp : specs)
         {
             juce::StringArray notes;
             for (auto& n : sp.notes) notes.add (midiNoteName (n.note + sp.processing.pitchShift));
-            what.add (sp.label + " (" + notes.joinIntoString (" ") + ")");
+            list.add (sp.label + " [" + notes.joinIntoString (" ") + "]");
         }
-        log ("Exporting in Octave " + juce::String (chordOctaveBox.getSelectedId()) + ", " + inversionBox.getText().toLowerCase()
-             + ": " + what.joinIntoString (", "));
+        log ("Exporting " + what + " (" + juce::String ((int) specs.size()) + "): " + list.joinIntoString (", "));
     }
     startJob (std::move (req), std::move (specs), false);
 }

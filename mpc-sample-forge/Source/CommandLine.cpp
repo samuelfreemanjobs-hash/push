@@ -92,6 +92,10 @@ juce::String cliHelpText()
       << "  --loudness                level all files to the same perceived loudness (LUFS)\n"
       << "                            instead of the same peak, so pads play evenly\n"
       << "  --short-names             014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3\n"
+      << "  --octaves <n | lo-hi>     keep every chord root and note in these MPC octaves, e.g. 2 or 2-3\n"
+      << "                            (C3 = middle C)\n"
+      << "  --palette \"<chords>\"      render exactly these, nothing random: chord symbols with optional\n"
+      << "                            @octave :voicing /inversion, e.g. \"Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3\"\n"
       << "  --round-robins <2-4>      also render 2-4 slightly different takes of every sample\n"
       << "                            (velocity, timing, length) into Round_Robin/Take_2 ...\n\n"
       << "Audio:\n"
@@ -296,6 +300,25 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     }
     req.plan.shortNames = args.contains ("--short-names");
     req.roundRobins = juce::jlimit (1, 4, option (args, "--round-robins", "1").getIntValue());
+    if (args.contains ("--octaves"))
+    {
+        auto o = option (args, "--octaves");                       // "2" or "2-3"
+        req.plan.octaveLow = o.upToFirstOccurrenceOf ("-", false, false).getIntValue();
+        req.plan.octaveHigh = o.contains ("-") ? o.fromFirstOccurrenceOf ("-", false, false).getIntValue() : req.plan.octaveLow;
+        if (req.plan.octaveLow < 0 || req.plan.octaveLow > 7 || req.plan.octaveHigh < req.plan.octaveLow || req.plan.octaveHigh > 7)
+            return fail ("--octaves wants e.g. 2 or 2-3 (MPC octaves: C3 = middle C)");
+    }
+    if (args.contains ("--palette"))
+    {
+        for (auto& token : juce::StringArray::fromTokens (option (args, "--palette"), " ,;", "\""))
+        {
+            if (token.trim().isEmpty()) continue;
+            PaletteChord c;
+            if (! PaletteChord::fromString (token, c)) return fail ("--palette: can't read '" + token + "' (e.g. Cm9  Fm9@3:drop2/1  note:Eb@3)");
+            req.plan.palette.push_back (c);
+        }
+        req.plan.usePalette = ! req.plan.palette.empty();
+    }
     if (args.contains ("--progression"))
     {
         req.plan.progressionNumber = option (args, "--progression").getIntValue();

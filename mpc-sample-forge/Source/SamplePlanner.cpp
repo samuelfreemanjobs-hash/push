@@ -5,6 +5,7 @@
 #include <map>
 #include <numeric>
 #include <algorithm>
+#include <deque>
 
 namespace forge
 {
@@ -182,17 +183,18 @@ SampleSpec roundRobinTake (const SampleSpec& in, int take)
     return s;
 }
 
-bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out)
+bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out, bool pianoRangeOnly)
 {
     out = in;
     if (semitones == 0) return true;
+    const int lowest = pianoRangeOnly ? 21 : 0, highest = pianoRangeOnly ? 108 : 124;
     for (auto& n : out.notes)
     {
         n.note += semitones;
-        if (n.note < 21 || n.note > 108) return false; // stay on the piano: below that it is rumble, above it whistle
+        if (n.note < lowest || n.note > highest) return false; // stay on the piano: below that it is rumble, above it whistle
     }
     out.rootNote = in.rootNote + semitones;
-    if (out.rootNote < 24 || out.rootNote > 108) return false;
+    if (out.rootNote < (pianoRangeOnly ? 24 : 0) || out.rootNote > highest) return false;
 
     auto oldRoot = midiNoteName (in.rootNote), newRoot = midiNoteName (out.rootNote);
     if (in.kind == "Key" || in.kind == "Octave" || in.kind == "Fifth")
@@ -598,10 +600,15 @@ static std::vector<SampleSpec> planScaleBanks (const Style& kitOrStyle, const Pl
 
     // members: a kit spreads its banks over its recipes
     std::vector<const Style*> members;
+    std::deque<Style> memberStyles;     // with the chosen octave range
     if (kitOrStyle.isKit())
     {
         for (auto& m : kitOrStyle.kit)
-            if (auto* st = findBuiltInStyle (m.value); st != nullptr && ! st->isKit()) members.push_back (st);
+            if (auto* st = findBuiltInStyle (m.value); st != nullptr && ! st->isKit())
+            {
+                memberStyles.push_back (withOctaveRange (*st, opt));
+                members.push_back (&memberStyles.back());
+            }
     }
     else members.push_back (&kitOrStyle);
     if (members.empty()) { error = "no styles to build banks from"; return result; }
@@ -983,8 +990,235 @@ static std::vector<SampleSpec> planLibraryBanks (const Style& style, const PlanO
     return result;
 }
 
-std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt, juce::String& error)
+//==============================================================================
+// Hand-picked chords (the chord grid's palette) and octave ranges
+
+std::vector<int> PaletteChord::notes() const
 {
+    const auto root = rootMidi();
+    if (isNote()) return { root };
+    auto* q = findQuality (quality);
+    if (q == nullptr) return { root };
+    Voicing v = Voicing::Close;
+    parseVoicing (voicing, v);
+    auto n = buildVoicing (root, q->intervals, v);
+    std::sort (n.begin(), n.end());
+    for (int k = 0; k < inversion && n.size() > 1; ++k)
+    {
+        n.front() += 12;                       // lowest note up an octave
+        std::sort (n.begin(), n.end());
+    }
+    // the chosen octave is where the lowest note sounds (spread / drop voicings can reach below the root)
+    const int low = 12 * (octave + 2);
+    while (! n.empty() && n.front() < low) for (auto& x : n) x += 12;
+    while (! n.empty() && n.front() >= low + 12) for (auto& x : n) x -= 12;
+    for (auto& x : n) x = juce::jlimit (0, 127, x);
+    return n;
+}
+
+juce::String PaletteChord::name() const
+{
+    if (isNote()) return midiNoteName (rootMidi());
+    auto* q = findQuality (quality);
+    auto suffix = q != nullptr ? q->suffix : quality;
+    if (suffix == "power") suffix = "5";
+    return pitchClassName (rootPc) + suffix;
+}
+
+juce::String PaletteChord::describe() const
+{
+    if (isNote()) return name();
+    juce::String d = name();
+    if (voicing != "close") d << " " << voicing;
+    if (inversion > 0) d << " inv" << inversion;
+    return d + " (" + midiNoteName (notes().front()) + ")";
+}
+
+juce::String PaletteChord::toString() const
+{
+    return pitchClassName (rootPc) + ":" + quality + ":" + juce::String (octave) + ":" + voicing + ":" + juce::String (inversion);
+}
+
+bool PaletteChord::fromString (const juce::String& textIn, PaletteChord& out)
+{
+    auto text = textIn.trim();
+    if (text.isEmpty()) return false;
+    PaletteChord c;
+    auto parts = juce::StringArray::fromTokens (text, ":", "");
+    if (parts.size() == 5 && parts[2].containsOnly ("-0123456789"))   // "Eb:m9:2:drop2:1"
+    {
+        c.rootPc = parsePitchClass (parts[0]);
+        c.quality = parts[1];
+        c.octave = parts[2].getIntValue();
+        c.voicing = parts[3];
+        c.inversion = parts[4].getIntValue();
+    }
+    else
+    {
+        // chord symbol [@octave] [:voicing] [/inversion]
+        auto inv = text.contains ("/") ? text.fromLastOccurrenceOf ("/", false, false).getIntValue() : 0;
+        text = text.upToLastOccurrenceOf ("/", false, false).isNotEmpty() && text.contains ("/") ? text.upToLastOccurrenceOf ("/", false, false) : text;
+        bool note = text.startsWithIgnoreCase ("note:");
+        if (note) text = text.substring (5);
+        juce::String voicing = "close";
+        if (! note && text.contains (":")) { voicing = text.fromLastOccurrenceOf (":", false, false); text = text.upToLastOccurrenceOf (":", false, false); }
+        int octave = 2;
+        if (text.contains ("@")) { octave = text.fromLastOccurrenceOf ("@", false, false).getIntValue(); text = text.upToLastOccurrenceOf ("@", false, false); }
+        auto rootLen = (text.length() > 1 && (text[1] == '#' || text[1] == 'b')) ? 2 : 1;
+        c.rootPc = parsePitchClass (text.substring (0, rootLen));
+        auto suffix = text.substring (rootLen);
+        if (note) c.quality = "note";
+        else if (suffix.isEmpty()) c.quality = "maj";
+        else if (suffix == "5" || suffix.equalsIgnoreCase ("power")) c.quality = "5";
+        else
+        {
+            c.quality = {};
+            for (auto& q : allQualities())
+                if (q.suffix == suffix || q.id == suffix) { c.quality = q.id; break; }
+            if (c.quality.isEmpty()) return false;
+        }
+        c.octave = octave;
+        c.voicing = voicing;
+        c.inversion = inv;
+    }
+    if (c.rootPc < 0) return false;
+    Voicing v;
+    if (! c.isNote() && (findQuality (c.quality) == nullptr || ! parseVoicing (c.voicing, v))) return false;
+    c.octave = juce::jlimit (-1, 8, c.octave);
+    c.inversion = juce::jlimit (0, 3, c.inversion);
+    out = c;
+    return true;
+}
+
+Style withOctaveRange (const Style& style, const PlanOptions& opt)
+{
+    if (opt.octaveLow < 0) return style;
+    Style s = style;
+    const int lo = juce::jlimit (0, 8, opt.octaveLow), hi = juce::jlimit (lo, 8, opt.octaveHigh < 0 ? opt.octaveLow : opt.octaveHigh);
+    const int low = juce::jlimit (12, 120, 12 * (lo + 2)), high = juce::jlimit (low + 11, 127, 12 * (hi + 2) + 11);
+    s.chordRootLow = low;  s.chordRootHigh = high;   // chord roots inside the octaves
+    s.keyLow = low;        s.keyHigh = high;         // single notes too
+    return s;
+}
+
+static std::vector<SampleSpec> planPalette (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    if (opt.palette.empty()) { error = "the chord palette is empty - pick chords in the chord grid and click + Palette"; return result; }
+    juce::Random rng (opt.seed);
+    auto engine = (opt.engine.isNotEmpty() && opt.engine != "mixed") ? opt.engine : (style.engine == "mixed" ? juce::String ("epiano") : style.engine);
+    const auto variation = rng.nextInt64();                 // one timbre for the whole palette
+    const int ps = style.processing.pitchShift;
+    const auto velocity = (style.velocityLow + style.velocityHigh) / 2;
+    const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+    for (auto& pc : opt.palette)
+    {
+        SampleSpec s;
+        auto notes = pc.notes();
+        const auto rollPerNote = notes.size() > 1 ? style.strumMs * 0.0004 : 0.0; // a gentle, fixed roll (40% of the recipe's)
+        for (size_t i = 0; i < notes.size(); ++i)
+        {
+            NoteEvent e;
+            e.note = juce::jlimit (0, 127, notes[i] - ps);  // played so it sounds right after the recipe's varispeed
+            e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() && notes.size() > 1 ? 6 : 0));
+            e.startSec = rollPerNote * (double) i;
+            e.lengthSec = juce::jmax (0.05, hold - e.startSec);
+            s.notes.push_back (e);
+        }
+        s.kind = pc.isNote() ? "Key" : "Chord";
+        s.label = pc.isNote() ? pc.name() : pc.name() + "-" + midiNoteName (notes.front());
+        s.voicing = pc.isNote() ? juce::String ("-")
+                                : pc.inversion > 0 ? (pc.voicing == "close" ? "inv" + juce::String (pc.inversion) : pc.voicing + "-inv" + juce::String (pc.inversion))
+                                                   : pc.voicing;
+        s.rootNote = pc.rootMidi();
+        s.engine = engine;
+        s.variation = variation;
+        s.processing = style.processing;
+        s.styleId = style.id; s.tag = style.tag; s.shortTag = style.shortTag;
+        result.push_back (s);
+    }
+    auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name);
+    nameSamples (result, prefix, false, false, opt.shortNames, style.shortTag);
+    return result;
+}
+
+static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const PlanOptions& opt, juce::String& error);
+
+/** Octaves chosen: move each sample by whole octaves so its lowest note sounds inside them.
+    A scale bank moves as one, so it still climbs pad by pad. */
+static void fitToOctaves (std::vector<SampleSpec>& specs, const PlanOptions& opt)
+{
+    if (opt.octaveLow < 0 || opt.fixedRoot != -1 || opt.usePalette) return;
+    const int lo = juce::jlimit (0, 8, opt.octaveLow), hi = juce::jlimit (lo, 8, opt.octaveHigh < 0 ? lo : opt.octaveHigh);
+    const int low = 12 * (lo + 2), high = 12 * (hi + 2) + 11;
+    auto lowest = [] (const SampleSpec& s) { int m = 127; for (auto& n : s.notes) m = std::min (m, n.note); return m; };
+    auto shiftFor = [&] (int note)
+    {
+        int shift = 0;
+        while (note + shift < low) shift += 12;
+        while (note + shift > high && note + shift - 12 >= 0) shift -= 12;
+        return shift;
+    };
+    auto move = [] (SampleSpec& s, int shift)
+    {
+        SampleSpec moved;
+        if (shift != 0 && transposeSpec (s, shift, moved, false)) s = moved;
+    };
+    for (size_t i = 0; i < specs.size();)
+    {
+        if (specs[i].pad > 0)
+        {
+            // a bank: the same move for all 16 pads, based on pad 1
+            size_t end = i;
+            int bankLow = 127;
+            while (end < specs.size() && specs[end].pad > 0 && (end == i || specs[end].pad > specs[end - 1].pad))
+                bankLow = std::min (bankLow, lowest (specs[end++]));
+            const int shift = shiftFor (bankLow);
+            for (size_t k = i; k < end; ++k) move (specs[k], shift);
+            i = end;
+        }
+        else
+        {
+            auto& sp = specs[i];
+            const auto shift = shiftFor (lowest (sp));
+            SampleSpec moved;
+            if (shift == 0 || transposeSpec (sp, shift, moved, false)) { if (shift != 0) sp = moved; }
+            else if (sp.notes.size() > 1)
+            {
+                // too wide to move whole (it would run off the top): keep the bass in the octave and
+                // fold the upper notes down to within two octaves of it
+                std::vector<int> pitches;
+                for (auto& n : sp.notes) pitches.push_back (n.note);
+                const auto bass = *std::min_element (pitches.begin(), pitches.end());
+                const auto newBass = bass + shift;
+                for (auto& n : sp.notes)
+                {
+                    if (n.note == bass) { n.note = newBass; continue; }
+                    n.note += shift;
+                    while (n.note > newBass + 24) n.note -= 12;
+                    while (n.note <= newBass) n.note += 12;
+                }
+                sp.rootNote = juce::jlimit (0, 127, sp.rootNote + shift);
+                for (auto& n : sp.notes) n.note = juce::jlimit (0, 127, n.note);
+            }
+            ++i;
+        }
+    }
+}
+
+std::vector<SampleSpec> planSamples (const Style& styleIn, const PlanOptions& opt, juce::String& error)
+{
+    auto specs = planSamplesInner (styleIn, opt, error);
+    fitToOctaves (specs, opt);
+    return specs;
+}
+
+static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const PlanOptions& opt, juce::String& error)
+{
+    if (opt.usePalette)
+        return planPalette (styleIn, opt, error);
+    const Style style = withOctaveRange (styleIn, opt);
     if (style.progressionLibrary.isNotEmpty())
         return planLibraryBanks (style, opt, error);
     if (opt.scaleBank || style.scaleBankOnly)
@@ -995,6 +1229,7 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
 
     // ---- a kit: split the count between member styles by weight
     std::vector<const Style*> members;
+    std::deque<Style> memberStyles;     // with the chosen octave range
     std::vector<float> weights;
     for (auto& m : style.kit)
     {
@@ -1004,7 +1239,8 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
             error = "kit '" + style.id + "' refers to unknown style '" + m.value + "'";
             return {};
         }
-        members.push_back (member);
+        memberStyles.push_back (withOctaveRange (*member, opt));
+        members.push_back (&memberStyles.back());
         weights.push_back (m.weight);
     }
 

@@ -202,8 +202,16 @@ bool planBatch (BatchRequest& req, bool smartPick, std::vector<SampleSpec>& spec
 {
     juce::String error;
     const int wanted = req.plan.count;
-    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
+    const bool banks = ! req.plan.usePalette && (req.plan.scaleBank || req.style.scaleBankOnly);
     req.smartPickTarget = 0;
+    if (req.plan.usePalette)
+    {
+        // exactly the chords you picked: nothing chosen for you, nothing dropped as "too similar"
+        if (smartPick) notes.add ("Chord palette: rendering exactly your " + juce::String ((int) req.plan.palette.size()) + " picks (Smart Pick is skipped).");
+        smartPick = false;
+        req.variety = 0;
+        req.plan.scaleBank = false;
+    }
     if (banks)
     {
         req.splitBanks = true; // one sound per 16-pad bank

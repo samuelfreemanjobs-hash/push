@@ -9,7 +9,10 @@ juce::String QueueItem::describe() const
                      : r.plan.fixedRoot == PlanOptions::styleRoot ? juce::String ("16 Levels")
                      : r.plan.key == "random" ? juce::String ("random keys") : r.plan.key + " " + (r.plan.scale.isNotEmpty() ? r.plan.scale : r.style.scale);
     juce::String text = r.style.name + "  |  " + key + "  |  " + juce::String (r.plan.count) + " samples";
-    if (r.plan.scaleBank || r.style.scaleBankOnly) text << " (banks" << (r.plan.bankType.isNotEmpty() ? ": " + r.plan.bankType : juce::String()) << ")";
+    if (r.plan.usePalette) text = r.style.name + "  |  your chord palette (" + juce::String ((int) r.plan.palette.size()) + " picks)";
+    if (r.plan.octaveLow >= 0 && ! r.plan.usePalette)
+        text << "  |  Oct " << r.plan.octaveLow << (r.plan.octaveHigh > r.plan.octaveLow ? "-" + juce::String (r.plan.octaveHigh) : juce::String());
+    if (! r.plan.usePalette && (r.plan.scaleBank || r.style.scaleBankOnly)) text << " (banks" << (r.plan.bankType.isNotEmpty() ? ": " + r.plan.bankType : juce::String()) << ")";
     if (r.style.progressionLibrary.isNotEmpty() && r.plan.progressionNumber > 0) text << " #" << r.plan.progressionNumber;
     text << "  |  " << (pluginPath.isEmpty() ? "Built-in" + (r.plan.engine.isNotEmpty() ? " (" + r.plan.engine + ")" : juce::String())
                                              : r.instrumentName);
@@ -41,6 +44,11 @@ juce::var queueItemToVar (const QueueItem& item)
     p->setProperty ("engine", r.plan.engine);           p->setProperty ("builtIn", r.plan.builtIn);
     p->setProperty ("scaleBank", r.plan.scaleBank);     p->setProperty ("bankType", r.plan.bankType);
     p->setProperty ("shortNames", r.plan.shortNames);   p->setProperty ("progressionNumber", r.plan.progressionNumber);
+    p->setProperty ("octaveLow", r.plan.octaveLow);     p->setProperty ("octaveHigh", r.plan.octaveHigh);
+    p->setProperty ("usePalette", r.plan.usePalette);
+    juce::Array<juce::var> pal;
+    for (auto& c : r.plan.palette) pal.add (c.toString());
+    p->setProperty ("palette", pal);
     o->setProperty ("plan", juce::var (p));
 
     auto* s = new juce::DynamicObject();
@@ -89,6 +97,11 @@ bool queueItemFromVar (const juce::var& v, QueueItem& item, juce::String& error)
     r.plan.bankType = p["bankType"].toString();
     r.plan.shortNames = (bool) p["shortNames"];
     r.plan.progressionNumber = (int) p.getProperty ("progressionNumber", 0);
+    r.plan.octaveLow = (int) p.getProperty ("octaveLow", -1);
+    r.plan.octaveHigh = (int) p.getProperty ("octaveHigh", -1);
+    r.plan.usePalette = (bool) p["usePalette"];
+    if (auto* pal = p["palette"].getArray())
+        for (auto& x : *pal) { PaletteChord c; if (PaletteChord::fromString (x.toString(), c)) r.plan.palette.push_back (c); }
 
     auto s = v["render"];
     r.render.sampleRate = (double) s.getProperty ("sampleRate", 44100.0);

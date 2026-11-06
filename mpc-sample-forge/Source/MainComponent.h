@@ -34,7 +34,7 @@ namespace forge
         // batch
         void styleChanged();
         void loadStyleJson();
-        bool buildRequest (BatchRequest& req, std::vector<SampleSpec>& specs);
+        bool buildRequest (BatchRequest& req, std::vector<SampleSpec>& specs, bool quiet = false);
         void previewPlan();
         void generateOrCancel();
         void jobFinished (bool ok, const juce::String& summary);
@@ -63,6 +63,20 @@ namespace forge
         void playChord (int index);
         SampleSpec chordSpec (int index) const;
         void exportChords (const std::vector<int>& indices);
+
+        // chord grid + palette
+        PaletteChord currentGridChord() const;
+        PaletteChord diatonicAsPalette (const DiatonicChord& d) const;
+        juce::String voicingIdFromBox() const;
+        SampleSpec specForChord (const PaletteChord& c, int number) const;
+        void playGridChord();
+        void previewSpec (SampleSpec spec, const juce::String& what);
+        void addToPalette();
+        void savePalette();
+        std::vector<SampleSpec> paletteSpecs() const;
+        void exportSpecs (std::vector<SampleSpec> specs, const juce::String& what);
+        void updatePlanSummary();
+        juce::String describePlan (const BatchRequest& req, const std::vector<SampleSpec>& specs) const;
         void moreLikeThis (const juce::File& batchFolder, const juce::File& sample);
         int currentTonic() const;
         std::vector<int> currentScale() const;
@@ -128,7 +142,24 @@ namespace forge
         juce::Label chordRowLabel, exportInfo;   // exportInfo: what Export chord will render (notes + octave)
         void updateExportInfo();
         std::vector<DiatonicChord> currentChords;
-        int selectedChord = 0;
+        int selectedChord = -1;
+
+        // chord grid (DR-5 style): 12 roots x chord types, and the palette of picks
+        juce::OwnedArray<juce::TextButton> rootButtons, typeButtons;
+        juce::ComboBox voicingBox, octaveRangeBox;
+        juce::Label paletteLabel, gridRootLabel, gridTypeLabel, nextGenerateLabel;
+        juce::TextButton addPaletteButton { "+ Palette" }, undoPaletteButton { "Undo" }, clearPaletteButton { "Clear" },
+                         exportPaletteButton { "Export Palette" };
+        juce::ToggleButton usePaletteToggle { "Generate uses palette" }, exactPreviewToggle { "Hear with FX" };
+        int gridRoot = 0;
+        juce::String gridQuality = "m9";
+        std::vector<PaletteChord> palette;
+
+        // previews rendered exactly like a batch, played next to the live instrument
+        juce::AudioSourcePlayer previewPlayer;
+        std::unique_ptr<juce::MemoryAudioSource> previewSource;
+        juce::String planSignature;
+        std::unique_ptr<juce::TimedCallback> planWatcher;
         juce::ToggleButton smartPickToggle { "Smart Pick" }, shortNamesToggle { "Short names" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;

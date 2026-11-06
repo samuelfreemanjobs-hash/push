@@ -30,6 +30,8 @@ static const std::vector<std::tuple<Engine, const char*, const char*>>& engineTa
         { Engine::Flute,      "flute",      "Flute" },
         { Engine::LogDrum,    "logdrum",    "LogDrum" },
         { Engine::Sax,        "sax",        "Sax" },
+        { Engine::Strings,    "strings",    "Strings" },
+        { Engine::Pad,        "pad",        "Pad" },
     };
     return t;
 }
@@ -340,6 +342,18 @@ public:
                 break;
             }
 
+            case Engine::Strings:
+                filter.clear(); filter2.clear();
+                attackSec = 0.03 + 0.17 * (1.0 - bright) * (0.5 + 0.5 * colour);   // from a firm bow to a soft swell
+                decayTau = (1.5 + 2.5 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Pad:
+                filter.clear(); filter2.clear();
+                attackSec = 0.12 + 0.35 * (1.0 - bright);
+                decayTau = (2.5 + 3.0 * decayAmt) * noteScale;
+                break;
+
             case Engine::Supersaw:
                 filter.clear();
                 attackSec = 0.002;
@@ -375,7 +389,8 @@ public:
             if (releasing)
             {
                 auto relTime = (engine == Engine::Organ || engine == Engine::ComboOrgan || engine == Engine::Clav) ? 0.05
-                             : (engine == Engine::Choir || engine == Engine::Sax || engine == Engine::Flute) ? 0.3 : 0.25;
+                             : (engine == Engine::Choir || engine == Engine::Sax || engine == Engine::Flute) ? 0.3
+                             : engine == Engine::Strings ? 0.4 : engine == Engine::Pad ? 0.7 : 0.25;
                 rel = (float) std::exp (-releaseTime / (relTime / 4.0));
                 releaseTime += dt;
             }
@@ -734,6 +749,53 @@ private:
                 for (int f = 0; f < 3; ++f) s += g[f] * formant[f].process (src).second;
                 amp = (float) juce::jmin (1.0, t / attackSec);
                 return s * amp * 2.5f;
+            }
+
+            case Engine::Strings:
+            {
+                // string section: six slightly detuned saws (players), split left / right, warm low-pass,
+                // a little bow noise on the attack and a vibrato that comes in once the note sustains
+                const double spread[] = { -1.0, -0.6, -0.25, 0.25, 0.6, 1.0 };
+                auto cents = 4.0 + 8.0 * detune;
+                auto vibDepth = 0.0015 * (0.5 + extra) * juce::jlimit (0.0, 1.0, (t - 0.3) / 0.4);
+                float left = 0, right = 0;
+                for (int v = 0; v < 6; ++v)
+                {
+                    auto vib = 1.0 + vibDepth * std::sin (twoPi * (4.8 + 0.35 * v) * t + v);
+                    auto sample = blepSaw (phases[(size_t) v], inc * vib * std::pow (2.0, spread[v] * cents / 1200.0));
+                    (v % 2 == 0 ? left : right) += sample;
+                }
+                auto bow = (clickRng.nextFloat() * 2.0f - 1.0f) * 0.08f * (float) std::exp (-t / 0.06);
+                auto swell = juce::jmin (1.0, t / attackSec);
+                auto cutoff = juce::jmin (16000.0, freq * (2.2 + 3.0 * bright) * (0.6 + 0.4 * swell) + 500.0);
+                filter.set (cutoff, 0.6, sr);
+                filter2.set (cutoff * 1.1, 0.6, sr);
+                auto mono = filter.process ((left + right) * 0.18f + bow).first;
+                auto side = filter2.process ((left - right) * 0.12f).first;
+                amp = (float) (swell * (0.85 + 0.15 * std::exp (-t / decayTau)));
+                l = side * amp; r = -side * amp;
+                return mono * amp * 1.3f;
+            }
+
+            case Engine::Pad:
+            {
+                // warm analog pad: detuned saw + pulse pairs, slow swell, a filter that opens as it swells,
+                // slow pitch drift between the layers for movement
+                auto drift = 0.0012 * std::sin (twoPi * 0.35 * t);
+                auto cents = (5.0 + 10.0 * detune) / 1200.0;
+                auto a = blepSaw (phases[0], inc * std::pow (2.0, cents) * (1.0 + drift));
+                auto b = blepSaw (phases[1], inc * std::pow (2.0, -cents) * (1.0 - drift));
+                auto c = blepPulse (phases[2], inc, 0.35 + 0.3 * colour);             // a hollow pulse layer
+                auto d = blepPulse (phases[3], inc * std::pow (2.0, cents * 0.5), 0.5);
+                auto swell = juce::jmin (1.0, t / attackSec);
+                auto cutoff = freq * (1.2 + (1.5 + 3.0 * bright) * swell) + 300.0;
+                filter.set (juce::jmin (12000.0, cutoff), 0.7 + 0.6 * extra, sr);
+                filter2.set (juce::jmin (12000.0, cutoff * 0.9), 0.7, sr);
+                auto mono = filter.process (0.3f * (a + b) + 0.25f * c).first;
+                auto side = filter2.process (0.25f * (a - b) + 0.2f * d).first;
+                amp = (float) (swell * swell * (0.9 + 0.1 * std::exp (-t / decayTau)));
+                l = side * amp; r = -side * amp;
+                return mono * amp * 1.2f;
             }
 
             case Engine::Supersaw:

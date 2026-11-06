@@ -50,6 +50,18 @@ PLAY IN KEY WITHOUT 16 LEVELS (scale banks)
   file 01 on Pad 1 ... file 16 on Pad 16. _MPC_Setup.txt shows the pad map.
 
 
+WHAT WILL GENERATE MAKE?
+  The yellow NEXT GENERATE line (above the chord buttons) always says exactly what Generate will
+  render: count, chord types, notes, octaves, sound, seed. Audition Random plays from that list,
+  rendered with the recipe's FX ("Hear with FX"), so it sounds like the files.
+  Octaves menu (Engine row): keep everything in the octave(s) you want (C3 = middle C).
+
+CHORD GRID + PALETTE (more control)
+  Under the 7 key chords: press a Root (C ... B) and a Type (Maj, m, 7, M7, m9, 13, sus4, dim,
+  6/9, Note ...) to hear a chord. Pick Oct / inversion / voicing. "+ Palette" keeps it exactly as
+  you heard it. "Export Palette" renders them all; tick "Generate uses palette" to make Generate
+  render exactly your palette - nothing random.
+
 CHORDS AND PROGRESSIONS
   The row of 7 buttons above the keyboard plays the recipe's chords in your Key. Pick an octave
   and inversion, then "Export chord" (or "Export all 7") -> Chord Picks folder.

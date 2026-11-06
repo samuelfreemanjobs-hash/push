@@ -118,6 +118,68 @@ mpcforge --plugin Keys.vst3 --export-presets ~/Presets/Keys    # save the plugin
 
 ---
 
+## Control: the chord grid, your palette and the Octaves menu
+
+**See what you'll get before you press Generate.** The yellow **NEXT GENERATE** line above the
+chord buttons always says exactly what Generate will render with the current settings: how many
+samples, which recipe and key, the chord types (e.g. `maj7 x26, maj9 x25, m9 x22 ...`) and how many
+single notes, the octave range of the lowest notes, the sound and the seed. It updates as you change
+anything. **Audition Random** plays samples from that exact list.
+
+**Hear exactly what renders.** With **Hear with FX** on (the default), chord clicks and Audition
+Random are rendered just like a batch - the recipe's effects, length and envelope - and played
+back; what you hear is what you get. Turn it off to play the instrument live (instant, no FX).
+
+**The chord grid (Boss DR-5 chord-mode style).** Under the key's 7 chords:
+
+* **Root row:** C ... B. **Type rows:** Maj, m, 7, M7, m7, 6, m6, 9, M9, m9, m11, 13, sus2, sus4,
+  7sus4, add9, dim, dim7, m7b5, aug, 6/9, 7#9, 5 (power) and Note (a single note).
+* Press a root, then a type (or the other way round) - you hear that chord. With a Key chosen, the
+  roots in the key and the types that fit it are lit up.
+* **Oct** picks the octave of the lowest note (C3 = middle C), **Root position / inversions** and
+  **Close / Drop 2 / Open / Spread / Rootless / Shell** pick the voicing. The **SELECTED** line shows
+  the exact notes.
+* **Export chord** renders the selected chord.
+
+**Your palette.** **+ Palette** adds the selected chord exactly as you hear it (octave, voicing and
+inversion included); **Undo** / **Clear**. **Export Palette** renders every chord in it into
+`Chord Picks`. Tick **Generate uses palette** and the Generate button renders exactly your palette -
+nothing random (Count, Smart Pick and Variety are ignored; Takes and octave copies still apply).
+The palette is kept between sessions.
+
+**Octaves for Generate.** The **Octaves** menu (Engine row) keeps every sample's lowest note in the
+octave(s) you pick: `Octave 2 (C2-B2)` ... or `Octaves 2-3`. Very wide jazz voicings are folded to fit.
+
+Command line: `--octaves 2-3`, `--palette "Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3"` (chord symbol,
+`@` octave, `:` voicing, `/` inversion).
+
+## The Style menu
+
+Recipes are grouped: **Genres**, **Kits**, **Progressions & chord sets** (Trap Progressions is here),
+**Keys, electric piano & organ**, **Bells & music box**, **Strings, brass & horns**, **Synths & leads**,
+**Pads, choirs & textures**, **Bass & 808** and **Scale banks**, then your own styles.
+
+New recipes:
+
+| Recipe | Sound |
+|---|---|
+| Wiz Khalifa Electric Piano | Dreamy Rhodes maj7 / maj9 / m9 / maj7#11, tape, slow chorus, plate |
+| G-Funk Electric Piano | Rhodes m7 / m9 / 9 / 7#9 in dorian, swirling chorus, tube, room |
+| Rick Ross Luxury Jazz Strings | Lush string section on maj9 / m9 / m11 / maj7#11, dark hall |
+| Rick Ross Luxury Jazz Brass | Jazz brass stabs and swells on maj9 / m9 / 13 / 7#9, tube, plate |
+| Jeezy Brass | Dark harmonic-minor brass hits: power chords and minor triads, saturated |
+| Jeezy Strings | Dramatic minor strings: staccato hits and short swells, dark hall |
+| Trap Brass Stabs | Short, distorted low fifth / octave stabs that cut through 808s |
+| Trap Pizz | Harmonic-minor pizzicato for triplet runs |
+| Gucci Mane Synth | Bright, bouncy saw + square lead in minor pentatonic, 1/8 delay |
+| Shawty Redd Synth | Eerie wide detuned-saw melodies and minor stabs in harmonic minor, hall |
+| Juicy J Strip Club Synth Line | High, nasal lead in phrygian, dotted delay, a touch of bitcrush |
+| Smooth Jazz Pad | Warm analog pad on maj9 / m9 / m11 / 13 / 6/9, chorus, long hall |
+| Sade Pad | Dark, warm quiet-storm pad on m9 / m11 / maj7 / add9, tape, plate |
+
+New built-in engines for them: **Strings** (a section of detuned saws with bow noise and delayed
+vibrato) and **Pad** (warm detuned saw + pulse that swells and opens up). Both measure in tune.
+
 ## Render queue: set up several batches, then walk away
 
 Set up a batch in the main window and click **Add to Queue** (next to Generate). Everything is
@@ -583,6 +645,8 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
+| `--octaves <n\|lo-hi>` | Keep every sample's lowest note in these MPC octaves, e.g. `2` or `2-3` |
+| `--palette "<chords>"` | Render exactly these: `Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3` |
 | `--round-robins <2-4>` | Also render 2-4 slightly different takes of every sample (`Round_Robin/Take_2` ...) |
 | `--queue [file.json]` | Render every waiting batch of the app's render queue (or a queue file) |
 | `--analyse <file.wav>` | Print loudness, peak, root and Smart Pick measurements of a file |
@@ -691,7 +755,7 @@ Source/PresetSweep.*     Preset Sweep: collect presets, test-render, score, rend
 Source/PresetSweepPanel.* the Preset Sweep window
 Source/RenderQueue.*     queue items (saved settings + instrument state), queue file
 Source/QueuePanel.*      the Render Queue window
-Source/BuiltInSynth.*    built-in synth (25 engines)
+Source/BuiltInSynth.*    built-in synth (27 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
 Tests/SweepTestPlugin.cpp a 12-preset VST3 (ForgeTestSynth) that trips each Preset Sweep check

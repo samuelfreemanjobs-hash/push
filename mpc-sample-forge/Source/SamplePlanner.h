@@ -34,6 +34,26 @@ namespace forge
         double holdSec() const;
     };
 
+    /** One chord (or single note) picked by hand in the chord grid: exactly what gets rendered. */
+    struct PaletteChord
+    {
+        int rootPc = 0;
+        juce::String quality = "maj";   // chord quality id, or "note" for a single note
+        int octave = 2;                 // MPC octave of the root: 3 = middle C (C3 = MIDI 60)
+        juce::String voicing = "close";
+        int inversion = 0;              // 1 = lowest note up an octave, 2 = two lowest ...
+
+        int rootMidi() const { return juce::jlimit (0, 127, rootPc + 12 * (octave + 2)); }
+        bool isNote() const { return quality == "note"; }
+        std::vector<int> notes() const;
+        juce::String name() const;        // "Ebm9", "Eb3" for a note
+        juce::String describe() const;    // "Ebm9 drop2 inv1 (Eb2)"
+        juce::String toString() const;    // "Eb:m9:2:drop2:1" - for settings, queue files and --palette
+        /** Reads toString()'s form, or a chord symbol with optional @octave :voicing /inversion,
+            e.g. "Ebm9", "Ebm9@3:drop2/1", "note:Eb@3". */
+        static bool fromString (const juce::String& text, PaletteChord& out);
+    };
+
     struct PlanOptions
     {
         int count = 100;
@@ -50,14 +70,20 @@ namespace forge
         juce::String bankType;         // "notes" / "chords" (empty = the style's)
         bool shortNames = false;       // "014_EPBell_C3" instead of "JetLifeEPBell_C3_014_Key_C3" (easier on a small screen)
         int progressionNumber = 0;     // progression-library recipes: only this set (1-20), 0 = a mix chosen by the seed
+        int octaveLow = -1, octaveHigh = -1; // keep every chord root / note in these MPC octaves (-1 = the recipe's ranges)
+        bool usePalette = false;       // render exactly `palette` (the chord grid's picks) instead of the recipe's random picks
+        std::vector<PaletteChord> palette;
     };
+
+    /** The style with its chord / note ranges moved into the chosen octaves (no change if none chosen). */
+    Style withOctaveRange (const Style& style, const PlanOptions& options);
 
     /** Creates a list of unique, musically sensible samples for a style. */
     std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& options, juce::String& error);
 
     /** The same sample moved by `semitones` (e.g. -12 = an octave down): notes, root,
         label and file name all follow. Returns false if it would leave the MIDI range. */
-    bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out);
+    bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out, bool pianoRangeOnly = true);
 
     /** One diatonic chord of a key, as the chord buttons and progression banks use it. */
     struct DiatonicChord

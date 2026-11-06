@@ -499,6 +499,35 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
              + "; queue item " + (qOk ? "saves and loads" : "DOES NOT ROUND-TRIP " + err));
     }
 
+    // ------------------------------------------------------------ chord palette + octave control
+    {
+        juce::String why;
+        PaletteChord a, b, n;
+        bool ok = PaletteChord::fromString ("Ebm9@3:drop2/1", a) && PaletteChord::fromString ("Bb13", b) && PaletteChord::fromString ("note:G@4", n);
+        ok = ok && a.name() == "Ebm9" && a.octave == 3 && a.voicing == "drop2" && a.inversion == 1 && b.quality == "13" && n.isNote();
+        PaletteChord back;
+        ok = ok && PaletteChord::fromString (a.toString(), back) && back.toString() == a.toString();
+        auto notes = a.notes();
+        ok = ok && ! notes.empty() && notes.front() >= 60 && notes.front() < 72;          // lowest note in octave 3
+        auto* wiz = findBuiltInStyle ("wiz-ep");
+        PlanOptions po; po.usePalette = true; po.palette = { a, b, n }; po.seed = 4;
+        auto pal = wiz != nullptr ? planSamples (*wiz, po, why) : std::vector<SampleSpec>();
+        ok = ok && pal.size() == 3 && pal[2].notes.size() == 1 && pal[2].notes[0].note == 79;   // G4 (MPC naming: C3 = 60)
+        PlanOptions oo; oo.count = 60; oo.seed = 5; oo.octaveLow = 4; oo.octaveHigh = 4;
+        auto inOct = wiz != nullptr ? planSamples (*wiz, oo, why) : std::vector<SampleSpec>();
+        int outside = 0;
+        for (auto& sp : inOct)
+        {
+            int low = 127;
+            for (auto& x : sp.notes) low = std::min (low, x.note);
+            outside += low < 72 || low > 83;
+        }
+        ok = ok && ! inOct.empty() && outside == 0;
+        say (ok ? L::Pass : L::Fail, "Chord palette + octaves",
+             juce::String (ok ? "palette chords parse and plan exactly" : "PALETTE WRONG") + "; Octave 4: "
+             + juce::String ((int) inOct.size() - outside) + "/" + juce::String ((int) inOct.size()) + " samples start in C4-B4");
+    }
+
     // ------------------------------------------------------------ trap progression library
     {
         const auto& lib = progressionLibrary ("trap");
