@@ -10,7 +10,8 @@ namespace forge
     class ReviewPanel final : public juce::Component,
                               private juce::TableListBoxModel,
                               private juce::KeyListener,
-                              private juce::ChangeListener
+                              private juce::ChangeListener,
+                              private juce::Timer
     {
     public:
         ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManager& devices);
@@ -49,6 +50,9 @@ namespace forge
         void exportKeepers();
         void trashRejects();
         void updateStatus();
+        void setTranspose (int semitones, bool playNow = true);
+        void startRangeCheck();
+        void timerCallback() override;
 
         juce::File folder;
         juce::AudioDeviceManager& devices;
@@ -61,13 +65,17 @@ namespace forge
         juce::AudioThumbnailCache thumbCache { 8 };
         juce::AudioThumbnail thumbnail { 512, formats, thumbCache };
         int playingRow = -1;
+        int transpose = 0;                 // 16 Levels preview: play the sample re-pitched like MPC Tune
+        std::vector<int> rangeSteps;       // range check sequence in progress
+        size_t rangeIndex = 0;
 
         juce::TableListBox table { "samples", this };
         juce::TextButton playButton { "Play (Space)" }, keepButton { "Keep (K)" }, rejectButton { "Reject (X)" },
                          clearButton { "Clear (U)" }, exportButton { "Export Keepers..." }, trashButton { "Move Rejects to Trash" },
-                         folderButton { "Open Folder" };
+                         folderButton { "Open Folder" }, downButton { "<" }, upButton { ">" },
+                         resetPitchButton { "0" }, rangeButton { "Range check (R)" };
         juce::ToggleButton autoPlay { "Play when selected" };
-        juce::Label status, help;
+        juce::Label status, help, pitchLabel;
         juce::Rectangle<int> waveArea;
     };
 }

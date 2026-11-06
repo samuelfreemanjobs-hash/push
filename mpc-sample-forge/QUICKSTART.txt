@@ -31,8 +31,11 @@ MAKE YOUR FIRST KIT (about a minute)
   2. Style: pick a recipe, e.g. "Jet Life EP Bell" or "Memphis / OG Phonk Kit".
   3. 16 Levels root: "Recipe's own root". Tick "16-pad banks".
   4. Leave "Smart Pick" ticked: it renders 3x as many and keeps only the best, most varied ones.
+     For the MPC: keep "Level: loudness-matched" and "Short names" on, and set "Registers" to
+     "+ octave down & up" if you'll play the sounds far up or down with 16 Levels > Tune.
   5. Click Generate. When it's done, the Review window opens:
        Up/Down = move + play   Space = play/stop   K = keep   X = reject   U = clear
+       Left/Right = hear it re-pitched like 16 Levels (Shift = octave)   R = range check
      Then click "Export Keepers": your picks go to _Keepers/Bank_A... in pad order.
   6. Copy the _Keepers folder to your MPC. _MPC_Setup.txt explains the pad settings.
 

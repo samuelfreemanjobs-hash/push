@@ -31,7 +31,8 @@ namespace forge
         juce::String engine = "epiano";                    // built-in synth engine (or "mixed")
         Processing processing;                             // trim / envelope / FX applied after rendering
 
-        juce::String tag;                                  // short name used in kit file names
+        juce::String tag;                                  // name used in kit file names
+        juce::String shortTag;                             // compact version for short file names (e.g. "EPBell")
         int root = -1;                                     // MIDI root used in 16 Levels mode (-1 = C3 / 60)
         std::vector<Weighted<juce::String>> kit;           // a kit mixes other (built-in) styles
 

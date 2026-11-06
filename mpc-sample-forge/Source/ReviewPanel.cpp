@@ -70,11 +70,28 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
         b->setWantsKeyboardFocus (false); // keep the keys going to the list
         addAndMakeVisible (b);
     }
+    downButton.onClick = [this] { setTranspose (transpose - 1); };
+    upButton.onClick = [this] { setTranspose (transpose + 1); };
+    resetPitchButton.onClick = [this] { setTranspose (0); };
+    rangeButton.onClick = [this] { startRangeCheck(); };
+    downButton.setTooltip ("Down a semitone (Left arrow, Shift = octave)");
+    upButton.setTooltip ("Up a semitone (Right arrow, Shift = octave)");
+    rangeButton.setTooltip ("Plays the sample from an octave down to an octave up, like 16 Levels > Tune across the pads");
+    for (auto* b : { &downButton, &upButton, &resetPitchButton, &rangeButton })
+    {
+        b->setWantsKeyboardFocus (false);
+        addAndMakeVisible (b);
+    }
+    pitchLabel.setColour (juce::Label::textColourId, text);
+    pitchLabel.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (pitchLabel);
+    setTranspose (0);
+
     autoPlay.setToggleState (true, juce::dontSendNotification);
     autoPlay.setWantsKeyboardFocus (false);
     addAndMakeVisible (autoPlay);
 
-    help.setText ("Up/Down: move + play     Space: play/stop     K: keep     X: reject     U: clear     click a column to sort",
+    help.setText ("Up/Down move + play   Space play   K keep   X reject   U clear   Left/Right pitch",
                   juce::dontSendNotification);
     help.setColour (juce::Label::textColourId, dim);
     addAndMakeVisible (help);
@@ -91,6 +108,7 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
 
 ReviewPanel::~ReviewPanel()
 {
+    stopTimer();
     transport.removeChangeListener (this);
     thumbnail.removeChangeListener (this);
     transport.setSource (nullptr);
@@ -210,7 +228,13 @@ void ReviewPanel::resized()
     r.removeFromTop (8);
     waveArea = r.removeFromTop (110);
     r.removeFromTop (6);
-    help.setBounds (r.removeFromTop (20));
+    auto helpRow = r.removeFromTop (26);
+    rangeButton.setBounds (helpRow.removeFromRight (130)); helpRow.removeFromRight (6);
+    upButton.setBounds (helpRow.removeFromRight (28)); helpRow.removeFromRight (2);
+    resetPitchButton.setBounds (helpRow.removeFromRight (28)); helpRow.removeFromRight (2);
+    downButton.setBounds (helpRow.removeFromRight (28)); helpRow.removeFromRight (6);
+    pitchLabel.setBounds (helpRow.removeFromRight (150));
+    help.setBounds (helpRow);
 
     auto bottom = r.removeFromBottom (32);
     exportButton.setBounds (bottom.removeFromRight (160)); bottom.removeFromRight (8);
@@ -289,6 +313,7 @@ bool ReviewPanel::keyPressed (const juce::KeyPress& k) { return keyPressed (k, t
 
 bool ReviewPanel::keyPressed (const juce::KeyPress& k, juce::Component*)
 {
+    if (! rangeSteps.empty() && k.getTextCharacter() != 'r') { stopTimer(); rangeSteps.clear(); }
     auto c = juce::CharacterFunctions::toLowerCase (k.getTextCharacter());
     if (k == juce::KeyPress::spaceKey || k == juce::KeyPress::returnKey)
     {
@@ -296,6 +321,14 @@ bool ReviewPanel::keyPressed (const juce::KeyPress& k, juce::Component*)
         if (playingRow == r && transport.isPlaying()) stop(); else play (r);
         return true;
     }
+    if (k.getKeyCode() == juce::KeyPress::leftKey || k.getKeyCode() == juce::KeyPress::rightKey)
+    {
+        auto step = k.getModifiers().isShiftDown() ? 12 : 1;
+        setTranspose (transpose + (k.getKeyCode() == juce::KeyPress::rightKey ? step : -step));
+        return true;
+    }
+    if (c == 'r') { startRangeCheck(); return true; }
+    if (c == '0') { setTranspose (0); return true; }
     if (c == 'k') { setMark (Mark::Keep, true); return true; }
     if (c == 'x') { setMark (Mark::Reject, true); return true; }
     if (c == 'u') { setMark (Mark::None, false); return true; }
@@ -334,11 +367,46 @@ void ReviewPanel::play (int row)
     {
         auto sr = reader->sampleRate;
         readerSource = std::make_unique<juce::AudioFormatReaderSource> (reader, true);
-        transport.setSource (readerSource.get(), 0, nullptr, sr);
+        // Re-pitch like a sampler / MPC Tune: playing faster raises the pitch and shortens it.
+        transport.setSource (readerSource.get(), 0, nullptr, sr * std::pow (2.0, transpose / 12.0));
         transport.setPosition (0);
         transport.start();
         playingRow = row;
     }
+}
+
+void ReviewPanel::setTranspose (int semitones, bool playNow)
+{
+    transpose = juce::jlimit (-24, 24, semitones);
+    auto text_ = transpose == 0 ? juce::String ("Pitch: as recorded")
+                                : "Pitch: " + juce::String (transpose > 0 ? "+" : "") + juce::String (transpose) + " st";
+    pitchLabel.setText (text_, juce::dontSendNotification);
+    pitchLabel.setColour (juce::Label::textColourId, std::abs (transpose) > 7 ? accent : text);
+    pitchLabel.setTooltip (std::abs (transpose) > 7 ? "More than a 5th away from the root: listen for grain or dullness - "
+                                                      "a register set may sound better" : juce::String());
+    auto row = table.getSelectedRow();
+    if (playNow && row >= 0 && isShowing()) play (row);
+}
+
+void ReviewPanel::startRangeCheck()
+{
+    if (! juce::isPositiveAndBelow (table.getSelectedRow(), (int) entries.size())) return;
+    rangeSteps = { -12, -7, -5, 0, 5, 7, 12 }; // octave down to octave up, like reaching across the pads
+    rangeIndex = 0;
+    timerCallback();
+    startTimer (330);
+}
+
+void ReviewPanel::timerCallback()
+{
+    if (rangeIndex >= rangeSteps.size())
+    {
+        stopTimer();
+        rangeSteps.clear();
+        setTranspose (0, false); // back to the recorded pitch, without playing again
+        return;
+    }
+    setTranspose (rangeSteps[rangeIndex++]); // updates the label and plays at that pitch
 }
 
 void ReviewPanel::stop()

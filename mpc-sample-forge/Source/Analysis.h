@@ -14,6 +14,10 @@ namespace forge
         std::vector<float> fingerprint;                    // spectral shape + envelope, level-independent
     };
 
+    /** Perceived loudness of a one-shot: the loudest 400 ms window, K-weighted as in
+        ITU-R BS.1770 (the measure behind LUFS). In LUFS-like units. */
+    float momentaryLoudness (const juce::AudioBuffer<float>& audio, double sampleRate);
+
     SampleFeatures analyseSample (const juce::AudioBuffer<float>& audio, double sampleRate, int rootNote, bool measurePitch);
 
     /** RMS difference of two fingerprints in dB: small = sounds alike. */

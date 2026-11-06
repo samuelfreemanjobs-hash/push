@@ -155,12 +155,34 @@ MainComponent::MainComponent()
     bitsBox.addItem ("24-bit", 24);
     bitsBox.addItem ("16-bit", 16);
     bitsBox.setSelectedId (24);
-    normaliseToggle.setToggleState (true, juce::dontSendNotification);
+    levelBox.addItem ("Level: loudness-matched", 1);
+    levelBox.addItem ("Level: peak -1 dB", 2);
+    levelBox.addItem ("Level: as played", 3);
+    levelBox.setSelectedId (settings->getIntValue ("level", 1), juce::dontSendNotification);
+    levelBox.setTooltip ("Loudness-matched: every file at the same perceived loudness, so pads play evenly. "
+                         "Peak: every file peaks at -1 dB. As played: the instrument's own level.");
+    levelBox.onChange = [this] { props.getUserSettings()->setValue ("level", levelBox.getSelectedId()); };
+
+    registersBox.addItem ("Registers: just this one", 1);
+    registersBox.addItem ("+ octave down", 2);
+    registersBox.addItem ("+ octave up", 3);
+    registersBox.addItem ("+ octave down & up", 4);
+    registersBox.addItem ("+ 2 octaves down & up", 5);
+    registersBox.setSelectedId (settings->getIntValue ("registers", 1), juce::dontSendNotification);
+    registersBox.setTooltip ("Also render every kept sample in other registers (folders Octave_Down / Octave_Up). "
+                             "With 16 Levels > Tune, load the register nearest the notes you play: big re-pitches sound grainy or dull.");
+    registersBox.onChange = [this] { props.getUserSettings()->setValue ("registers", registersBox.getSelectedId()); };
+
+    shortNamesToggle.setToggleState (settings->getBoolValue ("shortNames", true), juce::dontSendNotification);
+    shortNamesToggle.setTooltip ("014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3 - easier to read on the MPC screen");
+    shortNamesToggle.onClick = [this] { props.getUserSettings()->setValue ("shortNames", shortNamesToggle.getToggleState()); };
+    for (auto* c : std::initializer_list<juce::Component*> { &levelBox, &registersBox, &shortNamesToggle })
+        addAndMakeVisible (c);
     smartPickToggle.setToggleState (settings->getBoolValue ("smartPick", true), juce::dontSendNotification);
     smartPickToggle.setTooltip ("Renders 3x as many samples, scores them (pitch clarity, muddy voicings, harshness, clicks) "
                                 "and keeps only the best, most varied ones. Takes about 3x longer.");
     smartPickToggle.onClick = [this] { props.getUserSettings()->setValue ("smartPick", smartPickToggle.getToggleState()); };
-    for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &normaliseToggle, &smartPickToggle })
+    for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &smartPickToggle })
         addAndMakeVisible (c);
 
     // ---------------------------------------------------------- one-shot / 16 Levels
@@ -333,7 +355,7 @@ void MainComponent::resized()
     audioLabel.setBounds (r.removeFromLeft (labelW));
     rateBox.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
     bitsBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (12);
-    normaliseToggle.setBounds (r.removeFromLeft (150)); r.removeFromLeft (8);
+    levelBox.setBounds (r.removeFromLeft (210)); r.removeFromLeft (12);
     smartPickToggle.setBounds (r.removeFromLeft (220));
 
     r = row();
@@ -347,6 +369,8 @@ void MainComponent::resized()
     r = row();
     outLabel.setBounds (r.removeFromLeft (labelW));
     outButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    shortNamesToggle.setBounds (r.removeFromRight (120)); r.removeFromRight (6);
+    registersBox.setBounds (r.removeFromRight (200)); r.removeFromRight (10);
     outPath.setBounds (r);
 
     area.removeFromTop (14);
@@ -549,7 +573,17 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.plan.prefix = prefixEditor.getText().trim();
     req.render.sampleRate = rateBox.getSelectedId();
     req.render.bitDepth = bitsBox.getSelectedId();
-    req.render.normalise = normaliseToggle.getToggleState();
+    req.render.normalise = levelBox.getSelectedId() != 3;
+    req.render.loudnessMatch = levelBox.getSelectedId() == 1;
+    req.plan.shortNames = shortNamesToggle.getToggleState();
+    switch (registersBox.getSelectedId())
+    {
+        case 2: req.registers = { -12 }; break;
+        case 3: req.registers = { 12 }; break;
+        case 4: req.registers = { -12, 12 }; break;
+        case 5: req.registers = { -24, -12, 12, 24 }; break;
+        default: break;
+    }
     req.instrumentName = instrument->getName();
     req.plan.engine = selectedEngine();
     req.plan.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
@@ -633,7 +667,7 @@ void MainComponent::setBusy (bool busy)
 {
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
-                                                             &diceButton, &prefixEditor, &rateBox, &bitsBox, &normaliseToggle,
+                                                             &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
                                                              &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);

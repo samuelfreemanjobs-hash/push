@@ -60,13 +60,17 @@ jobs:
 
       - name: Render demo kit
         run: |
-          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --smart-pick --out demo-out/RecipeGuide_Palette
+          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --smart-pick --short-names --registers octaves --loudness --out demo-out/RecipeGuide_Palette
           test -f demo-out/RecipeGuide_Palette/_smart_pick.csv
           test ! -d demo-out/RecipeGuide_Palette/.candidates
+          test -d demo-out/RecipeGuide_Palette/Octave_Down
+          test -d demo-out/RecipeGuide_Palette/Octave_Up
           # fail loudly if anything silently went missing
-          n=$(find demo-out -name '*.wav' | wc -l | tr -d ' ')
-          echo "rendered $n WAV files"
+          n=$(find demo-out/RecipeGuide_Palette -maxdepth 2 -name '*.wav' | wc -l | tr -d ' ')
+          r=$(find demo-out/RecipeGuide_Palette/Octave_* -name '*.wav' | wc -l | tr -d ' ')
+          echo "rendered $n WAV files + $r in other registers"
           test "$n" -eq 18
+          test "$r" -ge 30
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

@@ -66,14 +66,14 @@ namespace forge
 
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
-        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox;
+        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox;
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
                          auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
                          reviewButton { "Review..." };
-        juce::ToggleButton normaliseToggle { "Normalise -1 dB" }, smartPickToggle { "Smart Pick (best of 3x)" };
+        juce::ToggleButton smartPickToggle { "Smart Pick (best of 3x)" }, shortNamesToggle { "Short names" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;
         juce::ProgressBar progressBar { progress };

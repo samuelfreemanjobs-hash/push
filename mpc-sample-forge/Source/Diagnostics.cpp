@@ -355,6 +355,29 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
     }
     if (cancel) return;
 
+    // ------------------------------------------------------------ loudness meter + registers + short names
+    {
+        juce::AudioBuffer<float> tone (2, (int) (3 * sr));
+        for (int i = 0; i < tone.getNumSamples(); ++i)
+        {
+            auto v = 0.1f * (float) std::sin (juce::MathConstants<double>::twoPi * 1000.0 * i / sr);
+            tone.setSample (0, i, v); tone.setSample (1, i, v);
+        }
+        auto lufs = momentaryLoudness (tone, sr); // BS.1770 reference for this tone: -20.0 LUFS
+        say (std::abs (lufs + 20.0f) < 0.5f ? L::Pass : L::Fail, "Loudness meter",
+             "1 kHz tone at -20 dBFS measures " + juce::String (lufs, 2) + " LUFS (reference -20.0)");
+
+        SampleSpec key = testNote (60, 0.3);
+        key.kind = "Key"; key.label = midiNoteName (60); key.tag = "Test"; key.shortTag = "EPBell"; key.index = 14;
+        key.stemHead = {}; key.stemTail = "EPBell_" + key.label;
+        SampleSpec down;
+        auto ok = transposeSpec (key, -12, down);
+        auto expected = "014_EPBell_" + midiNoteName (48);
+        say (ok && down.rootNote == 48 && down.notes[0].note == 48 && down.fileStem == expected ? L::Pass : L::Fail, "Registers + names",
+             "octave-down copy of " + key.stemTail + " -> " + down.fileStem + " (root " + midiNoteName (down.rootNote) + ")");
+    }
+    if (cancel) return;
+
     // ------------------------------------------------------------ WAV round trip
     {
         auto tmp = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("mpcforge_diag.wav");

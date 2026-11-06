@@ -1,6 +1,7 @@
 #include "CommandLine.h"
 #include "BuiltInSynth.h"
 #include "Diagnostics.h"
+#include "Analysis.h"
 #include <iostream>
 
 namespace forge
@@ -50,6 +51,13 @@ juce::String cliHelpText()
       << "                            harshness, clicks) and keep only the best, skipping\n"
       << "                            near-duplicates. Writes _smart_pick.csv with every decision.\n"
       << "  --pick-factor <2-6>       candidates per kept sample (default 3)\n\n"
+      << "MPC Sample friendly output:\n"
+      << "  --registers <list>        also render every kept sample in other registers, in\n"
+      << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
+      << "                            'octaves' (same as -12,12). Folders: Octave_Down, Octave_Up\n"
+      << "  --loudness                level all files to the same perceived loudness (LUFS)\n"
+      << "                            instead of the same peak, so pads play evenly\n"
+      << "  --short-names             014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3\n\n"
       << "Audio:\n"
       << "  --rate <44100|48000>      sample rate, default 44100\n"
       << "  --bits <16|24>            bit depth, default 24\n"
@@ -58,6 +66,7 @@ juce::String cliHelpText()
       << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
       << "Info:\n"
       << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --version  --help\n"
+      << "  --analyse <file.wav>      print loudness (LUFS), peak and the Smart Pick measurements\n"
       << "  --diagnose [--plugin X.vst3]  system report + self-test (renders every engine and\n"
       << "                            recipe, checks WAV writing, test-renders the plugin).\n"
       << "                            Exit code 3 if anything failed. Log: " << Log::file().getFullPathName() << "\n\n"
@@ -72,7 +81,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse" })
         if (args.contains (a))
             return true;
     return false;
@@ -109,6 +118,27 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
 
     if (args.contains ("--diagnose"))
         return runDiagnose (args);
+
+    if (args.contains ("--analyse"))
+    {
+        auto f = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--analyse"));
+        juce::AudioFormatManager fm;
+        fm.registerBasicFormats();
+        std::unique_ptr<juce::AudioFormatReader> reader (fm.createReaderFor (f));
+        if (reader == nullptr) return fail ("cannot read " + f.getFullPathName());
+        juce::AudioBuffer<float> audio ((int) reader->numChannels, (int) reader->lengthInSamples);
+        reader->read (&audio, 0, audio.getNumSamples(), 0, true, true);
+        auto root = reader->metadataValues.getValue ("MidiUnityNote", "60").getIntValue();
+        auto feat = analyseSample (audio, reader->sampleRate, root, true);
+        out (f.getFileName());
+        out ("  loudness   " + juce::String (momentaryLoudness (audio, reader->sampleRate), 2) + " LUFS (loudest 400 ms)");
+        out ("  peak       " + juce::String (juce::Decibels::gainToDecibels (feat.peak), 2) + " dBFS");
+        out ("  length     " + juce::String (feat.lengthSec, 3) + " s, " + juce::String (reader->sampleRate, 0) + " Hz, "
+             + juce::String (reader->bitsPerSample) + "-bit, root " + midiNoteName (root));
+        out ("  centroid   " + juce::String (juce::roundToInt (feat.centroidHz)) + " Hz, mud " + juce::String (feat.mudShare, 2)
+             + ", harsh " + juce::String (feat.harshShare, 2) + ", pitch clarity " + juce::String (feat.harmonicity, 2));
+        return onDone (0);
+    }
 
     if (args.contains ("--list-styles"))
     {
@@ -182,6 +212,20 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.normalise  = ! args.contains ("--no-normalize");
     req.render.maxTailSec = option (args, "--tail", "6").getDoubleValue();
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
+    req.render.loudnessMatch = args.contains ("--loudness");
+    req.plan.shortNames = args.contains ("--short-names");
+    if (args.contains ("--registers"))
+    {
+        auto list = option (args, "--registers");
+        if (list.equalsIgnoreCase ("octaves")) list = "-12,12";
+        for (auto& t : juce::StringArray::fromTokens (list, ",", ""))
+        {
+            auto v = t.trim().getIntValue();
+            if (t.trim().isEmpty() || std::abs (v) > 36 || (v == 0 && t.trim() != "0"))
+                return fail ("bad --registers value '" + t + "' (use semitones like -12,12)");
+            if (v != 0) req.registers.push_back (v);
+        }
+    }
     req.render.trimToSec  = args.contains ("--max-length") ? option (args, "--max-length").getDoubleValue() : -1.0;
 
     juce::String pluginPath = option (args, "--plugin");

@@ -24,6 +24,7 @@ namespace forge
         juce::int64 variation = 1;  // timbre seed for the built-in synth
         Processing processing;      // trim / envelope / FX from the style
         juce::String styleId, tag;  // which style (or kit member) made this sample
+        juce::String shortTag;      // compact tag for short file names
         std::vector<NoteEvent> notes;
 
         double holdSec() const;
@@ -41,10 +42,15 @@ namespace forge
         static constexpr int styleRoot = -2;
         juce::String engine;           // override the style's engine (built-in synth only)
         bool builtIn = false;          // rendering with the built-in synth (engine names go in file names)
+        bool shortNames = false;       // "014_EPBell_C3" instead of "JetLifeEPBell_C3_014_Key_C3" (easier on a small screen)
     };
 
     /** Creates a list of unique, musically sensible samples for a style. */
     std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& options, juce::String& error);
+
+    /** The same sample moved by `semitones` (e.g. -12 = an octave down): notes, root,
+        label and file name all follow. Returns false if it would leave the MIDI range. */
+    bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out);
 
     /** Renumbers 1..n and rebuilds the file names (after Smart Pick has chosen). */
     void renumberSamples (std::vector<SampleSpec>& specs);

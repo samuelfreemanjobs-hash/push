@@ -12,6 +12,7 @@ namespace forge
         juce::File outputFolder;
         juce::String instrumentName;
         bool splitBanks = false;   // put every 16 files into Bank_A, Bank_B ... (one MPC pad bank each)
+        std::vector<int> registers;  // extra renders of every kept sample, in semitones (e.g. -12, +12)
         int smartPickTarget = 0;   // > 0: the specs are candidates; keep this many of the best (Smart Pick)
     };
 
@@ -32,7 +33,8 @@ namespace forge
     private:
         void post (int done, int total, const juce::String& msg);
         juce::String mpcSetupSheet() const;
-        juce::File bankFolder (int index) const;
+        juce::File bankFolder (int index, const juce::File& base) const;
+        juce::File bankFolder (int index) const { return bankFolder (index, request.outputFolder); }
 
         juce::AudioProcessor& proc;
         BatchRequest request;

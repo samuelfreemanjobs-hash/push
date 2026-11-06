@@ -187,7 +187,7 @@ static const char* builtInStyleJson = R"JSON(
    "chordRootRange": [48, 59], "keyRange": [45, 79], "velocity": [80, 115],
    "hold": [0.2, 0.8], "stabChance": 0.5, "stabHold": 0.14, "strumMs": 0 },
 
- { "id": "jetlife-ep-bell", "name": "Jet Life EP Bell", "tag": "JetLifeEPBell",
+ { "id": "jetlife-ep-bell", "name": "Jet Life EP Bell", "tag": "JetLifeEPBell", "short": "EPBell",
    "description": "Guide recipe 1 (Curren$y / Wiz Khalifa / Larry June): Rhodes tine layered with a soft 2-op sine bell. 350 ms, LP 4.2 kHz, tape saturation, stereo chorus.",
    "engine": "epbell", "root": 60, "scale": "dorian",
    "chords": { "maj7": 3, "m9": 3, "maj9": 1 }, "voicings": { "close": 2, "drop2": 2, "rootless": 1 },
@@ -200,7 +200,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "chorus", "rate": 0.8, "depth": 0.25, "mix": 0.5 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Ascending Minor 9th arpeggios across the upper pads over halftime drums." } },
 
- { "id": "polyester-pluck", "name": "Polyester G-Funk Triangle Pluck", "tag": "PolyesterPluck",
+ { "id": "polyester-pluck", "name": "Polyester G-Funk Triangle Pluck", "tag": "PolyesterPluck", "short": "TriPluck",
    "description": "Guide recipe 2 (Polyester the Saint / Wiz Khalifa / Le$): triangle + sub-octave sine, 4-pole LP 2.8 kHz with a 180 ms filter envelope. 280 ms, HP 200 Hz, 1/16 tape delay.",
    "engine": "triangle", "root": 48, "scale": "minorpentatonic",
    "chords": { "5": 1 }, "voicings": { "close": 1 },
@@ -212,7 +212,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "delay", "sync": "1/16", "feedback": 0.15, "mix": 0.25, "tape": true } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Rapid pentatonic accent runs across pads 8-16; the fast decay keeps runs from smearing." } },
 
- { "id": "memphis-organ", "name": "90s Memphis Detuned Organ Stab", "tag": "MemphisOrgan",
+ { "id": "memphis-organ", "name": "90s Memphis Detuned Organ Stab", "tag": "MemphisOrgan", "short": "MemOrgan",
    "description": "Guide recipe 3 (90s Memphis Playa / OG Phonk): transistor combo organ minor stab. 12 ms fade-in, 500 ms, LP 2.4 kHz, cassette wow & flutter 45 %, 12-bit crush.",
    "engine": "comboorgan", "root": 60, "scale": "minor",
    "chords": { "min": 6, "dim": 2, "madd9": 1 }, "voicings": { "close": 3, "inv1": 2, "inv2": 1 },
@@ -226,7 +226,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "bitcrush", "bits": 12 } ] },
    "pad": { "tune": -3, "muteGroup": 1, "fullLevel": true, "phrasing": "Pitch the pad down -3 semitones; play simple repetitive 3-to-5 note Natural Minor or Locrian phrases for horror-style motifs." } },
 
- { "id": "phonk-cowbell", "name": "Rare Phonk Pitch-Shifted Cowbell", "tag": "PhonkCowbell",
+ { "id": "phonk-cowbell", "name": "Rare Phonk Pitch-Shifted Cowbell", "tag": "PhonkCowbell", "short": "Cowbell",
    "description": "Guide recipe 4 (OG Phonk / Rare Phonk / DJ Screw): TR-808 style cowbell hit. 180 ms, band-pass 800 Hz-3.5 kHz, warm overdrive, cassette tape noise.",
    "engine": "cowbell", "root": 79, "scale": "harmonicminor",
    "chords": { "5": 1 }, "voicings": { "close": 1 },
@@ -239,7 +239,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "hiss", "levelDb": -40 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Syncopated off-beat call-and-response lead patterns; the pitched hit becomes the melody." } },
 
- { "id": "zaytoven-organ", "name": "Zaytoven Gospel Trap Organ", "tag": "ZaytovenOrgan",
+ { "id": "zaytoven-organ", "name": "Zaytoven Gospel Trap Organ", "tag": "ZaytovenOrgan", "short": "ZayOrgan",
    "description": "Guide recipe 5 (Gucci Mane / Young Jeezy): workstation drawbar organ key strike with key click. 320 ms, HP 150 Hz, +3 dB at 1.8 kHz, fast rotary, bright plate (0.6 s, 15 %).",
    "engine": "organ", "root": 60, "scale": "minor",
    "chords": { "min": 2, "m7": 1 }, "voicings": { "close": 1 },
@@ -253,7 +253,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "reverb", "kind": "plate", "decay": 0.6, "mix": 0.15 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Fast chromatic grace notes resolving upward into minor-scale target notes, gospel-organ style over trap drums." } },
 
- { "id": "luxury-harp", "name": "Luxury Ross Cinematic Harp", "tag": "LuxuryHarp",
+ { "id": "luxury-harp", "name": "Luxury Ross Cinematic Harp", "tag": "LuxuryHarp", "short": "Harp",
    "description": "Guide recipe 6 (Luxury Rick Ross / Young Jeezy): concert harp pluck. 450 ms, HP 300 Hz, stereo expander, +12 st shimmer delay at a low mix.",
    "engine": "harp", "root": 60, "scale": "minor",
    "chords": { "5": 1 }, "voicings": { "close": 1 },
@@ -266,7 +266,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "shimmer", "timeMs": 160, "semitones": 12, "feedback": 0.35, "mix": 0.15 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Rapid ascending scale cascades sweeping pads 1 through 16." } },
 
- { "id": "screwed-choir", "name": "Screw-Head Down-Pitched Choir", "tag": "ScrewedChoir",
+ { "id": "screwed-choir", "name": "Screw-Head Down-Pitched Choir", "tag": "ScrewedChoir", "short": "Choir",
    "description": "Guide recipe 7 (DJ Screw / 90s Memphis Playa): choir chord stab varispeeded -5 st, 25 ms fade-in, 600 ms, 24 dB/oct LP 2.8 kHz, dark hall (2.2 s, 30 %), tape saturation.",
    "engine": "choir", "root": 60, "scale": "minor",
    "chords": { "min": 5, "5": 2, "maj": 2, "madd9": 1 }, "voicings": { "close": 2, "open": 2 },
@@ -279,7 +279,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "tape", "drive": 0.3 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Lower pad registers: slow, atmospheric halftime chords." } },
 
- { "id": "trap-brass", "name": "Trap Majesty Orchestral Brass", "tag": "TrapBrass",
+ { "id": "trap-brass", "name": "Trap Majesty Orchestral Brass", "tag": "TrapBrass", "short": "Brass",
    "description": "Guide recipe 8 (Young Jeezy / Gucci Mane / Luxury Rick Ross): horn section + bright 80s analog brass. 300 ms, +4 dB at 1.2 kHz, fast 4:1 compression, short room.",
    "engine": "brass", "root": 60, "scale": "minor",
    "chords": { "5": 3, "min": 2, "maj": 1 }, "voicings": { "close": 2, "open": 1 },
@@ -292,7 +292,7 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "reverb", "kind": "room", "decay": 0.5, "mix": 0.12 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Staccato single-note accents on beats 1 and 3 for a brass-driven foundation." } },
 
- { "id": "rhodes-bass", "name": "Cruisin' Smooth Rhodes Bass/Key", "tag": "RhodesBass",
+ { "id": "rhodes-bass", "name": "Cruisin' Smooth Rhodes Bass/Key", "tag": "RhodesBass", "short": "RhBass",
    "description": "Guide recipe 9 (Curren$y / Larry June / Le$): low-register Rhodes note (E1) through a tube preamp. 500 ms, LP 1.8 kHz, gentle tube overdrive.",
    "engine": "epiano", "root": 28, "scale": "dorian",
    "chords": { "5": 1 }, "voicings": { "close": 1 },
@@ -304,19 +304,19 @@ static const char* builtInStyleJson = R"JSON(
                            { "type": "tube", "drive": 0.45 } ] },
    "pad": { "muteGroup": 1, "fullLevel": true, "phrasing": "Lower pads: walking basslines and smooth counter-melodies - bass tone and key element at once." } },
 
- { "id": "westcoast-kit", "name": "West Coast / Jet Life Kit", "tag": "WestCoast",
+ { "id": "westcoast-kit", "name": "West Coast / Jet Life Kit", "tag": "WestCoast", "short": "WestCst",
    "description": "Kit: Jet Life EP Bell + Polyester Pluck + Rhodes Bass (smooth analog, warm tines, Major 7th / Minor 9th / Dorian).",
    "kit": { "jetlife-ep-bell": 3, "polyester-pluck": 3, "rhodes-bass": 2 } },
 
- { "id": "memphis-kit", "name": "Memphis / OG Phonk Kit", "tag": "Memphis",
+ { "id": "memphis-kit", "name": "Memphis / OG Phonk Kit", "tag": "Memphis", "short": "Memphis",
    "description": "Kit: Memphis Organ + Phonk Cowbell + Screwed Choir (cassette loss, wow & flutter, Harmonic Minor / Locrian).",
    "kit": { "memphis-organ": 3, "phonk-cowbell": 3, "screwed-choir": 2 } },
 
- { "id": "atlanta-kit", "name": "Atlanta / Luxury Trap Kit", "tag": "Atlanta",
+ { "id": "atlanta-kit", "name": "Atlanta / Luxury Trap Kit", "tag": "Atlanta", "short": "Atlanta",
    "description": "Kit: Zaytoven Organ + Luxury Harp + Trap Brass (workstation organs, harp plucks, brass hits, Natural Minor).",
    "kit": { "zaytoven-organ": 3, "luxury-harp": 3, "trap-brass": 2 } },
 
- { "id": "guide-palette", "name": "Recipe Guide Palette (all 9)", "tag": "GuidePalette",
+ { "id": "guide-palette", "name": "Recipe Guide Palette (all 9)", "tag": "GuidePalette", "short": "Guide",
    "description": "Kit: all nine guide recipes for puzzle-piece layering (e.g. Rhodes Bass on pad 1, EP Bell on pad 2, Polyester Pluck on pad 3).",
    "kit": { "rhodes-bass": 1, "jetlife-ep-bell": 1, "polyester-pluck": 1, "memphis-organ": 1, "phonk-cowbell": 1,
             "zaytoven-organ": 1, "luxury-harp": 1, "screwed-choir": 1, "trap-brass": 1 } }
@@ -370,6 +370,7 @@ juce::var Style::toVar() const
     o->setProperty ("strumMs", strumMs);
     o->setProperty ("engine", engine);
     if (tag.isNotEmpty()) o->setProperty ("tag", tag);
+    if (shortTag.isNotEmpty()) o->setProperty ("short", shortTag);
     if (root >= 0) o->setProperty ("root", root);
     if (isKit()) o->setProperty ("kit", weightsToVar (kit));
 
@@ -504,6 +505,7 @@ bool Style::fromVar (const juce::var& v, Style& s, juce::String& error)
     if (! validateFx (P.fx, error)) { error = "style '" + s.id + "': " + error; return false; }
 
     s.tag = safeTag (v.getProperty ("tag", s.name).toString());
+    s.shortTag = safeTag (v.getProperty ("short", v.hasProperty ("tag") ? s.tag.substring (0, 9) : juce::String()).toString());
     s.root = v.hasProperty ("root") ? juce::jlimit (0, 127, (int) v["root"]) : -1;
 
     auto pad = v["pad"];

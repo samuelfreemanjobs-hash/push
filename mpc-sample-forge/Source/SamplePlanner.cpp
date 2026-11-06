@@ -1,6 +1,7 @@
 #include "SamplePlanner.h"
 #include "BuiltInSynth.h"
 #include <set>
+#include <map>
 #include <algorithm>
 
 namespace forge
@@ -86,11 +87,46 @@ namespace
     }
 }
 
-static void nameSamples (std::vector<SampleSpec>& specs, const juce::String& prefix, bool withTag, bool withEngine)
+static juce::String shortVoicing (const juce::String& v)
+{
+    static const std::map<juce::String, juce::String> m { { "close", "cl" }, { "inv1", "i1" }, { "inv2", "i2" }, { "drop2", "d2" },
+                                                          { "open", "op" }, { "rootless", "rl" }, { "shell", "sh" }, { "spread", "sp" } };
+    auto it = m.find (v);
+    return it != m.end() ? it->second : v;
+}
+
+static juce::String shortKind (const juce::String& kind)
+{
+    if (kind == "Octave") return "oct";
+    if (kind == "Fifth") return "5th";
+    if (kind == "Stab" || kind == "KeyStab") return "stab";
+    return {};
+}
+
+static void nameSamples (std::vector<SampleSpec>& specs, const juce::String& prefix, bool withTag, bool withEngine,
+                         bool shortNames = false, const juce::String& shortTag = {})
 {
     for (size_t i = 0; i < specs.size(); ++i)
     {
         auto& s = specs[i];
+        if (shortNames)
+        {
+            // number first so the MPC's alphabetical list matches pad order
+            juce::String tail;
+            Engine r;
+            if (withTag && s.shortTag.isNotEmpty())        tail += s.shortTag + "_";
+            else if (shortTag.isNotEmpty())                 tail += shortTag + "_";
+            if (withEngine && parseEngine (s.engine, r))    tail += engineDisplayName (r).substring (0, 6) + "_";
+            tail += s.kind == "KeyStab" ? s.label.upToFirstOccurrenceOf ("_", false, false) : s.label;
+            auto extra = (s.kind == "Chord" || s.kind == "Stab") ? shortVoicing (s.voicing) : juce::String();
+            if (s.kind == "Stab" || s.kind == "KeyStab") extra = (extra.isNotEmpty() ? extra + "_" : juce::String()) + "stab";
+            else if (shortKind (s.kind).isNotEmpty())      extra = shortKind (s.kind);
+            if (extra.isNotEmpty()) tail += "_" + extra;
+            s.stemHead = {};
+            s.stemTail = tail;
+            continue;
+        }
+
         juce::String tail;
         if (withTag && s.tag.isNotEmpty())
             tail += s.tag + "_";
@@ -112,8 +148,39 @@ void renumberSamples (std::vector<SampleSpec>& specs)
     {
         auto& s = specs[i];
         s.index = (int) i + 1;
-        s.fileStem = safeFileName (s.stemHead + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_" + s.stemTail);
+        auto number = juce::String (s.index).paddedLeft ('0', 3);
+        s.fileStem = safeFileName (s.stemHead.isEmpty() ? number + "_" + s.stemTail
+                                                         : s.stemHead + "_" + number + "_" + s.stemTail);
     }
+}
+
+bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out)
+{
+    out = in;
+    if (semitones == 0) return true;
+    for (auto& n : out.notes)
+    {
+        n.note += semitones;
+        if (n.note < 21 || n.note > 108) return false; // stay on the piano: below that it is rumble, above it whistle
+    }
+    out.rootNote = in.rootNote + semitones;
+    if (out.rootNote < 24 || out.rootNote > 108) return false;
+
+    auto oldRoot = midiNoteName (in.rootNote), newRoot = midiNoteName (out.rootNote);
+    if (in.kind == "Key" || in.kind == "Octave" || in.kind == "Fifth")
+        out.label = newRoot;
+    else if (in.kind == "KeyStab")
+        out.label = in.label.upToLastOccurrenceOf ("_", true, false) + newRoot;
+
+    // octave numbers in the name follow the new register (short stab names carry none)
+    if (out.label != in.label)
+        out.stemTail = in.stemTail.replaceFirstOccurrenceOf (in.label, out.label);
+    if (in.stemHead.endsWith ("_" + oldRoot))
+        out.stemHead = in.stemHead.dropLastCharacters (oldRoot.length()) + newRoot;
+
+    auto number = juce::String (out.index).paddedLeft ('0', 3);
+    out.fileStem = safeFileName (out.stemHead.isEmpty() ? number + "_" + out.stemTail : out.stemHead + "_" + number + "_" + out.stemTail);
+    return true;
 }
 
 static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions& opt, juce::String& error)
@@ -367,9 +434,10 @@ static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions
         sp.processing = style.processing;
         sp.styleId = style.id;
         sp.tag = style.tag;
+        sp.shortTag = style.shortTag;
     }
 
-    nameSamples (result, prefix, false, opt.builtIn && mixedEngine);
+    nameSamples (result, prefix, false, opt.builtIn && mixedEngine, opt.shortNames, style.shortTag);
     return result;
 }
 
@@ -427,7 +495,7 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
     }
 
     auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.tag);
-    nameSamples (result, prefix, true, false);
+    nameSamples (result, prefix, true, false, opt.shortNames);
     error = warnings.joinIntoString ("; ");
     return result;
 }

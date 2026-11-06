@@ -18,6 +18,7 @@ namespace forge
         double maxLengthSec = 15.0;
         double fadeOutMs = 25.0;
         double warmUpSec = 1.5;         // let sample-based plugins finish loading
+        bool loudnessMatch = false;     // after the batch: level every file to the same perceived loudness
         double trimToSec = -1;          // override every style's end point: -1 = use the style's, 0 = no cap
     };
 

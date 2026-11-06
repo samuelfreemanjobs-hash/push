@@ -73,6 +73,18 @@ juce::String BatchJob::mpcSetupSheet() const
         t << "  Files (" << files.size() << "):\n    " << files.joinIntoString ("\n    ") << "\n\n";
     }
 
+    if (! request.registers.empty())
+    {
+        t << "Register sets: every sample is also in ";
+        juce::StringArray names;
+        for (auto r : request.registers) if (r != 0) names.add ((r > 0 ? "+" : "") + juce::String (r) + " st");
+        t << names.joinIntoString (", ") << " (folders Octave_Down / Octave_Up ...).\n"
+          << "  With 16 Levels > Tune, load the register closest to the notes you play: big\n"
+          << "  re-pitches make one-shots grainy / short (up) or dull / long (down).\n\n";
+    }
+    if (request.render.loudnessMatch)
+        t << "Loudness matched: pads play at even volume, so you can leave pad levels alone.\n\n";
+
     t << "Workflow tips from the recipe guide:\n"
       << "  * Put melodic pads in a Mute Group so each new note chokes the last one.\n"
       << "  * Assign a Q-Link to Filter Cutoff or Pitch Bend while recording 16 Levels patterns.\n"
@@ -88,9 +100,8 @@ static juce::String csv (const juce::String& s)
     return "\"" + s.replace ("\"", "\"\"") + "\"";
 }
 
-juce::File BatchJob::bankFolder (int index) const
+juce::File BatchJob::bankFolder (int index, const juce::File& folder) const
 {
-    auto& folder = request.outputFolder;
     if (! request.splitBanks) return folder;
     auto bank = index / 16;
     return folder.getChildFile ("Bank_" + juce::String::charToString ((juce::juce_wchar) ('A' + bank % 26))
@@ -105,7 +116,7 @@ void BatchJob::run()
             juce::MessageManager::callAsync ([cb, ok, summary] { cb (ok, summary); });
     };
 
-    auto& folder = request.outputFolder;
+    const auto& folder = request.outputFolder;
     if (! folder.createDirectory())
     {
         finish (false, "Could not create output folder " + folder.getFullPathName());
@@ -120,7 +131,7 @@ void BatchJob::run()
     auto workDir = picking ? folder.getChildFile (".candidates") : folder;
     if (picking) { workDir.deleteRecursively(); workDir.createDirectory(); }
 
-    struct Rendered { bool ok = false; juce::File file; double lengthSec = 0; SampleFeatures features; };
+    struct Rendered { bool ok = false; juce::File file; double lengthSec = 0; float loudness = -100; SampleFeatures features; };
     std::vector<Rendered> rendered ((size_t) total);
     juce::StringArray failures;
     auto* builtIn = dynamic_cast<BuiltInSynth*> (&proc);
@@ -159,6 +170,7 @@ void BatchJob::run()
             r.ok = true;
             r.file = file;
             r.lengthSec = audio.getNumSamples() / request.render.sampleRate;
+            r.loudness = momentaryLoudness (audio, request.render.sampleRate);
             if (picking)
                 r.features = analyseSample (audio, request.render.sampleRate, spec.rootNote, spec.kind == "Key" || spec.kind == "Octave");
         }
@@ -240,24 +252,122 @@ void BatchJob::run()
         if (picking) workDir.deleteRecursively();
     }
 
-    // ------------------------------------------------------------ manifest
-    int written = 0;
-    juce::String manifest = "file,recipe,type,name,voicing,engine,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds,score\n";
+    // ------------------------------------------------------------ the final list of files
+    struct Row { SampleSpec spec; juce::File file; double lengthSec = 0; int score = -1; int shift = 0; float loudness = -100; float gainDb = 0; };
+    std::vector<Row> rows;
     for (size_t j = 0; j < specs.size() && j < origin.size(); ++j)
     {
-        auto& spec = specs[j];
         auto& r = rendered[(size_t) origin[j]];
         if (! r.ok) continue;
+        rows.push_back ({ specs[j], r.file, r.lengthSec,
+                          verdicts.empty() ? -1 : juce::roundToInt (verdicts[(size_t) origin[j]].score), 0, r.loudness, 0.0f });
+    }
+    const auto originals = rows.size();
+
+    // ------------------------------------------------------------ register sets
+    // The same sounds an octave (or two) away, so 16 Levels > Tune never has to
+    // stretch a sample far: tune from the nearest register instead.
+    std::vector<int> shifts;
+    int outOfRange = 0;
+    for (auto s : request.registers) if (s != 0 && std::find (shifts.begin(), shifts.end(), s) == shifts.end()) shifts.push_back (s);
+
+    if (! shifts.empty() && ! threadShouldExit())
+    {
+        OfflineRenderer renderer (proc, request.render);
+        renderer.warmUp();
+        const int jobs = (int) (shifts.size() * originals);
+        int done = 0;
+        outOfRange = 0;
+        for (auto shift : shifts)
+        {
+            auto octaves = std::abs (shift) / 12;
+            auto name = (shift % 12 == 0 ? (octaves == 1 ? juce::String() : juce::String (octaves) + "_") + (octaves == 1 ? "Octave" : "Octaves")
+                                         : juce::String (std::abs (shift)) + "_Semitones")
+                        + (shift < 0 ? "_Down" : "_Up");
+            auto base = folder.getChildFile (name);
+
+            for (size_t j = 0; j < originals && ! threadShouldExit(); ++j)
+            {
+                SampleSpec moved;
+                post (done++, jobs, "Register " + name + ": " + rows[j].spec.fileStem);
+                if (! transposeSpec (rows[j].spec, shift, moved)) { ++outOfRange; continue; } // e.g. a bass note an octave lower
+
+                if (builtIn != nullptr)
+                {
+                    Engine e;
+                    if (parseEngine (moved.engine, e)) builtIn->setEngine (e);
+                    builtIn->setVariation (moved.variation); // same timbre, new register
+                }
+
+                juce::AudioBuffer<float> audio;
+                juce::String error;
+                auto file = bankFolder ((int) j, base).getChildFile (moved.fileStem + ".wav");
+                file.getParentDirectory().createDirectory();
+                if (! renderer.render (moved, audio, error)
+                    || ! OfflineRenderer::writeWav (file, audio, request.render.sampleRate, request.render.bitDepth, moved.rootNote, error))
+                {
+                    failures.add (moved.fileStem + " (" + name + "): " + error);
+                    continue;
+                }
+                rows.push_back ({ moved, file, audio.getNumSamples() / request.render.sampleRate, rows[j].score, shift,
+                                  momentaryLoudness (audio, request.render.sampleRate), 0.0f });
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ loudness matching
+    // Every file was peak-normalised; now bring them to the same *perceived* loudness.
+    // Gains only go down (never clip): the target is set so ~80% reach it exactly and
+    // the quietest few stay at full level.
+    juce::String loudnessSummary;
+    if (request.render.loudnessMatch && rows.size() > 1 && ! threadShouldExit())
+    {
+        post ((int) rows.size(), (int) rows.size(), "Matching loudness ...");
+        std::vector<float> levels;
+        for (auto& r : rows) levels.push_back (r.loudness);
+        std::sort (levels.begin(), levels.end());
+        auto target = levels[(size_t) (0.2 * (double) (levels.size() - 1))];
+
+        int adjusted = 0, belowTarget = 0;
+        juce::WavAudioFormat wav;
+        for (auto& r : rows)
+        {
+            if (threadShouldExit()) break;
+            auto gainDb = juce::jmin (0.0f, target - r.loudness);
+            if (r.loudness < target - 0.5f) ++belowTarget;
+            if (gainDb > -0.1f) continue;
+
+            std::unique_ptr<juce::AudioFormatReader> reader (wav.createReaderFor (r.file.createInputStream().release(), true));
+            if (reader == nullptr) { failures.add ("loudness: cannot read " + r.file.getFileName()); continue; }
+            juce::AudioBuffer<float> audio ((int) reader->numChannels, (int) reader->lengthInSamples);
+            reader->read (&audio, 0, audio.getNumSamples(), 0, true, true);
+            reader.reset();
+            audio.applyGain (juce::Decibels::decibelsToGain (gainDb));
+            juce::String error;
+            if (! OfflineRenderer::writeWav (r.file, audio, request.render.sampleRate, request.render.bitDepth, r.spec.rootNote, error))
+                failures.add ("loudness: " + error);
+            else { r.gainDb = gainDb; r.loudness += gainDb; ++adjusted; }
+        }
+        loudnessSummary << "Loudness matched to " << juce::String (target, 1) << " LUFS (" << adjusted << " files turned down"
+                        << (belowTarget > 0 ? ", " + juce::String (belowTarget) + " naturally quieter ones left at full level" : juce::String()) << ")";
+    }
+
+    // ------------------------------------------------------------ manifest
+    int written = 0;
+    juce::String manifest = "file,recipe,type,name,voicing,engine,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds,score,register_semitones,loudness_lufs,gain_db\n";
+    for (auto& row : rows)
+    {
+        auto& spec = row.spec;
         ++written;
         juce::StringArray notes, vels;
         for (auto& nn : spec.notes) { notes.add (juce::String (nn.note)); vels.add (juce::String (nn.velocity)); }
 
-        manifest << csv (r.file.getRelativePathFrom (folder).replaceCharacter ('\\', '/')) << "," << spec.tag << "," << spec.kind << ","
+        manifest << csv (row.file.getRelativePathFrom (folder).replaceCharacter ('\\', '/')) << "," << spec.tag << "," << spec.kind << ","
                  << csv (spec.label) << "," << spec.voicing << "," << (builtIn != nullptr ? spec.engine : juce::String ("-")) << ","
                  << midiNoteName (spec.rootNote) << "," << spec.rootNote << "," << csv (notes.joinIntoString (" ")) << ","
                  << csv (vels.joinIntoString (" ")) << "," << juce::String (spec.holdSec(), 3) << ","
-                 << juce::String (r.lengthSec, 3) << ","
-                 << (verdicts.empty() ? juce::String() : juce::String (juce::roundToInt (verdicts[(size_t) origin[j]].score))) << "\n";
+                 << juce::String (row.lengthSec, 3) << "," << (row.score >= 0 ? juce::String (row.score) : juce::String()) << ","
+                 << row.shift << "," << juce::String (row.loudness, 1) << "," << juce::String (row.gainDb, 1) << "\n";
     }
 
     folder.getChildFile ("_manifest.csv").replaceWithText (manifest);
@@ -272,6 +382,10 @@ void BatchJob::run()
     info->setProperty ("seed", request.plan.seed);
     info->setProperty ("count", picking ? request.smartPickTarget : request.plan.count);
     info->setProperty ("smartPickCandidates", picking ? total : 0);
+    juce::Array<juce::var> regs;
+    for (auto r : request.registers) regs.add (r);
+    info->setProperty ("registers", regs);
+    info->setProperty ("loudnessMatch", request.render.loudnessMatch);
     info->setProperty ("sampleRate", request.render.sampleRate);
     info->setProperty ("bitDepth", request.render.bitDepth);
     info->setProperty ("fixedRoot", request.plan.fixedRoot >= 0 ? midiNoteName (request.plan.fixedRoot) : juce::String ("free"));
@@ -289,8 +403,13 @@ void BatchJob::run()
     post (total, total, "Done");
 
     juce::String summary;
-    summary << "Wrote " << written << " of " << (picking ? request.smartPickTarget : total) << " samples to " << folder.getFullPathName();
+    summary << "Wrote " << (int) originals << " of " << (picking ? request.smartPickTarget : total) << " samples"
+            << (rows.size() > originals ? " (+" + juce::String ((int) (rows.size() - originals)) + " in other registers"
+                                          + (outOfRange > 0 ? ", " + juce::String (outOfRange) + " skipped as too low / high to be useful" : juce::String()) + ")"
+                                        : juce::String())
+            << " to " << folder.getFullPathName();
     if (pickSummary.isNotEmpty()) summary << "\n" << pickSummary;
+    if (loudnessSummary.isNotEmpty()) summary << "\n" << loudnessSummary;
     if (! failures.isEmpty())
         summary << "\n" << failures.size() << " failed:\n  " << failures.joinIntoString ("\n  ");
 

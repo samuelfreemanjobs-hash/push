@@ -17,6 +17,62 @@ namespace
     }
 }
 
+float momentaryLoudness (const juce::AudioBuffer<float>& audio, double sr)
+{
+    const int n = audio.getNumSamples();
+    if (n < 16) return -100.0f;
+
+    // K-weighting: high shelf (+4 dB above ~1.7 kHz) then high-pass at ~38 Hz (RBJ biquads)
+    struct Biquad
+    {
+        double b0, b1, b2, a1, a2, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        double process (double x)
+        {
+            auto y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+            x2 = x1; x1 = x; y2 = y1; y1 = y;
+            return y;
+        }
+    };
+    auto shelf = [sr]
+    {
+        const double f0 = 1681.974450955533, gainDb = 3.999843853973347, q = 0.7071752369554196;
+        auto A = std::pow (10.0, gainDb / 40.0), w = juce::MathConstants<double>::twoPi * f0 / sr;
+        auto alpha = std::sin (w) / (2 * q), c = std::cos (w), sq = 2 * std::sqrt (A) * alpha;
+        auto a0 = (A + 1) - (A - 1) * c + sq;
+        return Biquad { A * ((A + 1) + (A - 1) * c + sq) / a0, -2 * A * ((A - 1) + (A + 1) * c) / a0,
+                        A * ((A + 1) + (A - 1) * c - sq) / a0, 2 * ((A - 1) - (A + 1) * c) / a0,
+                        ((A + 1) - (A - 1) * c - sq) / a0 };
+    };
+    auto highpass = [sr]
+    {
+        const double f0 = 38.13547087602444, q = 0.5003270373238773;
+        auto w = juce::MathConstants<double>::twoPi * f0 / sr, alpha = std::sin (w) / (2 * q), c = std::cos (w);
+        auto a0 = 1 + alpha;
+        return Biquad { (1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0, -2 * c / a0, (1 - alpha) / a0 };
+    };
+
+    std::vector<double> power ((size_t) n, 0.0); // K-weighted power summed over channels
+    for (int ch = 0; ch < audio.getNumChannels(); ++ch)
+    {
+        auto s1 = shelf(); auto s2 = highpass();
+        for (int i = 0; i < n; ++i)
+        {
+            auto y = s2.process (s1.process (audio.getSample (ch, i)));
+            power[(size_t) i] += y * y;
+        }
+    }
+
+    // loudest 400 ms window (or the whole sample if shorter), 100 ms hop
+    auto win = juce::jmin (n, (int) (0.4 * sr)), hop = juce::jmax (1, (int) (0.1 * sr));
+    std::vector<double> prefix ((size_t) n + 1, 0.0);
+    for (int i = 0; i < n; ++i) prefix[(size_t) i + 1] = prefix[(size_t) i] + power[(size_t) i];
+    double best = 0;
+    for (int start = 0; start + win <= n; start += hop)
+        best = juce::jmax (best, (prefix[(size_t) (start + win)] - prefix[(size_t) start]) / win);
+    best = juce::jmax (best, (prefix[(size_t) n] - prefix[(size_t) (n - win)]) / win);
+    return (float) (-0.691 + 10.0 * std::log10 (juce::jmax (1e-12, best)));
+}
+
 SampleFeatures analyseSample (const juce::AudioBuffer<float>& audio, double sr, int rootNote, bool measurePitch)
 {
     SampleFeatures f;

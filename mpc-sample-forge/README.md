@@ -102,6 +102,30 @@ Pick, the planner now avoids muddy low voicings when it has other options.
   order, with the setup sheet.
 * **Move Rejects to Trash** asks first, and the files can be restored from the Trash.
 
+## MPC Sample friendly output
+
+* **Register sets:** use **Registers** in the app, or `--registers octaves` / `--registers -12,12`.
+  Every kept sample is also rendered an octave down and/or up, with the same timbre, into
+  `Octave_Down/` and `Octave_Up/`. With 16 Levels → Tune, load the register nearest the
+  notes you'll play: re-pitching a one-shot far makes it grainy and short (up) or dull and
+  long (down). Copies that would land below MIDI 24 or above 108 are skipped.
+* **Loudness matching:** **Level: loudness-matched** in the app, or `--loudness`. Every file is
+  measured with BS.1770 K-weighting (the measure behind LUFS), then turned down to a common
+  level. Pads play evenly, so you don't need to set pad levels by hand. Nothing is turned up
+  past −1 dB peak, so nothing clips. The few naturally quieter samples stay at full level,
+  and the summary says how many. The meter agrees with `pyloudnorm` to within 0.2 dB.
+* **Short names:** the **Short names** checkbox, or `--short-names`. For example
+  `014_EPBell_C3`, `002_Ebm9_d2` or `005_Cowbell_G4`. The number comes first, so the MPC's
+  alphabetical list matches pad order. Voicings are abbreviated: `cl` close, `d2` drop-2,
+  `rl` rootless, `sh` shell, `sp` spread, `op` open, `i1`/`i2` inversions.
+* **16 Levels preview in Review:**
+  * **Left/Right** re-pitches the selected sample a semitone at a time, **Shift** for an
+    octave, and **0** resets.
+  * It plays tape-style (faster = higher and shorter), the way MPC Tune does.
+  * **R** runs a range check, from an octave down to an octave up.
+  * The pitch readout turns red past a fifth: that's where a register set usually sounds better.
+* `mpcforge --analyse file.wav` prints a file's loudness, peak, root and Smart Pick measurements.
+
 ## Download
 
 Every push builds Windows, macOS (Apple Silicon and Intel) and Linux versions.
@@ -314,6 +338,10 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--max-length <sec>` | Override every recipe's end point (default: the recipe's; 0 = no cap) |
 | `--smart-pick` | Render 3× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
 | `--pick-factor <2-6>` | Candidates per kept sample for Smart Pick (default 3) |
+| `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
+| `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
+| `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
+| `--analyse <file.wav>` | Print loudness, peak, root and Smart Pick measurements of a file |
 | `--style <id>` / `--style-file <json>` | Built-in style, or your own |
 | `--count <n>` | Number of samples (default 100) |
 | `--key <C, F#, Bb, random>` | Lock to a key (default random) |
