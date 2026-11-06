@@ -118,6 +118,35 @@ mpcforge --plugin Keys.vst3 --export-presets ~/Presets/Keys    # save the plugin
 
 ---
 
+## Render queue: set up several batches, then walk away
+
+Set up a batch in the main window and click **Add to Queue** (next to Generate). Everything is
+saved with it: recipe, key / scale, count, seed, banks, 16 Levels, format, Smart Pick, Variety,
+registers, takes, and **which instrument and its sound** (a different plugin per batch is fine).
+Change the settings and add the next one; the seed rolls each time, so two adds give two
+different batches.
+
+Open **Queue** (top right, it shows how many are waiting) and click **Start Queue**. The batches
+render one after another, each into its own folder, and your instrument and sound are put back
+at the end. **Stop Queue** (or Cancel) stops after cleaning up the current batch; it runs again
+next time. The queue is kept when you close the app. **Run Again** re-queues finished batches
+with a new seed; double-click a finished batch to Review it.
+
+Headless, e.g. overnight: `mpcforge --queue` renders the app's queue (or `--queue my.json`).
+
+## Round robins: 2-4 takes of every sample
+
+**Takes** (next to Registers, or `--round-robins 2-4`) renders other takes of every kept sample,
+each played again slightly differently: every note's velocity up to +/-8, chord notes rolled a
+few ms differently, held up to 6% shorter or longer. Same sound, same notes, a different
+performance - so the same pad hit four times doesn't sound machine-gunned.
+
+They go into `Round_Robin/Take_2` ... `Take_4`, with the same pad numbers and `_rr2` ... on the
+end of the name. Put takes 1-4 on the layers of one pad and set the layers to cycle / random if
+your MPC has pad layers, or swap takes between passes of a pattern. Loudness matching includes them.
+
+---
+
 ## Chord row: hear and export the recipe's chords
 
 Above the keyboard, **seven buttons** show the diatonic chords of the selected recipe in your
@@ -554,6 +583,8 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
+| `--round-robins <2-4>` | Also render 2-4 slightly different takes of every sample (`Round_Robin/Take_2` ...) |
+| `--queue [file.json]` | Render every waiting batch of the app's render queue (or a queue file) |
 | `--analyse <file.wav>` | Print loudness, peak, root and Smart Pick measurements of a file |
 | `--style <id>` / `--style-file <json>` | Built-in style, or your own |
 | `--count <n>` | Number of samples (default 100) |
@@ -658,6 +689,8 @@ Source/Analysis.*        Smart Pick: audio analysis, scoring and variety-aware s
 Source/ReviewPanel.*     the Review & Keep window
 Source/PresetSweep.*     Preset Sweep: collect presets, test-render, score, render a bank per kept preset
 Source/PresetSweepPanel.* the Preset Sweep window
+Source/RenderQueue.*     queue items (saved settings + instrument state), queue file
+Source/QueuePanel.*      the Render Queue window
 Source/BuiltInSynth.*    built-in synth (25 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)

@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "PresetSweepPanel.h"
+#include "QueuePanel.h"
 #include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
@@ -80,6 +81,19 @@ MainComponent::MainComponent()
     addAndMakeVisible (title);
     diagnosticsButton.setTooltip ("System report, self-test and log file - use this when something goes wrong.");
     diagnosticsButton.onClick = [this] { openDiagnostics(); };
+    queueButton.setTooltip ("The render queue: batches that render one after another while you're away");
+    queueButton.onClick = [this] { openQueue(); };
+    addAndMakeVisible (queueButton);
+    addQueueButton.setTooltip ("Save everything set up here (recipe, key, count, instrument + sound, format, takes ...) as a batch "
+                               "in the render queue, to render later with the others");
+    addQueueButton.onClick = [this] { addToQueue(); };
+    addAndMakeVisible (addQueueButton);
+    {
+        juce::String err;
+        queue = loadQueue (defaultQueueFile(), err);
+        if (err.isNotEmpty()) log ("Queue: " + err);
+        updateQueueButton();
+    }
     addAndMakeVisible (diagnosticsButton);
 
     setupLabel (pluginLabel, "Instrument");
@@ -221,7 +235,13 @@ MainComponent::MainComponent()
     shortNamesToggle.setToggleState (settings->getBoolValue ("shortNames", true), juce::dontSendNotification);
     shortNamesToggle.setTooltip ("014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3 - easier to read on the MPC screen");
     shortNamesToggle.onClick = [this] { props.getUserSettings()->setValue ("shortNames", shortNamesToggle.getToggleState()); };
-    for (auto* c : std::initializer_list<juce::Component*> { &levelBox, &registersBox, &shortNamesToggle })
+    takesBox.addItem ("1 take", 1);
+    for (int t = 2; t <= 4; ++t) takesBox.addItem (juce::String (t) + " takes (round robin)", t);
+    takesBox.setSelectedId (juce::jlimit (1, 4, settings->getIntValue ("takes", 1)), juce::dontSendNotification);
+    takesBox.setTooltip ("Round robins: also render 2-4 slightly different takes of every sample (velocity, timing, length) "
+                         "into Round_Robin/Take_2 ... - same pad numbers, so repeated hits don't sound machine-gunned");
+    takesBox.onChange = [this] { props.getUserSettings()->setValue ("takes", takesBox.getSelectedId()); updateEstimate(); };
+    for (auto* c : std::initializer_list<juce::Component*> { &levelBox, &registersBox, &takesBox, &shortNamesToggle })
         addAndMakeVisible (c);
 
     varietyBox.addItem ("Variety: normal", 2);
@@ -433,6 +453,8 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    queueWindow.reset();
+    queueRunning = false;
     sweepWindow.reset();
     sweep.reset();          // before the instrument it uses
     styleEditorWindow.reset();
@@ -461,6 +483,8 @@ void MainComponent::resized()
     auto area = getLocalBounds().reduced (20, 12);
     auto titleRow = area.removeFromTop (34);
     diagnosticsButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
+    titleRow.removeFromRight (8);
+    queueButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
     title.setBounds (titleRow);
     area.removeFromTop (12);
 
@@ -527,18 +551,20 @@ void MainComponent::resized()
     outLabel.setBounds (r.removeFromLeft (labelW));
     outButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     shortNamesToggle.setBounds (r.removeFromRight (120)); r.removeFromRight (6);
-    registersBox.setBounds (r.removeFromRight (200)); r.removeFromRight (10);
+    takesBox.setBounds (r.removeFromRight (176)); r.removeFromRight (6);
+    registersBox.setBounds (r.removeFromRight (176)); r.removeFromRight (10);
     outPath.setBounds (r);
 
     area.removeFromTop (14);
     r = row (34);
     generateButton.setBounds (r.removeFromRight (130)); r.removeFromRight (6);
-    moreButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
-    reviewButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
+    addQueueButton.setBounds (r.removeFromRight (106)); r.removeFromRight (6);
+    moreButton.setBounds (r.removeFromRight (80)); r.removeFromRight (6);
+    reviewButton.setBounds (r.removeFromRight (78)); r.removeFromRight (6);
     auditionOctaveBox.setBounds (r.removeFromRight (140)); r.removeFromRight (4);
     auditionButton.setBounds (r.removeFromRight (124)); r.removeFromRight (6);
     planButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
-    estimateLabel.setBounds (r.removeFromRight (90)); r.removeFromRight (6);
+    estimateLabel.setVisible (false); // the estimate shows inside the progress bar while idle
     progressBar.setBounds (r);
 
     keyboard.setBounds (area.removeFromBottom (80));
@@ -767,6 +793,7 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
         case 5: req.registers = { -24, -12, 12, 24 }; break;
         default: break;
     }
+    req.roundRobins = juce::jlimit (1, 4, takesBox.getSelectedId());
     req.instrumentName = instrument->getName();
     req.plan.engine = selectedEngine();
     req.plan.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
@@ -782,34 +809,10 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     else if (req.plan.key != "random") sub += "_" + req.plan.key;
     req.outputFolder = outputFolder.getChildFile (sub).getNonexistentSibling (false);
 
-    juce::String error;
-    const int wanted = req.plan.count;
-    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
-    if (banks)
-    {
-        req.splitBanks = true; // one sound per 16-pad bank
-        if (smartPickToggle.getToggleState() || ! req.registers.empty())
-            log ("Scale banks: Smart Pick and Registers are skipped - each bank is a complete 16-pad set across the scale.");
-        req.registers.clear();
-    }
-    if (! banks && smartPickToggle.getToggleState())
-    {
-        req.plan.count = juce::jmin (2000, (int) std::ceil (wanted * 1.5));
-        req.smartPickTarget = wanted;
-    }
-    specs = planSamples (req.style, req.plan, error);
-    if (req.smartPickTarget > 0)
-    {
-        if ((int) specs.size() <= wanted)
-        {
-            log ("Smart Pick skipped: only " + juce::String ((int) specs.size()) + " distinct samples are possible with these settings.");
-            req.smartPickTarget = 0;
-        }
-        error = {};
-    }
-    req.plan.count = wanted;
-    if (error.isNotEmpty()) log ("WARNING: " + error);
-    return ! specs.empty();
+    juce::StringArray notes;
+    const bool ok = planBatch (req, smartPickToggle.getToggleState(), specs, notes);
+    for (auto& n : notes) log (n);
+    return ok;
 }
 
 void MainComponent::previewPlan()
@@ -871,13 +874,15 @@ void MainComponent::setBusy (bool busy)
 {
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &sweepButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
-                                                             &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
-                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
+                                                             &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &takesBox, &shortNamesToggle,
+                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox, &addQueueButton,
                                                              &exportChordButton, &exportRowButton, &editStyleButton,
                                                              &varietyBox, &instancesBox, &size16, &size32, &size64, &moreButton,
                                                              &outButton, &planButton, &auditionButton, &auditionOctaveBox, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");
+    if (busy) progressBar.setTextToDisplay ({}); // percentage while rendering
+    else updateEstimate();
 }
 
 void MainComponent::generateOrCancel()
@@ -885,7 +890,8 @@ void MainComponent::generateOrCancel()
     if (job != nullptr)
     {
         job->signalThreadShouldExit();
-        log ("Cancelling ...");
+        if (queueRunning) { queueStopRequested = true; log ("Cancelling - the queue stops after this batch ..."); }
+        else log ("Cancelling ...");
         return;
     }
     if (sweep != nullptr)
@@ -906,11 +912,12 @@ void MainComponent::makeExtraInstances (BatchRequest& req)
 {
     // parallel VST3 copies (the built-in synth makes its own)
     extraInstances.clear();
-    if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr && instrumentPath.isNotEmpty() && instancesBox.getSelectedId() > 1)
+    const int copies = queueRunning ? queueCopies : instancesBox.getSelectedId();
+    if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr && instrumentPath.isNotEmpty() && copies > 1)
     {
         juce::MemoryBlock state;
         instrument->getStateInformation (state);
-        for (int k = 1; k < instancesBox.getSelectedId(); ++k)
+        for (int k = 1; k < copies; ++k)
         {
             juce::String err;
             auto copy = host.load (instrumentPath, req.render.sampleRate, req.render.blockSize, err);
@@ -952,6 +959,7 @@ void MainComponent::startJob (BatchRequest req, std::vector<SampleSpec> specs, b
             safe->props.getUserSettings()->setValue ("speed_" + name, safe->job->renderedAudioSeconds() / safe->job->elapsedSeconds());
         safe->extraInstances.clear();
         safe->jobFinished (ok, summary);
+        if (safe->queueRunning) { safe->queueItemFinished (ok, summary, folder); return; }
         if (folder.isDirectory())
         {
             safe->lastBatchFolder = folder;
@@ -988,11 +996,17 @@ void MainComponent::updateEstimate()
     perSample += 0.1; // silence between samples
     auto factor = (! banks && smartPickToggle.getToggleState()) ? 1.5 : 1.0;
     auto regs = banks ? 0 : (registersBox.getSelectedId() == 1 ? 0 : registersBox.getSelectedId() == 5 ? 4 : registersBox.getSelectedId() == 4 ? 2 : 1);
-    auto seconds = count * perSample * (factor + regs) / expectedSpeed();
+    auto takes = takesBox.getSelectedId() - 1;
+    auto seconds = count * perSample * (factor + regs + takes) / expectedSpeed();
     if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr) seconds += 1.5; // plugin warm-up
 
     estimateLabel.setText (seconds < 60 ? "~" + juce::String (juce::jmax (1, juce::roundToInt (seconds))) + " s"
                                         : "~" + juce::String (seconds / 60.0, 1) + " min", juce::dontSendNotification);
+    if (job == nullptr && sweep == nullptr)
+    {
+        progressBar.setTextToDisplay (estimateLabel.getText());
+        progressBar.setTooltip ("Estimated render time, learned from your previous batches with this instrument");
+    }
 }
 
 void MainComponent::makeRegistersForKeepers (const juce::File& batchFolder, const juce::Array<juce::File>& keepers)
@@ -1520,6 +1534,163 @@ void MainComponent::sweepFinished (bool ok, const juce::String& summary, const j
         log ("Every kept preset has its own folder in " + folder.getFullPathName() + " - see _Preset_Sweep.txt for the ranking.");
         if (best.isDirectory()) { lastBatchFolder = best; openReview (best); }
     }
+}
+
+//==============================================================================
+// Render queue
+
+void MainComponent::saveQueueFile()
+{
+    saveQueue (defaultQueueFile(), queue);
+    updateQueueButton();
+    if (queueWindow != nullptr)
+        if (auto* p = dynamic_cast<QueuePanel*> (queueWindow->getContentComponent())) p->refresh();
+}
+
+void MainComponent::updateQueueButton()
+{
+    int waiting = 0;
+    for (auto& q : queue) waiting += q.status == "waiting" || q.status == "running";
+    queueButton.setButtonText (waiting > 0 ? "Queue (" + juce::String (waiting) + ")" : juce::String ("Queue"));
+    queueButton.setColour (juce::TextButton::buttonColourId, queueRunning ? accent : panel.brighter (0.1f));
+}
+
+void MainComponent::addToQueue()
+{
+    if (job != nullptr || sweep != nullptr) return;
+    BatchRequest req;
+    std::vector<SampleSpec> specs;
+    if (! buildRequest (req, specs)) return;
+
+    QueueItem item;
+    item.request = req;
+    item.request.smartPickTarget = 0;            // planned again when it runs
+    item.smartPick = smartPickToggle.getToggleState();
+    item.pluginPath = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr ? juce::String() : instrumentPath;
+    if (item.pluginPath.isNotEmpty()) instrument->getStateInformation (item.pluginState);
+    item.instances = instancesBox.getSelectedId();
+    queue.push_back (item);
+    saveQueueFile();
+
+    int waiting = 0;
+    for (auto& q : queue) waiting += q.status == "waiting";
+    log ("+ Queued #" + juce::String ((int) queue.size()) + ": " + item.describe() + "   (" + juce::String (waiting) + " waiting - open Queue to start)");
+    seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999))); // the next one is different
+}
+
+void MainComponent::openQueue()
+{
+    if (queueWindow != nullptr) { queueWindow->toFront (true); return; }
+    QueuePanel::Hooks hooks;
+    hooks.items = [this]() -> std::vector<QueueItem>& { return queue; };
+    hooks.running = [this] { return queueRunning; };
+    hooks.start = [this] { startQueue(); };
+    hooks.stop = [this] { stopQueue(); };
+    hooks.changed = [this] { saveQueueFile(); };
+    hooks.review = [this] (const juce::File& f) { openReview (f); };
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    queueWindow = std::make_unique<ToolWindow> ("Render Queue", new QueuePanel (hooks), [safe] { if (safe != nullptr) safe->queueWindow.reset(); });
+}
+
+void MainComponent::startQueue()
+{
+    if (queueRunning || job != nullptr || sweep != nullptr) return;
+    queueRunning = true;
+    queueStopRequested = false;
+    queueRunNumber = 0;
+    queueRunTotal = 0;
+    for (auto& q : queue) queueRunTotal += q.status == "waiting";
+    queueStartPath = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr ? juce::String() : instrumentPath;
+    queueStartState.reset();
+    if (queueStartPath.isNotEmpty() && instrument != nullptr) instrument->getStateInformation (queueStartState);
+    log ("==== Render queue started");
+    updateQueueButton();
+    runNextQueued();
+}
+
+void MainComponent::stopQueue()
+{
+    if (! queueRunning) return;
+    queueStopRequested = true;
+    if (job != nullptr) job->signalThreadShouldExit();
+    log ("Stopping the queue ...");
+}
+
+void MainComponent::runNextQueued()
+{
+    queueIndex = -1;
+    for (size_t i = 0; i < queue.size(); ++i)
+        if (queue[i].status == "waiting") { queueIndex = (int) i; break; }
+
+    if (queueIndex < 0 || queueStopRequested)
+    {
+        // finished: back to the instrument and sound you had
+        queueRunning = false;
+        if (queueStartPath.isEmpty()) { if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr) useBuiltIn(); }
+        else if (instrumentPath != queueStartPath) loadInstrument (queueStartPath);
+        if (queueStartPath.isNotEmpty() && instrument != nullptr && queueStartState.getSize() > 0 && instrumentPath == queueStartPath)
+            instrument->setStateInformation (queueStartState.getData(), (int) queueStartState.getSize());
+        int done = 0, failed = 0;
+        for (auto& q : queue) { done += q.status == "done"; failed += q.status == "failed"; }
+        log ("==== Render queue " + juce::String (queueStopRequested ? "stopped" : "finished") + ": " + juce::String (done) + " done"
+             + (failed > 0 ? ", " + juce::String (failed) + " failed" : juce::String()) + ". Output: " + outputFolder.getFullPathName());
+        saveQueueFile();
+        return;
+    }
+
+    auto& item = queue[(size_t) queueIndex];
+    item.status = "running";
+    saveQueueFile();
+    auto failItem = [this] (const juce::String& why)
+    {
+        auto& it = queue[(size_t) queueIndex];
+        it.status = "failed";
+        it.result = why;
+        log ("Queue: " + why);
+        saveQueueFile();
+        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe != nullptr) safe->runNextQueued(); });
+    };
+
+    // the instrument and sound it was queued with
+    if (item.pluginPath.isEmpty())
+    {
+        if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr) useBuiltIn();
+    }
+    else
+    {
+        if (instrumentPath != item.pluginPath) loadInstrument (item.pluginPath);
+        if (instrumentPath != item.pluginPath || instrument == nullptr) { failItem ("could not load " + item.pluginPath); return; }
+        if (item.pluginState.getSize() > 0) instrument->setStateInformation (item.pluginState.getData(), (int) item.pluginState.getSize());
+    }
+
+    BatchRequest req = item.request;
+    req.instrumentName = instrument->getName();
+    req.plan.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
+    req.outputFolder = req.outputFolder.getNonexistentSibling (false);
+    std::vector<SampleSpec> specs;
+    juce::StringArray notes;
+    if (! planBatch (req, item.smartPick, specs, notes)) { failItem ("nothing planned: " + notes.joinIntoString ("; ")); return; }
+    for (auto& n : notes) log (n);
+
+    ++queueRunNumber;
+    log ("==== Queue " + juce::String (queueRunNumber) + "/" + juce::String (queueRunTotal) + ": " + item.describe());
+    queueCopies = item.instances;
+    item.doneFolder = req.outputFolder;
+    startJob (std::move (req), std::move (specs), false);
+}
+
+void MainComponent::queueItemFinished (bool ok, const juce::String& summary, const juce::File& folder)
+{
+    if (juce::isPositiveAndBelow (queueIndex, (int) queue.size()))
+    {
+        auto& it = queue[(size_t) queueIndex];
+        it.status = queueStopRequested && ! ok ? "cancelled" : ok ? "done" : "failed";
+        it.result = summary.upToFirstOccurrenceOf ("\n", false, false);
+        it.doneFolder = folder;
+        if (it.status == "cancelled") it.status = "waiting"; // stopped part-way: it will run again next time
+    }
+    saveQueueFile();
+    juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe != nullptr) safe->runNextQueued(); });
 }
 
 void MainComponent::openStyleEditor()

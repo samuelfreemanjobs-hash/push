@@ -61,6 +61,13 @@ CHORDS AND PROGRESSIONS
   "Edit Style..." lets you change a recipe with checkboxes and save it as your own.
 
 
+RENDER QUEUE + ROUND ROBINS
+  Set up a batch, click "Add to Queue", change the settings, add the next ... then open Queue
+  (top right) and Start Queue. Each batch keeps its own instrument + sound. Walk away.
+  "Takes: 2-4 (round robin)" also renders slightly different takes of every sample into
+  Round_Robin/Take_2 ... (same pad numbers) so repeated hits don't sound machine-gunned.
+
+
 PRESET SWEEP (find the best sounds in a plugin)
   Load a VST3, pick a recipe, click "Preset Sweep...". It tries every preset with a test chord,
   drops silent / arp / duplicate / FX presets, ranks the rest by how well they fit the recipe,

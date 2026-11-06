@@ -157,6 +157,31 @@ void renumberSamples (std::vector<SampleSpec>& specs)
     }
 }
 
+SampleSpec roundRobinTake (const SampleSpec& in, int take)
+{
+    if (take <= 1) return in;
+    SampleSpec s = in;
+    juce::Random rng ((juce::int64) in.fileStem.hashCode64() * 31 + take * 7919);
+    const double lengthScale = 0.94 + rng.nextDouble() * 0.12;            // held 6% shorter ... 6% longer
+    const bool chord = s.notes.size() > 1;
+    for (auto& n : s.notes)
+    {
+        n.velocity = juce::jlimit (1, 127, n.velocity + rng.nextInt (juce::Range<int> (-8, 9)));
+        if (chord) n.startSec += rng.nextDouble() * 0.008;                // a slightly different roll
+        n.lengthSec = juce::jmax (0.02, n.lengthSec * lengthScale);
+    }
+    if (chord)
+    {
+        double first = 1e9;
+        for (auto& n : s.notes) first = std::min (first, n.startSec);
+        for (auto& n : s.notes) n.startSec -= first;                      // still starts right on the transient
+    }
+    const auto suffix = "_rr" + juce::String (take);
+    s.stemTail += suffix;
+    s.fileStem += suffix;
+    return s;
+}
+
 bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out)
 {
     out = in;

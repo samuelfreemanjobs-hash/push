@@ -14,6 +14,7 @@ namespace forge
         juce::String instrumentName;
         bool splitBanks = false;   // put every 16 files into Bank_A, Bank_B ... (one MPC pad bank each)
         std::vector<int> registers;  // extra renders of every kept sample, in semitones (e.g. -12, +12)
+        int roundRobins = 1;         // 2-4: extra takes of every kept sample in Round_Robin/Take_2 ... (slightly different each)
         int smartPickTarget = 0;   // > 0: the specs are candidates; keep this many of the best (Smart Pick)
         int variety = 1;           // near-duplicate removal: 0 off, 1 normal (only near-identical), 2 strict
         std::vector<juce::AudioProcessor*> extraInstances; // more copies of the instrument for parallel rendering
@@ -72,4 +73,8 @@ namespace forge
     };
 
     juce::String describeSpec (const SampleSpec& s);
+
+    /** Plans a request made from the app's settings. Scale banks are whole 16-pad sets (no Smart
+        Pick or registers); Smart Pick plans 1.5x candidates. Messages for the log go to `notes`. */
+    bool planBatch (BatchRequest& req, bool smartPick, std::vector<SampleSpec>& specs, juce::StringArray& notes);
 }

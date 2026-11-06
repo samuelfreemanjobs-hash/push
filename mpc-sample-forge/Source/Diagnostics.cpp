@@ -5,6 +5,7 @@
 #include "Analysis.h"
 #include "ProgressionLibrary.h"
 #include "PresetSweep.h"
+#include "RenderQueue.h"
 #include <cmath>
 
 namespace forge
@@ -458,6 +459,44 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
              "arp " + juce::String (arpOnsets) + " pulses, tremolo " + juce::String (tremOnsets) + ", pluck " + juce::String (pluckOnsets)
              + "; attack slow " + juce::String (juce::roundToInt (slowAttack)) + " ms / fast " + juce::String (juce::roundToInt (fastAttack))
              + " ms; name filter " + (names ? "OK" : "WRONG") + "; " + juce::String ((int) entries.size()) + " built-in presets");
+    }
+
+    // ------------------------------------------------------------ round robins + render queue
+    {
+        auto* soul = findBuiltInStyle ("neo-soul");
+        PlanOptions o; o.count = 4; o.seed = 9;
+        juce::String err;
+        auto plan = soul != nullptr ? planSamples (*soul, o, err) : std::vector<SampleSpec>();
+        bool rrOk = ! plan.empty();
+        int velocityChanges = 0;
+        for (auto& sp : plan)
+            for (int take = 2; take <= 4; ++take)
+            {
+                auto a = roundRobinTake (sp, take), b = roundRobinTake (sp, take);
+                rrOk = rrOk && a.fileStem == sp.fileStem + "_rr" + juce::String (take) && a.notes.size() == sp.notes.size();
+                for (size_t n = 0; n < a.notes.size(); ++n)
+                {
+                    rrOk = rrOk && a.notes[n].note == sp.notes[n].note                          // same pitches
+                                && a.notes[n].velocity == b.notes[n].velocity                    // repeatable
+                                && std::abs (a.notes[n].velocity - sp.notes[n].velocity) <= 8;  // only slightly different
+                    velocityChanges += a.notes[n].velocity != sp.notes[n].velocity;
+                }
+            }
+        rrOk = rrOk && velocityChanges > 0;
+
+        QueueItem item;
+        item.request.style = soul != nullptr ? *soul : Style();
+        item.request.plan.key = "F#"; item.request.plan.count = 48; item.request.plan.seed = 123456789012LL;
+        item.request.roundRobins = 3; item.request.registers = { -12, 12 }; item.smartPick = true;
+        item.pluginPath = "/x/Keys.vst3"; item.pluginState.append ("abc", 3); item.instances = 2;
+        QueueItem back;
+        bool qOk = queueItemFromVar (juce::JSON::parse (juce::JSON::toString (queueItemToVar (item))), back, err)
+                   && back.request.plan.key == "F#" && back.request.plan.count == 48 && back.request.plan.seed == 123456789012LL
+                   && back.request.roundRobins == 3 && back.request.registers.size() == 2 && back.smartPick && back.instances == 2
+                   && back.pluginPath == item.pluginPath && back.pluginState == item.pluginState && back.request.style.id == "neo-soul";
+        say (rrOk && qOk ? L::Pass : L::Fail, "Round robins + queue",
+             juce::String (rrOk ? "takes 2-4 same notes, velocity within 8, repeatable" : "ROUND ROBIN TAKES WRONG")
+             + "; queue item " + (qOk ? "saves and loads" : "DOES NOT ROUND-TRIP " + err));
     }
 
     // ------------------------------------------------------------ trap progression library

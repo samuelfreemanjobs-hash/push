@@ -2,6 +2,7 @@
 #include "ProgressionLibrary.h"
 #include "BatchJob.h"
 #include "PresetSweep.h"
+#include "RenderQueue.h"
 #include "PluginHost.h"
 #include "Diagnostics.h"
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -46,6 +47,16 @@ namespace forge
         void startSweep (const SweepOptions& options);
         void sweepFinished (bool ok, const juce::String& summary, const juce::File& folder);
         void makeExtraInstances (BatchRequest& req);
+
+        // render queue
+        void addToQueue();
+        void openQueue();
+        void startQueue();
+        void stopQueue();
+        void runNextQueued();
+        void queueItemFinished (bool ok, const juce::String& summary, const juce::File& folder);
+        void saveQueueFile();
+        void updateQueueButton();
         void addOrReplaceStyle (const Style& st, bool select);
         void updateChordRow();
         const ProgressionSet* selectedProgressionSet (bool orFirst = false) const;
@@ -81,6 +92,13 @@ namespace forge
         std::unique_ptr<PresetSweep> sweep;
         std::unique_ptr<juce::DocumentWindow> sweepWindow;
         juce::MemoryBlock stateBeforeSweep;   // the sound to go back to after a sweep
+
+        std::vector<QueueItem> queue;
+        std::unique_ptr<juce::DocumentWindow> queueWindow;
+        bool queueRunning = false, queueStopRequested = false;
+        int queueIndex = -1, queueCopies = 1, queueRunNumber = 0, queueRunTotal = 0;
+        juce::String queueStartPath;          // the instrument + sound to go back to after the queue
+        juce::MemoryBlock queueStartState;
         std::unique_ptr<juce::FileChooser> chooser;
 
         juce::Array<Style> styles;
@@ -92,13 +110,14 @@ namespace forge
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
         juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox, varietyBox, instancesBox,
                        progressionBox,
-                       auditionOctaveBox;   // Audition Random: play in this octave (or as planned / the chord row's)   // progression-library recipes (Trap Progressions): which set
+                       auditionOctaveBox,
+                       takesBox;            // round robins: 1-4 takes of every sample   // Audition Random: play in this octave (or as planned / the chord row's)   // progression-library recipes (Trap Progressions): which set
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
                          auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
-                         reviewButton { "Review..." }, moreButton { "+16 More" }, sweepButton { "Preset Sweep..." },
+                         reviewButton { "Review..." }, moreButton { "+16 More" }, sweepButton { "Preset Sweep..." }, addQueueButton { "Add to Queue" }, queueButton { "Queue" },
                          size16 { "16" }, size32 { "32" }, size64 { "64" };
         juce::Label estimateLabel, sizeLabel;
 

@@ -80,6 +80,11 @@ namespace forge
     /** Common progressions (0-based degrees) that suit a scale: e.g. ii-V-I-vi in major. */
     std::vector<std::pair<juce::String, std::vector<int>>> progressionsFor (const std::vector<int>& scale);
 
+    /** Another take of the same sample, as a player would play it again: each note's velocity a
+        little different, chord notes a few ms apart, held a little shorter / longer. Take 1 is the
+        sample itself; takes 2-4 add "_rr2" ... to the file name. Deterministic per sample + take. */
+    SampleSpec roundRobinTake (const SampleSpec& s, int take);
+
     /** Renumbers 1..n and rebuilds the file names (after Smart Pick has chosen). */
     void renumberSamples (std::vector<SampleSpec>& specs);
 

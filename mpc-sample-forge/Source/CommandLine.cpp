@@ -82,13 +82,18 @@ juce::String cliHelpText()
       << "  --sweep-keep-arps         don't skip presets that pulse while held\n"
       << "  --sweep-no-probes         don't save each preset's test sound to _Preset_Probes\n"
       << "  --export-presets <dir>    save every preset the plugin lists as a .vstpreset file\n\n"
+      << "Render queue (set it up in the app with \"Add to Queue\"):\n"
+      << "  --queue [file.json]       render every waiting batch of the queue, one after another\n"
+      << "                            (default: the app's own queue, " << defaultQueueFile().getFullPathName() << ")\n\n"
       << "MPC Sample friendly output:\n"
       << "  --registers <list>        also render every kept sample in other registers, in\n"
       << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
       << "                            'octaves' (same as -12,12). Folders: Octave_Down, Octave_Up\n"
       << "  --loudness                level all files to the same perceived loudness (LUFS)\n"
       << "                            instead of the same peak, so pads play evenly\n"
-      << "  --short-names             014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3\n\n"
+      << "  --short-names             014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3\n"
+      << "  --round-robins <2-4>      also render 2-4 slightly different takes of every sample\n"
+      << "                            (velocity, timing, length) into Round_Robin/Take_2 ...\n\n"
       << "Audio:\n"
       << "  --rate <44100|48000>      sample rate, default 44100\n"
       << "  --bits <16|24>            bit depth, default 24\n"
@@ -114,7 +119,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue" })
         if (args.contains (a))
             return true;
     return false;
@@ -141,6 +146,22 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     {
         out (cliHelpText());
         return onDone (0);
+    }
+
+    if (args.contains ("--queue"))
+    {
+        auto name = option (args, "--queue");
+        queueFile = name.isEmpty() || name.startsWith ("--") ? defaultQueueFile()
+                                                            : juce::File::getCurrentWorkingDirectory().getChildFile (name);
+        juce::String error;
+        queueItems = loadQueue (queueFile, error);
+        if (! error.isEmpty()) return fail (error);
+        int waiting = 0;
+        for (auto& q : queueItems) waiting += q.status == "waiting";
+        if (waiting == 0) { out ("Nothing waiting in " + queueFile.getFullPathName()); return onDone (0); }
+        out ("Render queue " + queueFile.getFullPathName() + ": " + juce::String (waiting) + " batches waiting");
+        runQueueNext();
+        return;
     }
 
     if (args.contains ("--version"))
@@ -274,6 +295,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         req.variety = v == "off" ? 0 : v == "strict" ? 2 : 1;
     }
     req.plan.shortNames = args.contains ("--short-names");
+    req.roundRobins = juce::jlimit (1, 4, option (args, "--round-robins", "1").getIntValue());
     if (args.contains ("--progression"))
     {
         req.plan.progressionNumber = option (args, "--progression").getIntValue();
@@ -468,6 +490,87 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         extraInstances.clear();
         instrument.reset();
         onDone (ok ? 0 : 2);
+    };
+    job->startThread();
+}
+
+void CliRunner::runQueueNext()
+{
+    queueIndex = -1;
+    for (size_t i = 0; i < queueItems.size(); ++i)
+        if (queueItems[i].status == "waiting") { queueIndex = (int) i; break; }
+    if (queueIndex < 0)
+    {
+        out ("Queue finished: " + juce::String (queueDone) + " done" + (queueFailed > 0 ? ", " + juce::String (queueFailed) + " failed" : juce::String()));
+        saveQueue (queueFile, queueItems);
+        extraInstances.clear();
+        instrument.reset();
+        return onDone (queueFailed > 0 ? 2 : 0);
+    }
+
+    auto& item = queueItems[(size_t) queueIndex];
+    auto next = [this] { juce::MessageManager::callAsync ([this] { runQueueNext(); }); };
+    auto failItem = [this, next] (const juce::String& why)
+    {
+        auto& it = queueItems[(size_t) queueIndex];
+        it.status = "failed";
+        it.result = why;
+        ++queueFailed;
+        std::cerr << "queue item " << queueIndex + 1 << ": " << why << std::endl;
+        saveQueue (queueFile, queueItems);
+        next();
+    };
+    out ("==== Queue item " + juce::String (queueIndex + 1) + "/" + juce::String ((int) queueItems.size()) + ": " + item.describe());
+
+    // instrument + sound
+    extraInstances.clear();
+    instrument.reset();
+    juce::String error;
+    BatchRequest req = item.request;
+    if (item.pluginPath.isEmpty()) instrument = std::make_unique<BuiltInSynth>();
+    else
+    {
+        auto plugin = host.load (item.pluginPath, req.render.sampleRate, req.render.blockSize, error);
+        if (plugin == nullptr) return failItem (error);
+        if (item.pluginState.getSize() > 0) plugin->setStateInformation (item.pluginState.getData(), (int) item.pluginState.getSize());
+        for (int k = 1; k < item.instances; ++k)
+        {
+            juce::String e;
+            auto copy = host.load (item.pluginPath, req.render.sampleRate, req.render.blockSize, e);
+            if (copy == nullptr) break;
+            if (item.pluginState.getSize() > 0) copy->setStateInformation (item.pluginState.getData(), (int) item.pluginState.getSize());
+            extraInstances.push_back (std::move (copy));
+        }
+        instrument = std::move (plugin);
+    }
+    req.extraInstances.clear();
+    for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
+    req.instrumentName = instrument->getName();
+    req.plan.builtIn = item.pluginPath.isEmpty();
+    req.outputFolder = req.outputFolder.getNonexistentSibling (false);
+
+    std::vector<SampleSpec> specs;
+    juce::StringArray notes;
+    if (! planBatch (req, item.smartPick, specs, notes)) return failItem ("nothing planned: " + notes.joinIntoString ("; "));
+    for (auto& n : notes) out (n);
+    item.status = "running";
+    item.doneFolder = req.outputFolder;
+    saveQueue (queueFile, queueItems);
+
+    job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
+    job->onProgress = [] (int doneCount, int total, const juce::String& msg)
+    {
+        if (doneCount % 8 == 0 || doneCount == total) out ("[" + juce::String (doneCount).paddedLeft (' ', 3) + "/" + juce::String (total) + "] " + msg);
+    };
+    job->onFinished = [this, next] (bool ok, const juce::String& summary)
+    {
+        out (summary);
+        auto& it = queueItems[(size_t) queueIndex];
+        it.status = ok ? "done" : "failed";
+        it.result = summary.upToFirstOccurrenceOf ("\n", false, false);
+        (ok ? queueDone : queueFailed)++;
+        saveQueue (queueFile, queueItems);
+        juce::MessageManager::callAsync ([this, next] { job.reset(); next(); });
     };
     job->startThread();
 }

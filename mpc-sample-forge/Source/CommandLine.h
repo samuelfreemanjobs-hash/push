@@ -2,6 +2,7 @@
 #include "BatchJob.h"
 #include "PluginHost.h"
 #include "PresetSweep.h"
+#include "RenderQueue.h"
 #include <atomic>
 
 namespace forge
@@ -27,6 +28,12 @@ namespace forge
         std::unique_ptr<juce::Thread> diagThread;
         std::atomic<bool> diagCancel { false };
         void runDiagnose (const juce::StringArray& args);
+
+        // --queue: render every waiting batch of a queue file, one after another
+        void runQueueNext();
+        juce::File queueFile;
+        std::vector<QueueItem> queueItems;
+        int queueIndex = -1, queueDone = 0, queueFailed = 0;
     };
 
     juce::String cliHelpText();

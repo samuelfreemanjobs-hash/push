@@ -128,6 +128,12 @@ juce::String BatchJob::mpcSetupSheet() const
           << "  With 16 Levels > Tune, load the register closest to the notes you play: big\n"
           << "  re-pitches make one-shots grainy / short (up) or dull / long (down).\n\n";
     }
+    if (request.roundRobins > 1)
+        t << "Round robins: Round_Robin/Take_2" << (request.roundRobins > 2 ? " ... Take_" + juce::String (request.roundRobins) : juce::String())
+          << " hold other takes of every sample\n"
+          << "  (same pad numbers, names end _rr2 ...): each played again a little differently - velocity,\n"
+          << "  timing and length - so repeated hits don't sound machine-gunned. Put take 1-" << request.roundRobins
+          << " on the layers of one pad\n  and set the layers to cycle / random if your MPC has pad layers, or swap takes between passes.\n\n";
     if (request.render.loudnessMatch)
         t << "Loudness matched: pads play at even volume, so you can leave pad levels alone.\n\n";
 
@@ -190,6 +196,39 @@ juce::File BatchJob::bankFolder (int index, const juce::File& folder) const
     auto bank = index / 16;
     return folder.getChildFile ("Bank_" + juce::String::charToString ((juce::juce_wchar) ('A' + bank % 26))
                                 + (bank >= 26 ? juce::String (bank / 26 + 1) : juce::String()));
+}
+
+bool planBatch (BatchRequest& req, bool smartPick, std::vector<SampleSpec>& specs, juce::StringArray& notes)
+{
+    juce::String error;
+    const int wanted = req.plan.count;
+    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
+    req.smartPickTarget = 0;
+    if (banks)
+    {
+        req.splitBanks = true; // one sound per 16-pad bank
+        if (smartPick || ! req.registers.empty())
+            notes.add ("Scale banks: Smart Pick and Registers are skipped - each bank is a complete 16-pad set across the scale.");
+        req.registers.clear();
+    }
+    if (! banks && smartPick)
+    {
+        req.plan.count = juce::jmin (2000, (int) std::ceil (wanted * 1.5));
+        req.smartPickTarget = wanted;
+    }
+    specs = planSamples (req.style, req.plan, error);
+    if (req.smartPickTarget > 0)
+    {
+        if ((int) specs.size() <= wanted)
+        {
+            notes.add ("Smart Pick skipped: only " + juce::String ((int) specs.size()) + " distinct samples are possible with these settings.");
+            req.smartPickTarget = 0;
+        }
+        error = {};
+    }
+    req.plan.count = wanted;
+    if (error.isNotEmpty()) notes.add ("WARNING: " + error);
+    return ! specs.empty();
 }
 
 juce::var specToVar (const SampleSpec& s)
@@ -559,6 +598,45 @@ void BatchJob::run()
         for (size_t t = 0; t < extra.size(); ++t) if (made[t]) rows.push_back (extra[t]);
     }
 
+    // ------------------------------------------------------------ round robins (for every sample)
+    const int takes = juce::jlimit (1, 4, request.roundRobins);
+    int takesMade = 0;
+    if (takes > 1 && ! threadShouldExit())
+    {
+        const int jobs = (int) ((takes - 1) * originals);
+        std::vector<Row> extra ((size_t) jobs);
+        std::vector<bool> made ((size_t) jobs, false);
+        progressDone = 0;
+        renderParallel (jobs, [&] (int t, OfflineRenderer& renderer, juce::AudioProcessor& instrument)
+        {
+            const int take = 2 + t / (int) originals;
+            const auto j = (size_t) t % originals;
+            auto spec = roundRobinTake (rows[j].spec, take);
+            auto name = "Round_Robin/Take_" + juce::String (take);
+            post (progressDone++, jobs, "Take " + juce::String (take) + ": " + spec.fileStem);
+            setUp (instrument, spec);
+            juce::AudioBuffer<float> audio;
+            juce::String error;
+            auto rel = rows[j].file.getParentDirectory().getRelativePathFrom (folder);
+            auto dir = rows[j].file.getParentDirectory() == folder ? folder.getChildFile (name) : folder.getChildFile (name).getChildFile (rel);
+            auto file = dir.getChildFile (spec.fileStem + ".wav");
+            dir.createDirectory();
+            if (! renderer.render (spec, audio, error)
+                || ! OfflineRenderer::writeWav (file, audio, request.render.sampleRate, request.render.bitDepth, spec.rootNote, error))
+            {
+                fail (spec.fileStem + ": " + error);
+                return;
+            }
+            auto& row = extra[(size_t) t];
+            row.spec = spec; row.file = file; row.lengthSec = audio.getNumSamples() / request.render.sampleRate;
+            row.score = rows[j].score; row.loudness = momentaryLoudness (audio, request.render.sampleRate);
+            row.source = rows[j].file;
+            audioMicros += (juce::int64) (row.lengthSec * 1.0e6);
+            made[(size_t) t] = true;
+        });
+        for (size_t t = 0; t < extra.size(); ++t) if (made[t]) { rows.push_back (extra[t]); ++takesMade; }
+    }
+
     // ------------------------------------------------------------ loudness matching
     // Every file was peak-normalised; now bring them to the same *perceived* loudness.
     // Gains only go down (never clip): the target is set so ~80% reach it exactly and
@@ -636,6 +714,7 @@ void BatchJob::run()
     for (auto r : request.registers) regs.add (r);
     info->setProperty ("registers", regs);
     info->setProperty ("loudnessMatch", request.render.loudnessMatch);
+    info->setProperty ("roundRobins", takes);
     info->setProperty ("variety", request.variety);
     info->setProperty ("sampleRate", request.render.sampleRate);
     info->setProperty ("bitDepth", request.render.bitDepth);
@@ -658,9 +737,11 @@ void BatchJob::run()
 
     juce::String summary;
     summary << "Wrote " << (int) originals << " of " << (picking ? request.smartPickTarget : total) << " samples"
-            << (rows.size() > originals ? " (+" + juce::String ((int) (rows.size() - originals)) + " in other registers"
-                                          + (outOfRange > 0 ? ", " + juce::String (outOfRange.load()) + " skipped as too low / high to be useful" : juce::String()) + ")"
-                                        : juce::String())
+            << (rows.size() - (size_t) takesMade > originals
+                    ? " (+" + juce::String ((int) (rows.size() - (size_t) takesMade - originals)) + " in other registers"
+                      + (outOfRange > 0 ? ", " + juce::String (outOfRange.load()) + " skipped as too low / high to be useful" : juce::String()) + ")"
+                    : juce::String())
+            << (takesMade > 0 ? " (+" + juce::String (takesMade) + " round-robin takes in Round_Robin)" : juce::String())
             << " in " << juce::String (elapsed, 1) << " s to " << folder.getFullPathName();
     if (pickSummary.isNotEmpty()) summary << "\n" << pickSummary;
     if (varietySummary.isNotEmpty()) summary << "\n" << varietySummary;

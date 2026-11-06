@@ -38,7 +38,8 @@ set(FORGE_ENGINE_SOURCES
     Source/Diagnostics.cpp
     Source/Analysis.cpp
     Source/ProgressionLibrary.cpp
-    Source/PresetSweep.cpp)
+    Source/PresetSweep.cpp
+    Source/RenderQueue.cpp)
 
 set(FORGE_DEFINITIONS
     FORGE_VERSION_STRING="${PROJECT_VERSION}"
@@ -57,7 +58,7 @@ juce_add_gui_app(MPCSampleForge
     COMPANY_NAME "MPCSampleForge"
     VERSION ${PROJECT_VERSION})
 
-target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp Source/PresetSweepPanel.cpp)
+target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp Source/PresetSweepPanel.cpp Source/QueuePanel.cpp)
 
 target_compile_definitions(MPCSampleForge PRIVATE ${FORGE_DEFINITIONS}
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:MPCSampleForge,JUCE_PRODUCT_NAME>"
