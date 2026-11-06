@@ -60,7 +60,9 @@ jobs:
 
       - name: Render demo kit
         run: |
-          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --out demo-out/RecipeGuide_Palette
+          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --smart-pick --out demo-out/RecipeGuide_Palette
+          test -f demo-out/RecipeGuide_Palette/_smart_pick.csv
+          test ! -d demo-out/RecipeGuide_Palette/.candidates
           # fail loudly if anything silently went missing
           n=$(find demo-out -name '*.wav' | wc -l | tr -d ' ')
           echo "rendered $n WAV files"

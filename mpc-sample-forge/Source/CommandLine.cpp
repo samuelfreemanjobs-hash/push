@@ -45,6 +45,11 @@ juce::String cliHelpText()
       << "  --seed <n>                same seed = same batch, default random\n"
       << "  --prefix <text>           file name prefix, default the style name\n"
       << "  --out <folder>            output folder, default ~/MPC Sample Forge/<style>\n\n"
+      << "Smart Pick (better selections):\n"
+      << "  --smart-pick              render 3x the samples, score them (pitch clarity, mud,\n"
+      << "                            harshness, clicks) and keep only the best, skipping\n"
+      << "                            near-duplicates. Writes _smart_pick.csv with every decision.\n"
+      << "  --pick-factor <2-6>       candidates per kept sample (default 3)\n\n"
       << "Audio:\n"
       << "  --rate <44100|48000>      sample rate, default 44100\n"
       << "  --bits <16|24>            bit depth, default 24\n"
@@ -197,8 +202,27 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     if (req.render.sampleRate < 8000 || req.render.sampleRate > 192000) return fail ("bad --rate");
     if (req.render.bitDepth != 16 && req.render.bitDepth != 24) return fail ("--bits must be 16 or 24");
 
+    // Smart Pick: plan more candidates than needed, keep the best after rendering
+    const int wanted = juce::jlimit (1, 2000, req.plan.count);
+    if (args.contains ("--smart-pick") || args.contains ("--pick-factor"))
+    {
+        auto factor = juce::jlimit (2, 6, option (args, "--pick-factor", "3").getIntValue());
+        req.plan.count = juce::jmin (2000, wanted * factor);
+        req.smartPickTarget = wanted;
+    }
+
     auto specs = planSamples (req.style, req.plan, error);
     if (specs.empty()) return fail (error);
+    if (req.smartPickTarget > 0)
+    {
+        if ((int) specs.size() <= wanted)
+        {
+            std::cerr << "warning: only " << specs.size() << " distinct candidates possible - Smart Pick has nothing to choose from" << std::endl;
+            req.smartPickTarget = 0;
+        }
+        error = {}; // fewer candidates than asked is fine when picking
+    }
+    req.plan.count = wanted;
     if (error.isNotEmpty()) std::cerr << "warning: " << error << std::endl;
 
     if (args.contains ("--tempo"))
@@ -238,6 +262,8 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
             : req.plan.fixedRoot == PlanOptions::styleRoot ? juce::String ("   16 Levels root: per recipe") : juce::String())
          + (useBuiltIn ? "   engine: " + (req.plan.engine.isNotEmpty() ? req.plan.engine : req.style.engine) : juce::String()));
     out ("Output:     " + req.outputFolder.getFullPathName());
+    if (req.smartPickTarget > 0)
+        out ("Smart Pick: rendering " + juce::String ((int) specs.size()) + " candidates, keeping the best " + juce::String (req.smartPickTarget));
 
     Log::write ("batch: " + req.instrumentName + " / " + req.style.id + " / " + juce::String ((int) specs.size())
                 + " samples -> " + req.outputFolder.getFullPathName());

@@ -38,6 +38,8 @@ namespace forge
         void auditionSpec (int index);
         void setBusy (bool busy);
         void openDiagnostics();
+        void openReview (const juce::File& batchFolder);
+        void chooseFolderToReview();
         void applyLiveEngine();
         juce::String selectedEngine() const;
         void log (const juce::String& s);
@@ -52,7 +54,8 @@ namespace forge
         std::unique_ptr<juce::AudioProcessor> instrument;
         juce::String instrumentPath;
         juce::StringArray installedPlugins;
-        std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow;
+        std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow, reviewWindow;
+        juce::File lastBatchFolder;
         std::unique_ptr<BatchJob> job;
         std::unique_ptr<juce::FileChooser> chooser;
 
@@ -68,8 +71,9 @@ namespace forge
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
-                         auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" };
-        juce::ToggleButton normaliseToggle { "Normalise -1 dB" };
+                         auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
+                         reviewButton { "Review..." };
+        juce::ToggleButton normaliseToggle { "Normalise -1 dB" }, smartPickToggle { "Smart Pick (best of 3x)" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;
         juce::ProgressBar progressBar { progress };

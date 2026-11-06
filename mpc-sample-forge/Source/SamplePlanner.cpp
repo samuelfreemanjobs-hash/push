@@ -91,17 +91,28 @@ static void nameSamples (std::vector<SampleSpec>& specs, const juce::String& pre
     for (size_t i = 0; i < specs.size(); ++i)
     {
         auto& s = specs[i];
-        s.index = (int) i + 1;
-        auto stem = prefix + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_";
+        juce::String tail;
         if (withTag && s.tag.isNotEmpty())
-            stem += s.tag + "_";
+            tail += s.tag + "_";
         Engine r;
         if (withEngine && parseEngine (s.engine, r))
-            stem += engineDisplayName (r) + "_";
-        stem += s.kind + "_" + s.label;
+            tail += engineDisplayName (r) + "_";
+        tail += s.kind + "_" + s.label;
         if (s.kind == "Chord" || s.kind == "Stab")
-            stem += "_" + s.voicing;
-        s.fileStem = safeFileName (stem);
+            tail += "_" + s.voicing;
+        s.stemHead = prefix;
+        s.stemTail = tail;
+    }
+    renumberSamples (specs);
+}
+
+void renumberSamples (std::vector<SampleSpec>& specs)
+{
+    for (size_t i = 0; i < specs.size(); ++i)
+    {
+        auto& s = specs[i];
+        s.index = (int) i + 1;
+        s.fileStem = safeFileName (s.stemHead + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_" + s.stemTail);
     }
 }
 
@@ -241,6 +252,13 @@ static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions
         if (! fixedRoot && root > style.chordRootHigh) root -= 12;
 
         auto notes = buildVoicing (root, quality->intervals, voicing);
+
+        // Skip muddy low voicings (low interval limits) while there are other options.
+        if (attempts < numChords * 150 && lowIntervalViolations (notes) > 0)
+        {
+            used.erase (key);
+            continue;
+        }
         if (fixedRoot && ! notes.empty() && notes.front() < root)
         {
             // keep the pad's root as the lowest note so 16 Levels tuning is unambiguous

@@ -35,7 +35,8 @@ set(FORGE_ENGINE_SOURCES
     Source/CommandLine.cpp
     Source/BuiltInSynth.cpp
     Source/Effects.cpp
-    Source/Diagnostics.cpp)
+    Source/Diagnostics.cpp
+    Source/Analysis.cpp)
 
 set(FORGE_DEFINITIONS
     FORGE_VERSION_STRING="${PROJECT_VERSION}"
@@ -54,7 +55,7 @@ juce_add_gui_app(MPCSampleForge
     COMPANY_NAME "MPCSampleForge"
     VERSION ${PROJECT_VERSION})
 
-target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp)
+target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp)
 
 target_compile_definitions(MPCSampleForge PRIVATE ${FORGE_DEFINITIONS}
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:MPCSampleForge,JUCE_PRODUCT_NAME>"
@@ -66,6 +67,7 @@ target_link_libraries(MPCSampleForge
         juce::juce_audio_processors
         juce::juce_audio_formats
         juce::juce_audio_devices
+        juce::juce_dsp
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -87,6 +89,7 @@ target_link_libraries(mpcforge
         juce::juce_audio_processors
         juce::juce_audio_formats
         juce::juce_audio_devices
+        juce::juce_dsp
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)

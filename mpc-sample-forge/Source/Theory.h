@@ -39,6 +39,11 @@ namespace forge
         duplicates and is kept inside the piano range. */
     std::vector<int> buildVoicing (int rootMidi, const std::vector<int>& intervals, Voicing v);
 
+    /** Arranging rule ("low interval limits"): intervals stacked too low sound muddy,
+        e.g. a third below ~C3 or a second below ~E3 (scientific pitch, 60 = C4).
+        Returns how many adjacent intervals break it; `detail` describes the first. */
+    int lowIntervalViolations (std::vector<int> notes, juce::String* detail = nullptr);
+
     /** True if every chord tone of `intervals` built on `rootPc` belongs to the
         scale `scale` built on `tonicPc`. */
     bool chordFitsScale (int rootPc, const std::vector<int>& intervals, int tonicPc, const std::vector<int>& scale);

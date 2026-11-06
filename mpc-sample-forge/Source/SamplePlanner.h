@@ -15,6 +15,7 @@ namespace forge
     {
         int index = 0;
         juce::String fileStem;      // file name without extension
+        juce::String stemHead, stemTail; // fileStem = head + "_" + index + "_" + tail (lets Smart Pick renumber)
         juce::String kind;          // Chord, Stab, Key, Octave, Fifth
         juce::String label;         // e.g. "Ebm9" or "C3"
         juce::String voicing;
@@ -44,6 +45,9 @@ namespace forge
 
     /** Creates a list of unique, musically sensible samples for a style. */
     std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& options, juce::String& error);
+
+    /** Renumbers 1..n and rebuilds the file names (after Smart Pick has chosen). */
+    void renumberSamples (std::vector<SampleSpec>& specs);
 
     /** Removes characters that are awkward on the MPC / in file systems. */
     juce::String safeFileName (const juce::String& s);

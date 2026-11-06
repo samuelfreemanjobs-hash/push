@@ -1,5 +1,6 @@
 #include "BatchJob.h"
 #include "BuiltInSynth.h"
+#include "Analysis.h"
 
 namespace forge
 {
@@ -87,6 +88,15 @@ static juce::String csv (const juce::String& s)
     return "\"" + s.replace ("\"", "\"\"") + "\"";
 }
 
+juce::File BatchJob::bankFolder (int index) const
+{
+    auto& folder = request.outputFolder;
+    if (! request.splitBanks) return folder;
+    auto bank = index / 16;
+    return folder.getChildFile ("Bank_" + juce::String::charToString ((juce::juce_wchar) ('A' + bank % 26))
+                                + (bank >= 26 ? juce::String (bank / 26 + 1) : juce::String()));
+}
+
 void BatchJob::run()
 {
     auto finish = [this] (bool ok, const juce::String& summary)
@@ -103,11 +113,17 @@ void BatchJob::run()
     }
 
     const int total = (int) specs.size();
+    const bool picking = request.smartPickTarget > 0 && request.smartPickTarget < total;
     post (0, total, "Preparing " + request.instrumentName + " ...");
 
-    int written = 0;
+    // With Smart Pick every candidate is rendered into a scratch folder first.
+    auto workDir = picking ? folder.getChildFile (".candidates") : folder;
+    if (picking) { workDir.deleteRecursively(); workDir.createDirectory(); }
+
+    struct Rendered { bool ok = false; juce::File file; double lengthSec = 0; SampleFeatures features; };
+    std::vector<Rendered> rendered ((size_t) total);
     juce::StringArray failures;
-    juce::String manifest = "file,recipe,type,name,voicing,engine,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds\n";
+    auto* builtIn = dynamic_cast<BuiltInSynth*> (&proc);
 
     {
         OfflineRenderer renderer (proc, request.render);
@@ -116,27 +132,21 @@ void BatchJob::run()
         for (int i = 0; i < total && ! threadShouldExit(); ++i)
         {
             auto& spec = specs[(size_t) i];
-            post (i, total, "Rendering " + spec.fileStem);
+            post (i, total, (picking ? "Rendering candidate " + juce::String (i + 1) + "/" + juce::String (total) + ": " : juce::String ("Rendering "))
+                            + spec.fileStem);
 
-            juce::AudioBuffer<float> audio;
-            juce::String error;
-            auto target = folder;
-            if (request.splitBanks)
-            {
-                auto bank = i / 16;
-                target = folder.getChildFile ("Bank_" + juce::String::charToString ((juce::juce_wchar) ('A' + bank % 26))
-                                              + (bank >= 26 ? juce::String (bank / 26 + 1) : juce::String()));
-                target.createDirectory();
-            }
-            auto file = target.getChildFile (spec.fileStem + ".wav");
-
-            auto* builtIn = dynamic_cast<BuiltInSynth*> (&proc);
             if (builtIn != nullptr)
             {
                 Engine r;
                 if (parseEngine (spec.engine, r)) builtIn->setEngine (r);
                 builtIn->setVariation (spec.variation);
             }
+
+            juce::AudioBuffer<float> audio;
+            juce::String error;
+            auto file = picking ? workDir.getChildFile ("cand_" + juce::String (i).paddedLeft ('0', 4) + ".wav")
+                                : bankFolder (i).getChildFile (spec.fileStem + ".wav");
+            file.getParentDirectory().createDirectory();
 
             if (! renderer.render (spec, audio, error)
                 || ! OfflineRenderer::writeWav (file, audio, request.render.sampleRate, request.render.bitDepth, spec.rootNote, error))
@@ -145,16 +155,109 @@ void BatchJob::run()
                 continue;
             }
 
-            ++written;
-            juce::StringArray notes, vels;
-            for (auto& n : spec.notes) { notes.add (juce::String (n.note)); vels.add (juce::String (n.velocity)); }
-
-            manifest << csv (file.getRelativePathFrom (folder).replaceCharacter ('\\', '/')) << "," << spec.tag << "," << spec.kind << ","
-                     << csv (spec.label) << "," << spec.voicing << "," << (builtIn != nullptr ? spec.engine : juce::String ("-")) << ","
-                     << midiNoteName (spec.rootNote) << "," << spec.rootNote << "," << csv (notes.joinIntoString (" ")) << ","
-                     << csv (vels.joinIntoString (" ")) << "," << juce::String (spec.holdSec(), 3) << ","
-                     << juce::String (audio.getNumSamples() / request.render.sampleRate, 3) << "\n";
+            auto& r = rendered[(size_t) i];
+            r.ok = true;
+            r.file = file;
+            r.lengthSec = audio.getNumSamples() / request.render.sampleRate;
+            if (picking)
+                r.features = analyseSample (audio, request.render.sampleRate, spec.rootNote, spec.kind == "Key" || spec.kind == "Octave");
         }
+    }
+
+    // ------------------------------------------------------------ Smart Pick
+    std::vector<int> origin;          // final position -> candidate index
+    std::vector<PickVerdict> verdicts;
+    juce::String pickSummary;
+
+    if (picking && ! threadShouldExit())
+    {
+        post (total, total, "Smart Pick: scoring " + juce::String (total) + " candidates ...");
+
+        std::vector<PickCandidate> cands ((size_t) total);
+        for (int i = 0; i < total; ++i)
+        {
+            auto& spec = specs[(size_t) i];
+            auto& c = cands[(size_t) i];
+            c.valid = rendered[(size_t) i].ok;
+            c.features = rendered[(size_t) i].features;
+            c.rootNote = spec.rootNote;
+            c.group = spec.styleId + ((spec.kind == "Chord" || spec.kind == "Stab") ? "/chords" : "/keys");
+            std::vector<int> sounding;
+            for (auto& nn : spec.notes) sounding.push_back (nn.note + spec.processing.pitchShift);
+            c.lowIntervalViolations = lowIntervalViolations (sounding, &c.lowIntervalDetail);
+        }
+        verdicts = smartPick (cands, request.smartPickTarget);
+
+        std::vector<SampleSpec> finalSpecs;
+        for (int i = 0; i < total; ++i)
+            if (verdicts[(size_t) i].kept) { origin.push_back (i); finalSpecs.push_back (specs[(size_t) i]); }
+        renumberSamples (finalSpecs);
+
+        for (size_t j = 0; j < finalSpecs.size(); ++j)
+        {
+            auto& r = rendered[(size_t) origin[j]];
+            auto dest = bankFolder ((int) j).getChildFile (finalSpecs[j].fileStem + ".wav");
+            dest.getParentDirectory().createDirectory();
+            dest.deleteFile();
+            if (! r.file.moveFileTo (dest)) failures.add ("could not move " + r.file.getFileName() + " to " + dest.getFullPathName());
+            r.file = dest;
+        }
+
+        // report every decision, so you can see why something was left out
+        juce::String report = "candidate,kept,final_file,score,reasons,similar_to_candidate,nearest_db,harmonicity,mud,harsh,sub,crest_db,centroid_hz\n";
+        int dupes = 0, flawed = 0, spares = 0;
+        double scoreSum = 0;
+        for (int i = 0; i < total; ++i)
+        {
+            auto& v = verdicts[(size_t) i];
+            auto& f = rendered[(size_t) i].features;
+            juce::String finalName;
+            for (size_t j = 0; j < origin.size(); ++j)
+                if (origin[j] == i) finalName = rendered[(size_t) i].file.getRelativePathFrom (folder).replaceCharacter ('\\', '/');
+            if (v.kept) scoreSum += v.score;
+            else if (v.similarTo >= 0) ++dupes;
+            else if (! v.reasons.isEmpty()) ++flawed;
+            else ++spares;
+
+            report << (i + 1) << "," << (v.kept ? "yes" : "no") << "," << csv (finalName) << "," << juce::roundToInt (v.score) << ","
+                   << csv (v.reasons.joinIntoString ("; ")) << "," << (v.similarTo >= 0 ? juce::String (v.similarTo + 1) : juce::String()) << ","
+                   << juce::String (v.nearest > 1e8f ? 0.0f : v.nearest, 2) << "," << juce::String (f.harmonicity, 2) << ","
+                   << juce::String (f.mudShare, 3) << "," << juce::String (f.harshShare, 3) << "," << juce::String (f.subShare, 3) << ","
+                   << juce::String (f.crestDb, 1) << "," << juce::roundToInt (f.centroidHz) << "\n";
+        }
+        folder.getChildFile ("_smart_pick.csv").replaceWithText (report);
+        workDir.deleteRecursively();
+
+        pickSummary << "Smart Pick: rendered " << total << " candidates, kept the best " << (int) finalSpecs.size()
+                    << " (average score " << juce::roundToInt (scoreSum / juce::jmax<size_t> (1, finalSpecs.size())) << "/100).\n"
+                    << "  Left out: " << dupes << " near-duplicates, " << flawed << " with problems (muddy / harsh / unclear pitch ...), "
+                    << spares << " good spares. Details: _smart_pick.csv";
+        specs = std::move (finalSpecs);
+    }
+    else
+    {
+        for (int i = 0; i < total; ++i) origin.push_back (i);
+        if (picking) workDir.deleteRecursively();
+    }
+
+    // ------------------------------------------------------------ manifest
+    int written = 0;
+    juce::String manifest = "file,recipe,type,name,voicing,engine,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds,score\n";
+    for (size_t j = 0; j < specs.size() && j < origin.size(); ++j)
+    {
+        auto& spec = specs[j];
+        auto& r = rendered[(size_t) origin[j]];
+        if (! r.ok) continue;
+        ++written;
+        juce::StringArray notes, vels;
+        for (auto& nn : spec.notes) { notes.add (juce::String (nn.note)); vels.add (juce::String (nn.velocity)); }
+
+        manifest << csv (r.file.getRelativePathFrom (folder).replaceCharacter ('\\', '/')) << "," << spec.tag << "," << spec.kind << ","
+                 << csv (spec.label) << "," << spec.voicing << "," << (builtIn != nullptr ? spec.engine : juce::String ("-")) << ","
+                 << midiNoteName (spec.rootNote) << "," << spec.rootNote << "," << csv (notes.joinIntoString (" ")) << ","
+                 << csv (vels.joinIntoString (" ")) << "," << juce::String (spec.holdSec(), 3) << ","
+                 << juce::String (r.lengthSec, 3) << ","
+                 << (verdicts.empty() ? juce::String() : juce::String (juce::roundToInt (verdicts[(size_t) origin[j]].score))) << "\n";
     }
 
     folder.getChildFile ("_manifest.csv").replaceWithText (manifest);
@@ -167,7 +270,8 @@ void BatchJob::run()
     info->setProperty ("key", request.plan.key);
     info->setProperty ("scale", request.plan.scale.isNotEmpty() ? request.plan.scale : request.style.scale);
     info->setProperty ("seed", request.plan.seed);
-    info->setProperty ("count", request.plan.count);
+    info->setProperty ("count", picking ? request.smartPickTarget : request.plan.count);
+    info->setProperty ("smartPickCandidates", picking ? total : 0);
     info->setProperty ("sampleRate", request.render.sampleRate);
     info->setProperty ("bitDepth", request.render.bitDepth);
     info->setProperty ("fixedRoot", request.plan.fixedRoot >= 0 ? midiNoteName (request.plan.fixedRoot) : juce::String ("free"));
@@ -185,7 +289,8 @@ void BatchJob::run()
     post (total, total, "Done");
 
     juce::String summary;
-    summary << "Wrote " << written << " of " << total << " samples to " << folder.getFullPathName();
+    summary << "Wrote " << written << " of " << (picking ? request.smartPickTarget : total) << " samples to " << folder.getFullPathName();
+    if (pickSummary.isNotEmpty()) summary << "\n" << pickSummary;
     if (! failures.isEmpty())
         summary << "\n" << failures.size() << " failed:\n  " << failures.joinIntoString ("\n  ");
 

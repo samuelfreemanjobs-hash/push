@@ -2,6 +2,7 @@
 #include "BuiltInSynth.h"
 #include "OfflineRenderer.h"
 #include "Styles.h"
+#include "Analysis.h"
 #include <cmath>
 
 namespace forge
@@ -310,6 +311,47 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
                  + (P.fxTailMs > 0 ? " + " + juce::String (juce::roundToInt (P.fxTailMs)) + " ms tail" : juce::String()) + "), "
                  + juce::String (P.fx.isArray() ? P.fx.size() : 0) + " FX, peak " + juce::String (juce::Decibels::gainToDecibels (peak), 1) + " dB");
         }
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ Smart Pick
+    {
+        BuiltInSynth synth;
+        OfflineRenderer renderer (synth, rs);
+        auto* st = findBuiltInStyle ("one-shot-palette");
+        PlanOptions o; o.count = 24; o.seed = 21; o.builtIn = true; o.fixedRoot = PlanOptions::styleRoot;
+        juce::String err;
+        auto specs = st != nullptr ? planSamples (*st, o, err) : std::vector<SampleSpec>();
+        std::vector<PickCandidate> cands;
+        for (auto& sp : specs)
+        {
+            Engine e;
+            if (parseEngine (sp.engine, e)) synth.setEngine (e);
+            synth.setVariation (sp.variation);
+            juce::AudioBuffer<float> audio;
+            PickCandidate c;
+            c.valid = renderer.render (sp, audio, err);
+            if (c.valid) c.features = analyseSample (audio, sr, sp.rootNote, sp.kind == "Key");
+            c.rootNote = sp.rootNote;
+            c.group = sp.kind;
+            cands.push_back (c);
+        }
+        // plus a deliberately muddy chord: Smart Pick must mark it down
+        PickCandidate muddy = cands.empty() ? PickCandidate() : cands.front();
+        muddy.lowIntervalViolations = lowIntervalViolations ({ 40, 43, 47 }, &muddy.lowIntervalDetail);
+        cands.push_back (muddy);
+
+        auto verdicts = smartPick (cands, 8);
+        int kept = 0;
+        for (auto& v : verdicts) kept += v.kept ? 1 : 0;
+        auto muddyMarked = ! verdicts.empty() && verdicts.back().score < 100 && verdicts.back().reasons.joinIntoString (" ").contains ("muddy");
+        bool finite = true;
+        for (auto& c : cands) for (auto x : c.features.fingerprint) finite = finite && std::isfinite (x);
+
+        say (kept == 8 && muddyMarked && finite ? L::Pass : L::Fail, "Smart Pick",
+             "picked " + juce::String (kept) + " of " + juce::String ((int) cands.size()) + " candidates"
+             + (muddyMarked ? ", muddy test chord caught (" + verdicts.back().reasons.joinIntoString ("; ") + ")" : juce::String (", muddy test chord NOT caught"))
+             + (finite ? juce::String() : juce::String (", NaN in analysis")));
     }
     if (cancel) return;
 

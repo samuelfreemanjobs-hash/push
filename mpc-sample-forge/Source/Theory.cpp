@@ -279,6 +279,27 @@ std::vector<int> buildVoicing (int root, const std::vector<int>& intervals, Voic
     return normalise (out);
 }
 
+int lowIntervalViolations (std::vector<int> notes, juce::String* detail)
+{
+    // lowest MIDI note at which each interval (1..11 semitones) still sounds clear
+    static const int limit[12] = { 0, 52, 51, 48, 46, 45, 47, 34, 41, 41, 41, 41 };
+    static const char* names[12] = { "unison", "minor 2nd", "major 2nd", "minor 3rd", "major 3rd", "4th",
+                                     "tritone", "5th", "minor 6th", "major 6th", "minor 7th", "major 7th" };
+    std::sort (notes.begin(), notes.end());
+    int count = 0;
+    for (size_t i = 0; i + 1 < notes.size(); ++i)
+    {
+        auto interval = notes[i + 1] - notes[i];
+        if (interval > 0 && interval < 12 && notes[i] < limit[interval])
+        {
+            if (count == 0 && detail != nullptr)
+                *detail = juce::String (names[interval]) + " on " + midiNoteName (notes[i]) + " is too low";
+            ++count;
+        }
+    }
+    return count;
+}
+
 bool chordFitsScale (int rootPc, const std::vector<int>& intervals, int tonicPc, const std::vector<int>& scale)
 {
     for (auto i : intervals)

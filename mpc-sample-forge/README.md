@@ -74,6 +74,34 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 
 ---
 
+## Better selections: Smart Pick + Review & Keep
+
+**Smart Pick** is the "Smart Pick (best of 3x)" checkbox in the app, or `--smart-pick` in
+`mpcforge`. It renders 3× as many samples as you asked for, listens to every one, and keeps
+only the best and most varied. It marks a sample down for:
+
+* **Muddy voicings:** intervals stacked too low (the arranger's *low interval limits*, e.g. a
+  third below C3 or a second below E3), or a sample clearly muddier than the rest of the batch.
+* **Unclear pitch:** single notes whose pitch doesn't read cleanly. This matters most for
+  16 Levels → Tune.
+* **Harshness:** too much 2.5–5 kHz.
+* **Low rumble**, **mostly-click** samples, and **near-silence**.
+* **Near-duplicates:** each next pick is the best-scoring sample that also sounds most
+  different from everything already chosen.
+
+The batch keeps its balance of chords vs single keys, and of each recipe in a kit. Every
+decision (score, reasons, closest match) is written to `_smart_pick.csv`. Even without Smart
+Pick, the planner now avoids muddy low voicings when it has other options.
+
+**Review & Keep** opens automatically after each batch. You can also open any folder with
+**Review...**:
+
+* **Up/Down** moves through the list and plays each sample. **Space** plays or stops.
+* **K** keeps, **X** rejects, **U** clears. Marks are saved in the batch folder (`_review.json`).
+* **Export Keepers** copies only your keepers into `_Keepers/Bank_A…`, numbered in your pad
+  order, with the setup sheet.
+* **Move Rejects to Trash** asks first, and the files can be restored from the Trash.
+
 ## Download
 
 Every push builds Windows, macOS (Apple Silicon and Intel) and Linux versions.
@@ -284,6 +312,8 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--tempo <bpm>` | Tempo for synced delays (default 90) |
 | `--banks` | Write files in folders of 16 (`Bank_A`, `Bank_B` …) |
 | `--max-length <sec>` | Override every recipe's end point (default: the recipe's; 0 = no cap) |
+| `--smart-pick` | Render 3× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
+| `--pick-factor <2-6>` | Candidates per kept sample for Smart Pick (default 3) |
 | `--style <id>` / `--style-file <json>` | Built-in style, or your own |
 | `--count <n>` | Number of samples (default 100) |
 | `--key <C, F#, Bb, random>` | Lock to a key (default random) |
@@ -383,6 +413,8 @@ Source/MainComponent.*   the app UI
 Source/CommandLine.*     shared CLI logic; CliMain.cpp = mpcforge
 Source/Diagnostics.*     system report, self-test, log file + crash handler
 Source/DiagnosticsPanel.* the Diagnostics window
+Source/Analysis.*        Smart Pick: audio analysis, scoring and variety-aware selection
+Source/ReviewPanel.*     the Review & Keep window
 Source/BuiltInSynth.*    built-in synth (12 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)

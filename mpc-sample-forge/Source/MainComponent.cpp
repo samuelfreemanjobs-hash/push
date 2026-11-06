@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
+#include "ReviewPanel.h"
 
 namespace forge
 {
@@ -31,6 +32,22 @@ namespace
     };
 
     enum { builtInId = 1, firstInstalledId = 100 };
+
+    /** A resizable window that owns a panel and tells us when it is closed. */
+    struct ToolWindow final : juce::DocumentWindow
+    {
+        ToolWindow (const juce::String& title, juce::Component* content, std::function<void()> onClose)
+            : DocumentWindow (title, bg, DocumentWindow::closeButton), closed (std::move (onClose))
+        {
+            setUsingNativeTitleBar (true);
+            setContentOwned (content, true);
+            setResizable (true, false);
+            centreWithSize (getWidth(), getHeight());
+            setVisible (true);
+        }
+        void closeButtonPressed() override { if (closed) juce::MessageManager::callAsync (closed); }
+        std::function<void()> closed;
+    };
 }
 
 MainComponent::MainComponent()
@@ -139,7 +156,11 @@ MainComponent::MainComponent()
     bitsBox.addItem ("16-bit", 16);
     bitsBox.setSelectedId (24);
     normaliseToggle.setToggleState (true, juce::dontSendNotification);
-    for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &normaliseToggle })
+    smartPickToggle.setToggleState (settings->getBoolValue ("smartPick", true), juce::dontSendNotification);
+    smartPickToggle.setTooltip ("Renders 3x as many samples, scores them (pitch clarity, muddy voicings, harshness, clicks) "
+                                "and keeps only the best, most varied ones. Takes about 3x longer.");
+    smartPickToggle.onClick = [this] { props.getUserSettings()->setValue ("smartPick", smartPickToggle.getToggleState()); };
+    for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &normaliseToggle, &smartPickToggle })
         addAndMakeVisible (c);
 
     // ---------------------------------------------------------- one-shot / 16 Levels
@@ -197,6 +218,9 @@ MainComponent::MainComponent()
         if (! lastPlan.empty()) auditionSpec (juce::Random::getSystemRandom().nextInt ((int) lastPlan.size()));
     };
     generateButton.onClick = [this] { generateOrCancel(); };
+    reviewButton.setTooltip ("Audition a batch, mark keepers (K) and rejects (X), export the keepers");
+    reviewButton.onClick = [this] { if (lastBatchFolder.isDirectory()) openReview (lastBatchFolder); else chooseFolderToReview(); };
+    addAndMakeVisible (reviewButton);
     generateButton.setColour (juce::TextButton::buttonColourId, accent);
     for (auto* b : { &planButton, &auditionButton, &generateButton })
         addAndMakeVisible (b);
@@ -243,6 +267,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    reviewWindow.reset();
     diagnosticsWindow.reset(); // stops a running self-test and hands the instrument back
     if (job) job->stopThread (10000);
     job.reset();
@@ -308,7 +333,8 @@ void MainComponent::resized()
     audioLabel.setBounds (r.removeFromLeft (labelW));
     rateBox.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
     bitsBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (12);
-    normaliseToggle.setBounds (r.removeFromLeft (160));
+    normaliseToggle.setBounds (r.removeFromLeft (150)); r.removeFromLeft (8);
+    smartPickToggle.setBounds (r.removeFromLeft (220));
 
     r = row();
     engineLabel.setBounds (r.removeFromLeft (labelW));
@@ -325,9 +351,10 @@ void MainComponent::resized()
 
     area.removeFromTop (14);
     r = row (34);
-    generateButton.setBounds (r.removeFromRight (160)); r.removeFromRight (8);
-    auditionButton.setBounds (r.removeFromRight (140)); r.removeFromRight (8);
-    planButton.setBounds (r.removeFromRight (120)); r.removeFromRight (12);
+    generateButton.setBounds (r.removeFromRight (150)); r.removeFromRight (8);
+    reviewButton.setBounds (r.removeFromRight (90)); r.removeFromRight (8);
+    auditionButton.setBounds (r.removeFromRight (130)); r.removeFromRight (8);
+    planButton.setBounds (r.removeFromRight (110)); r.removeFromRight (12);
     progressBar.setBounds (r);
 
     keyboard.setBounds (area.removeFromBottom (80));
@@ -539,7 +566,23 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.outputFolder = outputFolder.getChildFile (sub).getNonexistentSibling (false);
 
     juce::String error;
+    const int wanted = req.plan.count;
+    if (smartPickToggle.getToggleState())
+    {
+        req.plan.count = juce::jmin (2000, wanted * 3);
+        req.smartPickTarget = wanted;
+    }
     specs = planSamples (req.style, req.plan, error);
+    if (req.smartPickTarget > 0)
+    {
+        if ((int) specs.size() <= wanted)
+        {
+            log ("Smart Pick skipped: only " + juce::String ((int) specs.size()) + " distinct samples are possible with these settings.");
+            req.smartPickTarget = 0;
+        }
+        error = {};
+    }
+    req.plan.count = wanted;
     if (error.isNotEmpty()) log ("WARNING: " + error);
     return ! specs.empty();
 }
@@ -548,8 +591,9 @@ void MainComponent::previewPlan()
 {
     BatchRequest req;
     if (! buildRequest (req, lastPlan)) return;
-    log ("---- " + juce::String ((int) lastPlan.size()) + " samples planned (" + req.style.name + ", seed "
-         + juce::String (req.plan.seed) + ") ----");
+    log ("---- " + juce::String ((int) lastPlan.size()) + (req.smartPickTarget > 0 ? " candidates planned (Smart Pick keeps the best "
+                                                                                      + juce::String (req.smartPickTarget) + ")" : juce::String (" samples planned"))
+         + " (" + req.style.name + ", seed " + juce::String (req.plan.seed) + ") ----");
     for (auto& s : lastPlan) log (describeSpec (s));
 }
 
@@ -590,7 +634,7 @@ void MainComponent::setBusy (bool busy)
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &normaliseToggle,
-                                                             &engineBox, &rootBox, &lengthBox, &banksToggle,
+                                                             &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");
@@ -627,7 +671,11 @@ void MainComponent::generateOrCancel()
     {
         if (safe == nullptr) return;
         safe->jobFinished (ok, summary);
-        if (folder.isDirectory()) folder.revealToUser();
+        if (folder.isDirectory())
+        {
+            safe->lastBatchFolder = folder;
+            safe->openReview (folder); // straight into auditioning and picking keepers
+        }
     };
     job->startThread();
 }
@@ -672,24 +720,31 @@ void MainComponent::openDiagnostics()
         safe->applyLiveEngine();
     };
 
-    struct Window final : juce::DocumentWindow
-    {
-        Window (juce::Component* content, std::function<void()> onClose)
-            : DocumentWindow ("MPC Sample Forge - Diagnostics", juce::Colour (0xff16181d), DocumentWindow::closeButton),
-              closed (std::move (onClose))
-        {
-            setUsingNativeTitleBar (true);
-            setContentOwned (content, true);
-            setResizable (true, false);
-            centreWithSize (getWidth(), getHeight());
-            setVisible (true);
-        }
-        void closeButtonPressed() override { if (closed) juce::MessageManager::callAsync (closed); }
-        std::function<void()> closed;
-    };
+    diagnosticsWindow = std::make_unique<ToolWindow> ("MPC Sample Forge - Diagnostics", new DiagnosticsPanel (hooks),
+                                                      [safe] { if (safe != nullptr) safe->diagnosticsWindow.reset(); });
+}
 
-    diagnosticsWindow = std::make_unique<Window> (new DiagnosticsPanel (hooks),
-                                                  [safe] { if (safe != nullptr) safe->diagnosticsWindow.reset(); });
+void MainComponent::openReview (const juce::File& batchFolder)
+{
+    if (! batchFolder.isDirectory()) return;
+    reviewWindow.reset(); // one review at a time
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    reviewWindow = std::make_unique<ToolWindow> ("Review & Keep - " + batchFolder.getFileName(),
+                                                 new ReviewPanel (batchFolder, deviceManager),
+                                                 [safe] { if (safe != nullptr) safe->reviewWindow.reset(); });
+    reviewWindow->toFront (true);
+}
+
+void MainComponent::chooseFolderToReview()
+{
+    auto start = lastBatchFolder.isDirectory() ? lastBatchFolder : outputFolder;
+    chooser = std::make_unique<juce::FileChooser> ("Choose a batch folder to review", start);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              auto f = fc.getResult();
+                              if (f.isDirectory()) openReview (f);
+                          });
 }
 
 juce::String MainComponent::selectedEngine() const

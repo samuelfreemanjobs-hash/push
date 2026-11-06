@@ -30,8 +30,11 @@ MAKE YOUR FIRST KIT (about a minute)
   1. Instrument: leave "Built-in Synth", or pick one of your VST3s and click "Edit Sound".
   2. Style: pick a recipe, e.g. "Jet Life EP Bell" or "Memphis / OG Phonk Kit".
   3. 16 Levels root: "Recipe's own root". Tick "16-pad banks".
-  4. Click Generate. The output folder opens when it's done (default: Music/MPC Sample Forge).
-  5. Copy the folder to your MPC. _MPC_Setup.txt explains the pad settings.
+  4. Leave "Smart Pick" ticked: it renders 3x as many and keeps only the best, most varied ones.
+  5. Click Generate. When it's done, the Review window opens:
+       Up/Down = move + play   Space = play/stop   K = keep   X = reject   U = clear
+     Then click "Export Keepers": your picks go to _Keepers/Bank_A... in pad order.
+  6. Copy the _Keepers folder to your MPC. _MPC_Setup.txt explains the pad settings.
 
 
 SOMETHING WRONG?
