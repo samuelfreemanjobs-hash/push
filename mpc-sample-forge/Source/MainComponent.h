@@ -83,7 +83,8 @@ namespace forge
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
         juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox, varietyBox, instancesBox,
-                       progressionBox;   // progression-library recipes (Trap Progressions): which set
+                       progressionBox,
+                       auditionOctaveBox;   // Audition Random: play in this octave (or as planned / the chord row's)   // progression-library recipes (Trap Progressions): which set
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },

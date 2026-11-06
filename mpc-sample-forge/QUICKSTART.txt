@@ -35,9 +35,11 @@ MAKE YOUR FIRST KIT (about a minute)
      For the MPC: keep "Level: loudness-matched" and "Short names" on, and set "Registers" to
      After reviewing, click "Octave copies of keepers" if you'll play them far up or down with
      16 Levels > Tune. Then "+16 More" for the next round.
+  Audition Random plays in the octave chosen in the menu beside it.
   5. Click Generate. When it's done, the Review window opens:
        Up/Down = move + play   Space = play/stop   K = keep   X = reject   U = clear
        Left/Right = hear it re-pitched like 16 Levels (Shift = octave)   R = range check
+       Select All (Ctrl+A) then K / X / U = mark every sample at once
      Then click "Export Keepers": your picks go to _Keepers/Bank_A... in pad order.
   6. Copy the _Keepers folder to your MPC. _MPC_Setup.txt explains the pad settings.
 

@@ -6,7 +6,8 @@ namespace forge
     /** Review & Keep: audition a batch quickly from the keyboard, mark keepers and
         rejects, then export just the keepers (in 16-pad banks) or bin the rejects.
 
-        Keys: Up/Down move (and play), Space plays, K keep, X reject, U clear. */
+        Keys: Up/Down move (and play), Space plays, K keep, X reject, U clear,
+        Ctrl/Cmd+A select all (then K / X / U marks every selected sample). */
     class ReviewPanel final : public juce::Component,
                               private juce::TableListBoxModel,
                               private juce::KeyListener,
@@ -54,6 +55,8 @@ namespace forge
         void load();
         void saveMarks() const;
         void setMark (Mark m, bool advance);
+        void toggleSelectAll();
+        void updateSelectAllButton();
         void play (int row);
         void stop();
         void exportKeepers();
@@ -83,7 +86,7 @@ namespace forge
                          clearButton { "Clear (U)" }, exportButton { "Export Keepers..." }, trashButton { "Move Rejects to Trash" },
                          folderButton { "Open Folder" }, downButton { "<" }, upButton { ">" },
                          resetPitchButton { "0" }, rangeButton { "Range check (R)" }, registersButton { "Octave copies of keepers" },
-                         moreButton { "More like this (M)" };
+                         moreButton { "More like this (M)" }, selectAllButton { "Select All" };
         juce::ToggleButton autoPlay { "Play when selected" };
         juce::Label status, help, pitchLabel;
         juce::Rectangle<int> waveArea;

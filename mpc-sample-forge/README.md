@@ -199,6 +199,8 @@ Pick, the planner now avoids muddy low voicings when it has other options.
 
 * **Up/Down** moves through the list and plays each sample. **Space** plays or stops.
 * **K** keeps, **X** rejects, **U** clears. Marks are saved in the batch folder (`_review.json`).
+* **Select All** (or **Ctrl/Cmd+A**) selects every sample; then K / X / U marks them all at once.
+  Shift-click or Ctrl-click selects just some. Click **Select One** (or Ctrl+A again) to go back.
 * **Export Keepers** copies only your keepers into `_Keepers/Bank_A…`, numbered in your pad
   order, with the setup sheet.
 * **Move Rejects to Trash** asks first, and the files can be restored from the Trash.
@@ -363,7 +365,8 @@ If you already have JUCE checked out, add `-DJUCE_DIR=/path/to/JUCE`.
      mixolydian, harmonic/melodic minor).
 5. **Samples:** 100 by default. **Seed:** the same seed gives the same batch. Use **Dice** for a new one.
 6. **Preview List** shows what will be rendered. **Audition Random** plays one sample through
-   the plugin.
+   the plugin. The octave menu next to it picks where it plays: a fixed octave (the sample's
+   lowest note lands there, C3 = middle C), the chord row's octave, or as planned.
 7. **Generate.** Each batch goes into its own subfolder of the output folder. That folder
    opens when the batch finishes.
 

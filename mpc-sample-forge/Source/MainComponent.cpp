@@ -322,6 +322,15 @@ MainComponent::MainComponent()
         if (lastPlan.empty()) previewPlan();
         if (! lastPlan.empty()) auditionSpec (juce::Random::getSystemRandom().nextInt ((int) lastPlan.size()));
     };
+    auditionOctaveBox.addItem ("Oct: as planned", 1);
+    auditionOctaveBox.addItem ("Oct: chord row's", 2);
+    for (int oct = 0; oct <= 6; ++oct) auditionOctaveBox.addItem ("Oct " + juce::String (oct) + " (C" + juce::String (oct) + ")", oct + 10);
+    auditionOctaveBox.setSelectedId (settings->getIntValue ("auditionOctave", 2), juce::dontSendNotification);
+    if (auditionOctaveBox.getSelectedId() == 0) auditionOctaveBox.setSelectedId (2, juce::dontSendNotification);
+    auditionOctaveBox.setTooltip ("Which octave Audition Random plays in: the lowest note of the sample lands in this octave "
+                                  "(C3 = middle C on the MPC). \"Chord row's\" follows the octave selector by the chord buttons.");
+    auditionOctaveBox.onChange = [this] { props.getUserSettings()->setValue ("auditionOctave", auditionOctaveBox.getSelectedId()); };
+    addAndMakeVisible (auditionOctaveBox);
     generateButton.onClick = [this] { generateOrCancel(); };
     reviewButton.setTooltip ("Audition a batch, mark keepers (K) and rejects (X), export the keepers");
     reviewButton.onClick = [this] { if (lastBatchFolder.isDirectory()) openReview (lastBatchFolder); else chooseFolderToReview(); };
@@ -514,6 +523,7 @@ void MainComponent::resized()
     generateButton.setBounds (r.removeFromRight (130)); r.removeFromRight (6);
     moreButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
     reviewButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
+    auditionOctaveBox.setBounds (r.removeFromRight (140)); r.removeFromRight (4);
     auditionButton.setBounds (r.removeFromRight (124)); r.removeFromRight (6);
     planButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     estimateLabel.setBounds (r.removeFromRight (90)); r.removeFromRight (6);
@@ -801,7 +811,20 @@ void MainComponent::previewPlan()
 void MainComponent::auditionSpec (int index)
 {
     if (! juce::isPositiveAndBelow (index, (int) lastPlan.size()) || job != nullptr) return;
-    auto& spec = lastPlan[(size_t) index];
+    auto spec = lastPlan[(size_t) index];
+
+    // play it in the chosen octave: the lowest note lands in that octave (60 = C3)
+    auto octaveId = auditionOctaveBox.getSelectedId();
+    int octave = octaveId == 2 ? chordOctaveBox.getSelectedId() : octaveId >= 10 ? octaveId - 10 : -99;
+    if (octave > -99 && ! spec.notes.empty())
+    {
+        int lowest = 127;
+        for (auto& n : spec.notes) lowest = std::min (lowest, n.note);
+        const int base = 12 * (octave + 2);
+        const int shift = -12 * (int) std::floor ((lowest - base) / 12.0);
+        SampleSpec moved;
+        if (shift != 0 && transposeSpec (spec, shift, moved)) spec = moved;
+    }
     log ("> " + describeSpec (spec));
 
     if (auto* b = dynamic_cast<BuiltInSynth*> (instrument.get()))
@@ -838,7 +861,7 @@ void MainComponent::setBusy (bool busy)
                                                              &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
                                                              &exportChordButton, &exportRowButton, &editStyleButton,
                                                              &varietyBox, &instancesBox, &size16, &size32, &size64, &moreButton,
-                                                             &outButton, &planButton, &auditionButton, &keyboard })
+                                                             &outButton, &planButton, &auditionButton, &auditionOctaveBox, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");
 }
