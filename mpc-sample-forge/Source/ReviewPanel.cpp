@@ -75,7 +75,15 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
     folderButton.onClick = [this] { folder.revealToUser(); };
     keepButton.setColour (juce::TextButton::buttonColourId, keepCol.darker (0.4f));
     exportButton.setColour (juce::TextButton::buttonColourId, accent);
-    for (auto* b : { &playButton, &keepButton, &rejectButton, &clearButton, &exportButton, &trashButton, &folderButton, &registersButton })
+    moreButton.setTooltip ("Render 16 close variations of the selected sample: same recipe and chord, new tone, voicing, "
+                           "inversion, velocity and length. They open in a new Review.");
+    moreButton.onClick = [this]
+    {
+        auto row = table.getSelectedRow();
+        if (! juce::isPositiveAndBelow (row, (int) entries.size())) return;
+        if (onMoreLikeThis) onMoreLikeThis (folder, entries[(size_t) row].file);
+    };
+    for (auto* b : { &playButton, &keepButton, &rejectButton, &clearButton, &exportButton, &trashButton, &folderButton, &registersButton, &moreButton })
     {
         b->setWantsKeyboardFocus (false); // keep the keys going to the list
         addAndMakeVisible (b);
@@ -101,7 +109,7 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
     autoPlay.setWantsKeyboardFocus (false);
     addAndMakeVisible (autoPlay);
 
-    help.setText ("Up/Down move + play   Space play   K keep   X reject   U clear   Left/Right pitch",
+    help.setText ("Up/Down move+play  Space play  K keep  X reject  U clear  M more  Left/Right pitch",
                   juce::dontSendNotification);
     help.setColour (juce::Label::textColourId, dim);
     addAndMakeVisible (help);
@@ -248,7 +256,8 @@ void ReviewPanel::resized()
     rejectButton.setBounds (top.removeFromLeft (100)); top.removeFromLeft (6);
     clearButton.setBounds (top.removeFromLeft (90)); top.removeFromLeft (14);
     autoPlay.setBounds (top.removeFromLeft (150));
-    folderButton.setBounds (top.removeFromRight (100));
+    folderButton.setBounds (top.removeFromRight (100)); top.removeFromRight (8);
+    moreButton.setBounds (top.removeFromRight (150));
 
     r.removeFromTop (8);
     waveArea = r.removeFromTop (110);
@@ -355,6 +364,7 @@ bool ReviewPanel::keyPressed (const juce::KeyPress& k, juce::Component*)
         return true;
     }
     if (c == 'r') { startRangeCheck(); return true; }
+    if (c == 'm') { moreButton.triggerClick(); return true; }
     if (c == '0') { setTranspose (0); return true; }
     if (c == 'k') { setMark (Mark::Keep, true); return true; }
     if (c == 'x') { setMark (Mark::Reject, true); return true; }

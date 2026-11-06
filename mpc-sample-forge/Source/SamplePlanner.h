@@ -27,6 +27,7 @@ namespace forge
         juce::String shortTag;      // compact tag for short file names
         int pad = 0;                // scale banks: pad 1-16 inside its bank (also the number in the file name)
         juce::String bankInfo;      // scale banks: e.g. "C minor - chords"
+        juce::String group;         // progression banks: the progression this pad belongs to
         std::vector<NoteEvent> notes;
 
         double holdSec() const;
@@ -55,6 +56,27 @@ namespace forge
     /** The same sample moved by `semitones` (e.g. -12 = an octave down): notes, root,
         label and file name all follow. Returns false if it would leave the MIDI range. */
     bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out);
+
+    /** One diatonic chord of a key, as the chord buttons and progression banks use it. */
+    struct DiatonicChord
+    {
+        int degree = 0;               // 0-based scale degree
+        int rootPc = 0;
+        juce::String roman, name;     // "ii", "Dm9"
+        std::vector<int> intervals;
+    };
+
+    /** The chord on each degree of the scale, using the style's own chord types where they
+        fit the key (its most-weighted fitting type), else the scale's 7th chord / triad.
+        `variety` > 0 picks weighted-randomly instead (different chords per bank). */
+    std::vector<DiatonicChord> diatonicChords (const Style& style, int tonic, const std::vector<int>& scale,
+                                               juce::int64 variety = 0);
+
+    /** Close voicing of a chord from `rootMidi`, then inverted: 1 = lowest note up an octave, etc. */
+    std::vector<int> invertChord (int rootMidi, const std::vector<int>& intervals, int inversion);
+
+    /** Common progressions (0-based degrees) that suit a scale: e.g. ii-V-I-vi in major. */
+    std::vector<std::pair<juce::String, std::vector<int>>> progressionsFor (const std::vector<int>& scale);
 
     /** Renumbers 1..n and rebuilds the file names (after Smart Pick has chosen). */
     void renumberSamples (std::vector<SampleSpec>& specs);

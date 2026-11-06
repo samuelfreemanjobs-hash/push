@@ -77,6 +77,12 @@ jobs:
           echo "scale bank: $b pads"
           test "$b" -eq 16
           grep -q "SCALE BANKS" demo-out/SoulChords_ScaleBank_Cminor/_MPC_Setup.txt
+          # a progression bank: 4 voice-led progressions, one per row of pads
+          "${{ steps.bin.outputs.cli }}" --recipe gospel-rnb-90s --scale-bank --bank-type progressions --key Eb --scale major --count 16 --seed 5 --short-names --loudness --out demo-out/GospelRnB_Progressions_Ebmajor
+          p=$(find demo-out/GospelRnB_Progressions_Ebmajor -name '*.wav' | wc -l | tr -d ' ')
+          echo "progression bank: $p pads"
+          test "$p" -eq 16
+          grep -q "pads 1-4:" demo-out/GospelRnB_Progressions_Ebmajor/_MPC_Setup.txt
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

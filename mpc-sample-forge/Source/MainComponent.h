@@ -39,6 +39,15 @@ namespace forge
         void setBusy (bool busy);
         void openDiagnostics();
         void openReview (const juce::File& batchFolder);
+        void openStyleEditor();
+        void addOrReplaceStyle (const Style& st, bool select);
+        void updateChordRow();
+        void playChord (int index);
+        SampleSpec chordSpec (int index) const;
+        void exportChords (const std::vector<int>& indices);
+        void moreLikeThis (const juce::File& batchFolder, const juce::File& sample);
+        int currentTonic() const;
+        std::vector<int> currentScale() const;
         void makeRegistersForKeepers (const juce::File& batchFolder, const juce::Array<juce::File>& keepers);
         void startJob (BatchRequest req, std::vector<SampleSpec> specs, bool openReviewAfter);
         void updateEstimate();
@@ -58,7 +67,7 @@ namespace forge
         std::unique_ptr<juce::AudioProcessor> instrument;
         juce::String instrumentPath;
         juce::StringArray installedPlugins;
-        std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow, reviewWindow;
+        std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow, reviewWindow, styleEditorWindow;
         juce::File lastBatchFolder;
         std::vector<std::unique_ptr<juce::AudioPluginInstance>> extraInstances; // parallel VST3 copies during a job
         std::unique_ptr<BatchJob> job;
@@ -80,6 +89,14 @@ namespace forge
                          reviewButton { "Review..." }, moreButton { "+16 More" },
                          size16 { "16" }, size32 { "32" }, size64 { "64" };
         juce::Label estimateLabel, sizeLabel;
+
+        // chord row: preview / export the selected style's diatonic chords
+        juce::OwnedArray<juce::TextButton> chordButtons;
+        juce::ComboBox chordOctaveBox, inversionBox;
+        juce::TextButton exportChordButton { "Export chord" }, exportRowButton { "Export all 7" }, editStyleButton { "Edit Style..." };
+        juce::Label chordRowLabel;
+        std::vector<DiatonicChord> currentChords;
+        int selectedChord = 0;
         juce::ToggleButton smartPickToggle { "Smart Pick" }, shortNamesToggle { "Short names" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;

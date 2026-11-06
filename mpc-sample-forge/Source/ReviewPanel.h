@@ -18,6 +18,9 @@ namespace forge
 
         /** Called with the kept files when "Octave copies of keepers" is clicked. */
         std::function<void (const juce::File& batchFolder, const juce::Array<juce::File>& keepers)> onMakeRegisters;
+        /** "More like this": 16 close variations of the selected sample. */
+        std::function<void (const juce::File& batchFolder, const juce::File& sample)> onMoreLikeThis;
+
         /** Re-read the batch (e.g. after octave copies were added). */
         void reload() { load(); }
         ~ReviewPanel() override;
@@ -79,7 +82,8 @@ namespace forge
         juce::TextButton playButton { "Play (Space)" }, keepButton { "Keep (K)" }, rejectButton { "Reject (X)" },
                          clearButton { "Clear (U)" }, exportButton { "Export Keepers..." }, trashButton { "Move Rejects to Trash" },
                          folderButton { "Open Folder" }, downButton { "<" }, upButton { ">" },
-                         resetPitchButton { "0" }, rangeButton { "Range check (R)" }, registersButton { "Octave copies of keepers" };
+                         resetPitchButton { "0" }, rangeButton { "Range check (R)" }, registersButton { "Octave copies of keepers" },
+                         moreButton { "More like this (M)" };
         juce::ToggleButton autoPlay { "Play when selected" };
         juce::Label status, help, pitchLabel;
         juce::Rectangle<int> waveArea;

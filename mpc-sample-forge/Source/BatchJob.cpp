@@ -97,6 +97,15 @@ juce::String BatchJob::mpcSetupSheet() const
                 }
                 t << "\n";
             }
+            // progression banks: name each row
+            juce::StringArray rowsText;
+            for (int row = 0; row < 4; ++row)
+            {
+                auto i = b * 16 + (size_t) (row * 4);
+                if (i < specs.size() && specs[i].group.isNotEmpty())
+                    rowsText.add ("   pads " + juce::String (row * 4 + 1) + "-" + juce::String (row * 4 + 4) + ": " + specs[i].group);
+            }
+            if (! rowsText.isEmpty()) t << rowsText.joinIntoString ("\n") << "\n";
             t << "\n";
         }
     }
@@ -329,6 +338,7 @@ void BatchJob::run()
         juce::String error;
         auto file = picking ? workDir.getChildFile ("cand_" + juce::String (i).paddedLeft ('0', 4) + ".wav")
                             : bankFolder (i).getChildFile (spec.fileStem + ".wav");
+        if (request.appendOnly) file = file.getNonexistentSibling (false); // never overwrite an earlier export
         file.getParentDirectory().createDirectory();
 
         if (! renderer.render (spec, audio, error)
@@ -348,7 +358,7 @@ void BatchJob::run()
     });
 
     // variety thresholds: how close (in dB of fingerprint difference) counts as "the same sound"
-    const float dupDb = request.variety == 2 ? 1.5f : request.variety == 1 ? 0.6f : 0.0f;
+    const float dupDb = request.appendOnly ? 0.0f : request.variety == 2 ? 1.5f : request.variety == 1 ? 0.6f : 0.0f;
 
     // ------------------------------------------------------------ Smart Pick
     std::vector<int> origin;          // final position -> candidate index
@@ -584,9 +594,23 @@ void BatchJob::run()
         specList.add (entry);
     }
 
-    folder.getChildFile ("_manifest.csv").replaceWithText (manifest);
-    folder.getChildFile ("_specs.json").replaceWithText (juce::JSON::toString (juce::var (specList), true));
-    folder.getChildFile ("_MPC_Setup.txt").replaceWithText (mpcSetupSheet());
+    if (request.appendOnly)
+    {
+        auto mf = folder.getChildFile ("_manifest.csv");
+        if (mf.existsAsFile()) mf.appendText (manifest.fromFirstOccurrenceOf ("\n", false, false));
+        else mf.replaceWithText (manifest);
+        auto old = juce::JSON::parse (folder.getChildFile ("_specs.json"));
+        juce::Array<juce::var> merged;
+        if (old.isArray()) merged.addArray (*old.getArray());
+        merged.addArray (specList);
+        folder.getChildFile ("_specs.json").replaceWithText (juce::JSON::toString (juce::var (merged), true));
+    }
+    else
+    {
+        folder.getChildFile ("_manifest.csv").replaceWithText (manifest);
+        folder.getChildFile ("_specs.json").replaceWithText (juce::JSON::toString (juce::var (specList), true));
+        folder.getChildFile ("_MPC_Setup.txt").replaceWithText (mpcSetupSheet());
+    }
 
     // Everything needed to reproduce the batch.
     auto* info = new juce::DynamicObject();
@@ -608,7 +632,8 @@ void BatchJob::run()
     info->setProperty ("engine", request.plan.engine.isNotEmpty() ? request.plan.engine : request.style.engine);
     info->setProperty ("maxLength", request.render.trimToSec);
     info->setProperty ("created", juce::Time::getCurrentTime().toISO8601 (true));
-    folder.getChildFile ("_batch.json").replaceWithText (juce::JSON::toString (juce::var (info)));
+    if (! request.appendOnly || ! folder.getChildFile ("_batch.json").existsAsFile())
+        folder.getChildFile ("_batch.json").replaceWithText (juce::JSON::toString (juce::var (info)));
 
     elapsed = (juce::Time::getMillisecondCounterHiRes() - started) / 1000.0;
 

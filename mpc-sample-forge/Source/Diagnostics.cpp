@@ -386,6 +386,42 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
     }
     if (cancel) return;
 
+    // ------------------------------------------------------------ chord row + progression banks
+    {
+        std::vector<int> cMajor { 0, 2, 4, 5, 7, 9, 11 };
+        auto* soul = findBuiltInStyle ("soul-chords");
+        auto chords = soul != nullptr ? diatonicChords (*soul, 0, cMajor) : std::vector<DiatonicChord>();
+        juce::StringArray names;
+        for (auto& c : chords) names.add (c.roman + " " + c.name);
+        auto inverted = invertChord (60, { 0, 4, 7, 11 }, 1);     // Cmaj7, 1st inversion: E G B C
+        bool invOk = inverted == std::vector<int> { 64, 67, 71, 72 };
+        bool keyOk = chords.size() == 7;
+        for (auto& c : chords) for (auto i : c.intervals) keyOk = keyOk && std::find (cMajor.begin(), cMajor.end(), (c.rootPc + i) % 12) != cMajor.end();
+        say (keyOk && invOk ? L::Pass : L::Fail, "Chord row",
+             "C major: " + names.joinIntoString (", ") + (invOk ? "; 1st inversion OK" : "; INVERSION WRONG"));
+
+        PlanOptions o; o.count = 16; o.seed = 3; o.key = "C"; o.scale = "major"; o.scaleBank = true; o.bankType = "progressions";
+        juce::String err;
+        auto prog = soul != nullptr ? planSamples (*soul, o, err) : std::vector<SampleSpec>();
+        double move = 0; int steps = 0; bool inKey = prog.size() == 16;
+        for (size_t i = 0; i < prog.size(); ++i)
+        {
+            for (auto& n : prog[i].notes) inKey = inKey && std::find (cMajor.begin(), cMajor.end(), n.note % 12) != cMajor.end();
+            if (i % 4 == 0) continue;
+            for (auto& n : prog[i].notes)
+            {
+                int d = 99;
+                for (auto& p : prog[i - 1].notes) d = std::min (d, std::abs (n.note - p.note));
+                move += d; ++steps;
+            }
+        }
+        auto avg = steps > 0 ? move / steps : 99.0;
+        say (inKey && avg < 3.0 ? L::Pass : L::Fail, "Progression banks",
+             juce::String (prog.size()) + " pads, rows like " + (prog.empty() ? juce::String() : prog[0].group)
+             + ", voices move " + juce::String (avg, 1) + " semitones on average" + (inKey ? "" : ", NOT in key"));
+    }
+    if (cancel) return;
+
     // ------------------------------------------------------------ loudness meter + registers + short names
     {
         juce::AudioBuffer<float> tone (2, (int) (3 * sr));

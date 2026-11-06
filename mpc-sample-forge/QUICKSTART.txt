@@ -48,6 +48,14 @@ PLAY IN KEY WITHOUT 16 LEVELS (scale banks)
   file 01 on Pad 1 ... file 16 on Pad 16. _MPC_Setup.txt shows the pad map.
 
 
+CHORDS AND PROGRESSIONS
+  The row of 7 buttons above the keyboard plays the recipe's chords in your Key. Pick an octave
+  and inversion, then "Export chord" (or "Export all 7") -> Chord Picks folder.
+  "Scale banks: progressions" gives 4 smooth progressions per bank, one per row of pads.
+  In Review, press M on a sample you like for 16 variations of it.
+  "Edit Style..." lets you change a recipe with checkboxes and save it as your own.
+
+
 SOMETHING WRONG?
   Click "Diagnostics" (top right) > "Run Self-Test" > "Copy Report", and send the report.
   Load your VST3 first so the self-test checks it too.

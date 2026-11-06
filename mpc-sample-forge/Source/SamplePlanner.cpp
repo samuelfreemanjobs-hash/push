@@ -2,6 +2,7 @@
 #include "BuiltInSynth.h"
 #include <set>
 #include <map>
+#include <numeric>
 #include <algorithm>
 
 namespace forge
@@ -90,7 +91,8 @@ namespace
 static juce::String shortVoicing (const juce::String& v)
 {
     static const std::map<juce::String, juce::String> m { { "close", "cl" }, { "inv1", "i1" }, { "inv2", "i2" }, { "drop2", "d2" },
-                                                          { "open", "op" }, { "rootless", "rl" }, { "shell", "sh" }, { "spread", "sp" } };
+                                                          { "open", "op" }, { "rootless", "rl" }, { "shell", "sh" }, { "spread", "sp" },
+                                                          { "root", "rt" }, { "inv3", "i3" }, { "inv4", "i4" } };
     auto it = m.find (v);
     return it != m.end() ? it->second : v;
 }
@@ -442,6 +444,116 @@ static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions
 }
 
 
+
+//==============================================================================
+std::vector<int> invertChord (int rootMidi, const std::vector<int>& intervals, int inversion)
+{
+    std::vector<int> notes;
+    for (auto i : intervals) notes.push_back (rootMidi + i);
+    std::sort (notes.begin(), notes.end());
+    notes.erase (std::unique (notes.begin(), notes.end()), notes.end());
+    for (int k = 0; k < inversion && notes.size() > 1; ++k)
+    {
+        notes.front() += 12;
+        std::sort (notes.begin(), notes.end());
+    }
+    return notes;
+}
+
+static const char* romanFor (int degree, bool minorChord)
+{
+    static const char* upper[] = { "I", "II", "III", "IV", "V", "VI", "VII" };
+    static const char* lower[] = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+    return minorChord ? lower[degree % 7] : upper[degree % 7];
+}
+
+std::vector<DiatonicChord> diatonicChords (const Style& style, int tonic, const std::vector<int>& scale, juce::int64 variety)
+{
+    std::vector<DiatonicChord> out;
+    juce::Random rng (variety);
+    for (int d = 0; d < (int) scale.size(); ++d)
+    {
+        auto rootPc = (tonic + scale[(size_t) d]) % 12;
+        std::vector<Weighted<juce::String>> fitting;
+        for (auto& w : style.chords)
+            if (auto* q = findQuality (w.value); q != nullptr && chordFitsScale (rootPc, q->intervals, tonic, scale))
+                fitting.push_back (w);
+        if (fitting.empty())
+            for (auto id : { "m7", "maj7", "7", "m7b5", "min", "maj", "dim", "sus2", "5" })
+                if (auto* q = findQuality (id); chordFitsScale (rootPc, q->intervals, tonic, scale)) { fitting.push_back ({ id, 1.0f }); break; }
+        if (fitting.empty()) fitting.push_back ({ "5", 1.0f });
+
+        juce::String id;
+        if (variety != 0) id = pickWeighted (fitting, rng);
+        else
+        {
+            auto best = fitting.front();
+            for (auto& w : fitting) if (w.weight > best.weight) best = w;
+            id = best.value;
+        }
+        auto* q = findQuality (id);
+        DiatonicChord c;
+        c.degree = d;
+        c.rootPc = rootPc;
+        c.intervals = q->intervals;
+        c.roman = romanFor (d, q->intervals.size() > 1 && q->intervals[1] == 3);
+        c.name = pitchClassName (rootPc) + q->suffix;
+        out.push_back (c);
+    }
+    return out;
+}
+
+std::vector<std::pair<juce::String, std::vector<int>>> progressionsFor (const std::vector<int>& scale)
+{
+    std::vector<std::pair<juce::String, std::vector<int>>> p;
+    if (scale.size() < 7) // pentatonic & co: simple shapes over the available degrees
+        return { { "1-4-5-1", { 0, 3, 4, 0 } }, { "1-3-4-1", { 0, 2, 3, 0 } }, { "1-5-4-3", { 0, 4, 3, 2 } }, { "1-2-4-5", { 0, 1, 3, 4 } } };
+
+    const bool major = scale[2] == 4;
+    const bool phrygian = scale[1] == 1;
+    const bool dorian = ! major && scale[5] == 9;
+    if (major)
+        p = { { "ii-V-I-vi", { 1, 4, 0, 5 } }, { "I-vi-IV-V", { 0, 5, 3, 4 } }, { "IV-iii-ii-I", { 3, 2, 1, 0 } },
+              { "I-V-vi-IV", { 0, 4, 5, 3 } }, { "vi-IV-I-V", { 5, 3, 0, 4 } }, { "IV-V-iii-vi", { 3, 4, 2, 5 } },
+              { "I-IV-ii-V", { 0, 3, 1, 4 } }, { "iii-vi-ii-V", { 2, 5, 1, 4 } } };
+    else
+        p = { { "i-VI-III-VII", { 0, 5, 2, 6 } }, { "i-iv-VII-III", { 0, 3, 6, 2 } }, { "i-VII-VI-VII", { 0, 6, 5, 6 } },
+              { "i-iv-v-i", { 0, 3, 4, 0 } }, { "VI-VII-i-i", { 5, 6, 0, 0 } }, { "i-III-VII-VI", { 0, 2, 6, 5 } },
+              { "ii-v-i-i", { 1, 4, 0, 0 } }, { "iv-i-v-VI", { 3, 0, 4, 5 } } };
+    if (dorian)   p.insert (p.begin(), { { "i-IV-i-IV", { 0, 3, 0, 3 } }, { "i-ii-IV-i", { 0, 1, 3, 0 } } });
+    if (phrygian) p.insert (p.begin(), { { "i-II-i-VII", { 0, 1, 0, 6 } }, { "i-II-VII-i", { 0, 1, 6, 0 } } });
+    return p;
+}
+
+/** Picks the inversion / octave of `intervals` on `rootPc` that moves least from `previous`. */
+static std::vector<int> voiceLead (const std::vector<int>& previous, int rootPc, const std::vector<int>& intervals,
+                                   int low, int high, int& inversionOut)
+{
+    std::vector<int> best;
+    double bestCost = 1e9;
+    for (int base = low - 12; base <= high + 12; ++base)
+    {
+        if (((base % 12) + 12) % 12 != rootPc) continue;
+        for (int inv = 0; inv < (int) intervals.size(); ++inv)
+        {
+            auto notes = invertChord (base, intervals, inv);
+            if (notes.front() < low - 5 || notes.back() > high + 24) continue;
+            double cost = 0;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                // distance to the nearest note of the previous chord: smooth voice leading
+                int d = 99;
+                for (auto p : previous) d = std::min (d, std::abs (notes[i] - p));
+                cost += d;
+            }
+            cost += 6.0 * lowIntervalViolations (notes); // never muddy
+            cost += 0.15 * std::abs ((notes.front() + notes.back()) / 2 - (low + high) / 2 + 6); // stay near the register
+            if (cost < bestCost) { bestCost = cost; best = notes; inversionOut = inv; }
+        }
+    }
+    return best;
+}
+
 //==============================================================================
 // Scale banks: each bank of 16 pads is ONE sound, climbing the scale from pad 1
 // (single notes) or playing the diatonic chord of each degree (chords), so the
@@ -537,6 +649,46 @@ static std::vector<SampleSpec> planScaleBanks (const Style& kitOrStyle, const Pl
                 s.label = midiNoteName (note + ps);
                 s.voicing = "-";
                 result.push_back (s);
+            }
+        }
+        else if (type == "progressions")
+        {
+            // 4 progressions x 4 chords, one per row of pads, voice-led for smooth movement
+            auto chords = diatonicChords (style, playedTonic, scale, variation | 1);
+            auto all = progressionsFor (scale);
+            std::vector<size_t> order (all.size());
+            std::iota (order.begin(), order.end(), 0);
+            for (size_t i = order.size(); i > 1; --i) std::swap (order[i - 1], order[(size_t) rng.nextInt ((int) i)]);
+
+            for (int row = 0; row < 4; ++row)
+            {
+                auto& prog = all[order[(size_t) row % order.size()]];
+                std::vector<int> previous;
+                for (int step = 0; step < 4; ++step)
+                {
+                    auto& c = chords[(size_t) prog.second[(size_t) step] % chords.size()];
+                    int inversion = 0;
+                    std::vector<int> notes;
+                    if (previous.empty())
+                    {
+                        auto root = placePitchClass (c.rootPc, style.chordRootLow);
+                        notes = invertChord (root, c.intervals, 0);
+                        if (lowIntervalViolations (notes) > 0) { notes = invertChord (root + 12, c.intervals, 0); }
+                    }
+                    else
+                        notes = voiceLead (previous, c.rootPc, c.intervals, style.chordRootLow, style.chordRootHigh, inversion);
+                    previous = notes;
+
+                    auto pad = row * 4 + step + 1;
+                    auto rootMidi = notes.front();
+                    for (auto n : notes) if (((n - c.rootPc) % 12 + 12) % 12 == 0) { rootMidi = n; break; }
+                    auto s = makeSpec (pad, notes, rootMidi);
+                    s.kind = "Chord";
+                    s.label = c.roman + "-" + pitchClassName (c.rootPc + ps) + c.name.substring (pitchClassName (c.rootPc).length());
+                    s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
+                    s.group = prog.first;
+                    result.push_back (s);
+                }
             }
         }
         else

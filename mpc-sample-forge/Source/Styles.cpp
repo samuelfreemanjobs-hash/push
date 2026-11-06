@@ -770,9 +770,9 @@ bool Style::fromVar (const juce::var& v, Style& s, juce::String& error)
     s.root = v.hasProperty ("root") ? juce::jlimit (0, 127, (int) v["root"]) : -1;
 
     s.scaleBank = v["scaleBank"].toString().toLowerCase();
-    if (s.scaleBank.isNotEmpty() && s.scaleBank != "notes" && s.scaleBank != "chords")
+    if (s.scaleBank.isNotEmpty() && s.scaleBank != "notes" && s.scaleBank != "chords" && s.scaleBank != "progressions")
     {
-        error = "style '" + s.id + "': \"scaleBank\" must be \"notes\" or \"chords\"";
+        error = "style '" + s.id + "': \"scaleBank\" must be \"notes\", \"chords\" or \"progressions\"";
         return false;
     }
     s.scaleBankOnly = (bool) v.getProperty ("scaleBankOnly", false);

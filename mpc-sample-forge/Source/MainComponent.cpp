@@ -2,6 +2,7 @@
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
 #include "ReviewPanel.h"
+#include "StyleEditor.h"
 
 namespace forge
 {
@@ -118,8 +119,21 @@ MainComponent::MainComponent()
     styles = builtInStyles();
     for (int i = 0; i < styles.size(); ++i)
         styleBox.addItem (styles[i].name, i + 1);
+    {
+        juce::StringArray errors;
+        for (auto& mine : StyleEditor::loadUserStyles (errors))
+        {
+            styles.add (mine);
+            styleBox.addItem (mine.name.endsWith ("(mine)") ? mine.name : mine.name + " (mine)", styles.size());
+        }
+        for (auto& e : errors) log ("Could not load your style " + e);
+    }
     styleBox.onChange = [this] { styleChanged(); };
     addAndMakeVisible (styleBox);
+    editStyleButton.setTooltip ("Change chord types, voicings, register, velocity, hold ... with checkboxes and sliders, "
+                                "then save it as your own style");
+    editStyleButton.onClick = [this] { openStyleEditor(); };
+    addAndMakeVisible (editStyleButton);
     styleFileButton.onClick = [this] { loadStyleJson(); };
     addAndMakeVisible (styleFileButton);
 
@@ -140,6 +154,7 @@ MainComponent::MainComponent()
     bankBox.addItem ("Scale banks: style's type", 2);
     bankBox.addItem ("Scale banks: notes", 3);
     bankBox.addItem ("Scale banks: chords", 4);
+    bankBox.addItem ("Scale banks: progressions", 5);
     bankBox.setSelectedId (settings->getIntValue ("scaleBank", 1), juce::dontSendNotification);
     bankBox.setTooltip ("Each bank of 16 pads is one sound climbing your key's scale - single notes, or the diatonic chord "
                         "of each degree - so every pad is in tune without 16 Levels. Samples 64 = 4 banks.");
@@ -313,6 +328,41 @@ MainComponent::MainComponent()
     keyboardState.addListener (this);
     addAndMakeVisible (keyboard);
 
+    // ---------------------------------------------------------- chord row
+    chordRowLabel.setText ("Chords", juce::dontSendNotification);
+    chordRowLabel.setColour (juce::Label::textColourId, dim);
+    addAndMakeVisible (chordRowLabel);
+    for (int i = 0; i < 7; ++i)
+    {
+        auto* b = chordButtons.add (new juce::TextButton());
+        b->setClickingTogglesState (false);
+        b->onClick = [this, i] { playChord (i); };
+        b->setTooltip ("Click to hear this chord through the current instrument (raw: the recipe's FX are added on export)");
+        addAndMakeVisible (b);
+    }
+    for (int oct = 1; oct <= 5; ++oct) chordOctaveBox.addItem ("Oct " + juce::String (oct) + " (C" + juce::String (oct) + ")", oct);
+    chordOctaveBox.setSelectedId (juce::jlimit (1, 5, settings->getIntValue ("chordOctave", 2)), juce::dontSendNotification);
+    chordOctaveBox.setTooltip ("Which octave the chords are previewed and exported in (C3 = middle C on the MPC)");
+    chordOctaveBox.onChange = [this] { props.getUserSettings()->setValue ("chordOctave", chordOctaveBox.getSelectedId()); updateChordRow(); };
+    inversionBox.addItem ("Root position", 1);
+    inversionBox.addItem ("1st inversion", 2);
+    inversionBox.addItem ("2nd inversion", 3);
+    inversionBox.addItem ("3rd inversion", 4);
+    inversionBox.setSelectedId (1, juce::dontSendNotification);
+    inversionBox.setTooltip ("Play / export the chord inverted: the lowest notes move up an octave");
+    inversionBox.onChange = [this] { updateChordRow(); };
+    exportChordButton.setTooltip ("Render the selected chord (this octave + inversion, with the recipe's processing) into 'Chord Picks'");
+    exportChordButton.onClick = [this] { exportChords ({ selectedChord }); };
+    exportRowButton.setTooltip ("Render all 7 chords of the key (this octave + inversion) into 'Chord Picks'");
+    exportRowButton.onClick = [this] { exportChords ({ 0, 1, 2, 3, 4, 5, 6 }); };
+    for (auto* c : std::initializer_list<juce::Component*> { &chordOctaveBox, &inversionBox, &exportChordButton, &exportRowButton })
+        addAndMakeVisible (c);
+    for (auto* cb : { &keyBox, &scaleBox })
+    {
+        auto previous = cb->onChange;
+        cb->onChange = [this, previous] { if (previous) previous(); updateChordRow(); };
+    }
+
     // ---------------------------------------------------------- audio
     deviceManager.initialiseWithDefaultDevices (0, 2);
     deviceManager.addAudioCallback (&player);
@@ -322,7 +372,11 @@ MainComponent::MainComponent()
         deviceManager.addMidiInputDeviceCallback (m.identifier, &player);
     }
 
-    styleBox.setSelectedItemIndex (juce::jmax (0, settings->getIntValue ("styleIndex", 0)), juce::sendNotificationSync);
+    {
+        // a saved style may have been deleted since: fall back to the first one
+        auto saved = settings->getIntValue ("styleIndex", 0);
+        styleBox.setSelectedItemIndex (juce::isPositiveAndBelow (saved, styles.size()) ? saved : 0, juce::sendNotificationSync);
+    }
 
     auto lastPlugin = settings->getValue ("plugin");
     auto idx = installedPlugins.indexOf (lastPlugin);
@@ -340,11 +394,13 @@ MainComponent::MainComponent()
     log ("Scale banks: pick a key + 'Scale banks' and every bank of 16 pads is one sound across the scale, in tune on every pad.");
     log ("Quick rounds: Batch 16, Generate, keep what you like in Review, then '+16 More'. Octave copies: make them for keepers in Review.");
     updateEstimate();
-    setSize (980, 760);
+    updateChordRow();
+    setSize (980, 800);
 }
 
 MainComponent::~MainComponent()
 {
+    styleEditorWindow.reset();
     reviewWindow.reset();
     diagnosticsWindow.reset(); // stops a running self-test and hands the instrument back
     if (job) job->stopThread (10000);
@@ -386,7 +442,8 @@ void MainComponent::resized()
 
     r = row();
     styleLabel.setBounds (r.removeFromLeft (labelW));
-    styleFileButton.setBounds (r.removeFromRight (110)); r.removeFromRight (6);
+    styleFileButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    editStyleButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     styleBox.setBounds (r);
 
     r = row (40);
@@ -449,7 +506,16 @@ void MainComponent::resized()
     keyboard.setBounds (area.removeFromBottom (80));
     keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f); // 88 keys = 52 white keys
     keyboard.setLowestVisibleKey (21);
-    area.removeFromBottom (8);
+    area.removeFromBottom (6);
+    auto chordRow = area.removeFromBottom (30);
+    chordRowLabel.setBounds (chordRow.removeFromLeft (52));
+    exportRowButton.setBounds (chordRow.removeFromRight (100)); chordRow.removeFromRight (4);
+    exportChordButton.setBounds (chordRow.removeFromRight (100)); chordRow.removeFromRight (6);
+    inversionBox.setBounds (chordRow.removeFromRight (120)); chordRow.removeFromRight (4);
+    chordOctaveBox.setBounds (chordRow.removeFromRight (110)); chordRow.removeFromRight (6);
+    auto bw = chordRow.getWidth() / 7;
+    for (int i = 0; i < chordButtons.size(); ++i) chordButtons[i]->setBounds (chordRow.removeFromLeft (bw).reduced (2, 0));
+    area.removeFromBottom (6);
     logView.setBounds (area);
 }
 
@@ -605,6 +671,7 @@ void MainComponent::styleChanged()
     props.getUserSettings()->setValue ("styleIndex", i);
     lastPlan.clear();
     applyLiveEngine();
+    updateChordRow();
 }
 
 void MainComponent::loadStyleJson()
@@ -643,7 +710,8 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.plan.shortNames = shortNamesToggle.getToggleState();
     req.variety = varietyBox.getSelectedId() - 1;
     req.plan.scaleBank = bankBox.getSelectedId() > 1;
-    req.plan.bankType = bankBox.getSelectedId() == 3 ? "notes" : bankBox.getSelectedId() == 4 ? "chords" : "";
+    req.plan.bankType = bankBox.getSelectedId() == 3 ? "notes" : bankBox.getSelectedId() == 4 ? "chords"
+                      : bankBox.getSelectedId() == 5 ? "progressions" : "";
     switch (registersBox.getSelectedId())
     {
         case 2: req.registers = { -12 }; break;
@@ -745,6 +813,7 @@ void MainComponent::setBusy (bool busy)
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
                                                              &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
+                                                             &exportChordButton, &exportRowButton, &editStyleButton,
                                                              &varietyBox, &instancesBox, &size16, &size32, &size64, &moreButton,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);
@@ -963,6 +1032,10 @@ void MainComponent::openReview (const juce::File& batchFolder)
     {
         if (safe != nullptr) safe->makeRegistersForKeepers (f, keepers);
     };
+    panel->onMoreLikeThis = [safe] (const juce::File& f, const juce::File& sample)
+    {
+        if (safe != nullptr) safe->moreLikeThis (f, sample);
+    };
     reviewWindow = std::make_unique<ToolWindow> ("Review & Keep - " + batchFolder.getFileName(), panel,
                                                  [safe] { if (safe != nullptr) safe->reviewWindow.reset(); });
     reviewWindow->toFront (true);
@@ -1002,6 +1075,243 @@ void MainComponent::applyLiveEngine()
     if (name == "mixed") r = Engine::Bell;
     else parseEngine (name, r);
     b->setEngine (r);
+}
+
+
+//==============================================================================
+int MainComponent::currentTonic() const
+{
+    return keyBox.getSelectedId() <= 1 ? 0 : keyBox.getSelectedId() - 2; // "Random keys" previews in C
+}
+
+std::vector<int> MainComponent::currentScale() const
+{
+    std::vector<int> scale;
+    auto i = styleBox.getSelectedItemIndex();
+    auto name = scaleBox.getSelectedId() > 1 ? scaleBox.getText()
+              : juce::isPositiveAndBelow (i, styles.size()) ? styles[i].scale : juce::String ("minor");
+    if (! getScale (name, scale)) getScale ("minor", scale);
+    return scale;
+}
+
+void MainComponent::updateChordRow()
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) return;
+    const auto st = styles[i];
+    if (st.isKit()) { currentChords.clear(); for (auto* b : chordButtons) { b->setButtonText ("-"); b->setEnabled (false); } return; }
+
+    currentChords = diatonicChords (st, currentTonic(), currentScale());
+    for (int b = 0; b < chordButtons.size(); ++b)
+    {
+        auto* button = chordButtons[b];
+        auto has = b < (int) currentChords.size();
+        button->setEnabled (has);
+        button->setButtonText (has ? currentChords[(size_t) b].roman + " " + currentChords[(size_t) b].name : juce::String ("-"));
+        button->setColour (juce::TextButton::buttonColourId, b == selectedChord ? accent.withAlpha (0.6f) : panel.brighter (0.1f));
+    }
+    chordRowLabel.setText (pitchClassName (currentTonic()), juce::dontSendNotification);
+    chordRowLabel.setTooltip ("Chords of " + pitchClassName (currentTonic()) + " " + (scaleBox.getSelectedId() > 1 ? scaleBox.getText() : st.scale)
+                              + (keyBox.getSelectedId() <= 1 ? " (pick a Key to change it)" : ""));
+}
+
+SampleSpec MainComponent::chordSpec (int index) const
+{
+    SampleSpec s;
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (index, (int) currentChords.size()) || ! juce::isPositiveAndBelow (i, styles.size())) return s;
+    const auto st = styles[i];
+    auto& c = currentChords[(size_t) index];
+    auto octave = chordOctaveBox.getSelectedId();
+    auto inversion = juce::jmin (inversionBox.getSelectedId() - 1, (int) c.intervals.size() - 1);
+    auto root = c.rootPc + 12 * (octave + 2);                // sounding root (60 = C3)
+    auto sounding = invertChord (root, c.intervals, inversion);
+
+    s.kind = "Chord";
+    s.label = c.roman + "-" + c.name;
+    s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
+    s.rootNote = root;
+    s.styleId = st.id; s.tag = st.tag; s.shortTag = st.shortTag;
+    s.processing = st.processing;
+    auto engine = selectedEngine();
+    s.engine = engine.isNotEmpty() && engine != "mixed" ? engine : (st.engine == "mixed" ? juce::String ("epiano") : st.engine);
+    s.variation = juce::Random::getSystemRandom().nextInt64();
+    auto velocity = (st.velocityLow + st.velocityHigh) / 2;
+    auto hold = (st.holdLow + st.holdHigh) * 0.5;
+    for (auto n : sounding) s.notes.push_back ({ n - st.processing.pitchShift, velocity, 0.0, hold }); // played so it sounds right after varispeed
+    auto tag = st.shortTag.isNotEmpty() ? st.shortTag : st.tag;
+    s.stemHead = {};
+    s.stemTail = tag + "_" + s.label + "_" + (inversion == 0 ? juce::String ("root") : "inv" + juce::String (inversion)) + "_" + midiNoteName (sounding.front());
+    s.index = index + 1;
+    s.fileStem = safeFileName (juce::String (index + 1).paddedLeft ('0', 2) + "_" + s.stemTail);
+    return s;
+}
+
+void MainComponent::playChord (int index)
+{
+    selectedChord = index;
+    updateChordRow();
+    if (job != nullptr) return;
+    auto spec = chordSpec (index);
+    if (spec.notes.empty()) return;
+    applyLiveEngine();
+    auto& collector = player.getMidiMessageCollector();
+    auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    for (auto& n : spec.notes)
+    {
+        auto on = juce::MidiMessage::noteOn (1, n.note + spec.processing.pitchShift, (juce::uint8) n.velocity); // preview = sounding pitch
+        on.setTimeStamp (now);
+        collector.addMessageToQueue (on);
+        juce::Timer::callAfterDelay ((int) (n.lengthSec * 1000.0),
+            [safe = juce::Component::SafePointer<MainComponent> (this), note = on.getNoteNumber()]
+            {
+                if (safe == nullptr) return;
+                auto off = juce::MidiMessage::noteOff (1, note);
+                off.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+                safe->player.getMidiMessageCollector().addMessageToQueue (off);
+            });
+    }
+    log ("Chord " + spec.label + " (" + spec.voicing + ", " + midiNoteName (spec.notes.front().note + spec.processing.pitchShift) + " up)");
+}
+
+void MainComponent::exportChords (const std::vector<int>& indices)
+{
+    if (job != nullptr || instrument == nullptr) return;
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size()) || currentChords.empty()) return;
+
+    std::vector<SampleSpec> specs;
+    for (auto idx : indices) if (idx < (int) currentChords.size()) specs.push_back (chordSpec (idx));
+    if (specs.empty()) return;
+
+    BatchRequest req;
+    req.style = styles[i];
+    req.appendOnly = true;
+    req.variety = 0;
+    req.instrumentName = instrument->getName();
+    req.render.sampleRate = rateBox.getSelectedId();
+    req.render.bitDepth = bitsBox.getSelectedId();
+    req.render.normalise = levelBox.getSelectedId() != 3;
+    req.render.loudnessMatch = false; // single picks: keep their natural peak level
+    auto scaleName = scaleBox.getSelectedId() > 1 ? scaleBox.getText() : req.style.scale;
+    req.outputFolder = outputFolder.getChildFile ("Chord Picks")
+                           .getChildFile (safeFileName (req.style.name) + "_" + pitchClassName (currentTonic()) + "_" + scaleName);
+    startJob (std::move (req), std::move (specs), false);
+}
+
+void MainComponent::moreLikeThis (const juce::File& batchFolder, const juce::File& sample)
+{
+    if (job != nullptr) { log ("Busy - wait for the current job to finish."); return; }
+    auto batch = juce::JSON::parse (batchFolder.getChildFile ("_batch.json"));
+    auto specsJson = juce::JSON::parse (batchFolder.getChildFile ("_specs.json"));
+    auto rel = sample.getRelativePathFrom (batchFolder).replaceCharacter ('\\', '/');
+    SampleSpec base;
+    bool found = false;
+    if (specsJson.isArray())
+        for (auto& v : *specsJson.getArray())
+            if (v["file"].toString() == rel && specFromVar (v, base)) { found = true; break; }
+    if (! found)
+    {
+        juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Can't make variations",
+            "This sample isn't in the batch's _specs.json (made by an older version?). Generate the batch again to use this.");
+        return;
+    }
+    auto madeWith = batch["instrument"].toString();
+    if (instrument == nullptr || (madeWith.isNotEmpty() && madeWith != instrument->getName()))
+    {
+        juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Load the same instrument first",
+            "This sample was made with \"" + madeWith + "\". Load it (and its sound) so the variations match.");
+        return;
+    }
+
+    // 16 variations: new timbre (built-in), voicing / inversion shifts, velocity and length
+    juce::Random rng (juce::Time::currentTimeMillis());
+    auto baseName = base.fileStem;
+    if (baseName.upToFirstOccurrenceOf ("_", false, false).containsOnly ("0123456789"))
+        baseName = baseName.fromFirstOccurrenceOf ("_", false, false);
+    std::vector<SampleSpec> specs;
+    for (int k = 0; k < 16; ++k)
+    {
+        auto v = base;
+        v.variation = rng.nextInt64();
+        auto lengthScale = 0.85 + 0.3 * rng.nextDouble();
+        std::vector<int> notes;
+        for (auto& n : v.notes) notes.push_back (n.note);
+        std::sort (notes.begin(), notes.end());
+        if (notes.size() > 1)
+        {
+            auto alt = notes;
+            switch (k % 5)
+            {
+                case 1: alt.front() += 12; break;                                // up an inversion
+                case 2: alt.back() -= 12; break;                                 // down an inversion
+                case 3: if (alt.size() >= 4) alt[alt.size() - 2] -= 12; break;   // drop-2
+                case 4: for (size_t j = 1; j < alt.size(); j += 2) alt[j] += 12; break; // open
+                default: break;
+            }
+            std::sort (alt.begin(), alt.end());
+            if (alt.front() >= 21 && alt.back() <= 108 && lowIntervalViolations (alt) == 0) notes = alt;
+        }
+        std::vector<NoteEvent> events;
+        for (size_t j = 0; j < notes.size(); ++j)
+        {
+            auto src = v.notes[juce::jmin (j, v.notes.size() - 1)];
+            src.note = notes[j];
+            src.velocity = juce::jlimit (1, 127, src.velocity + rng.nextInt (25) - 12);
+            src.lengthSec *= lengthScale;
+            events.push_back (src);
+        }
+        v.notes = events;
+        v.pad = 0;
+        v.stemHead = {};
+        v.stemTail = baseName + "_like";
+        specs.push_back (v);
+    }
+    renumberSamples (specs);
+
+    BatchRequest req;
+    if (auto* st = findBuiltInStyle (base.styleId)) req.style = *st;
+    else if (juce::isPositiveAndBelow (styleBox.getSelectedItemIndex(), styles.size())) req.style = styles[styleBox.getSelectedItemIndex()];
+    req.instrumentName = instrument->getName();
+    req.render.sampleRate = (double) batch.getProperty ("sampleRate", 44100.0);
+    req.render.bitDepth = (int) batch.getProperty ("bitDepth", 24);
+    req.render.loudnessMatch = (bool) batch.getProperty ("loudnessMatch", false);
+    req.variety = juce::jmax (1, varietyBox.getSelectedId() - 1); // never 16 copies of the same thing
+    req.outputFolder = batchFolder.getSiblingFile (batchFolder.getFileName() + "_more_" + safeFileName (baseName).substring (0, 24))
+                           .getNonexistentSibling (false);
+    log ("More like " + sample.getFileName() + " ...");
+    startJob (std::move (req), std::move (specs), true);
+}
+
+void MainComponent::addOrReplaceStyle (const Style& st, bool select)
+{
+    int index = -1;
+    for (int i = 0; i < styles.size(); ++i) if (styles[i].id == st.id) index = i;
+    if (index < 0)
+    {
+        styles.add (st);
+        index = styles.size() - 1;
+        styleBox.addItem (st.name.endsWith ("(mine)") ? st.name : st.name + " (mine)", index + 1);
+    }
+    else
+    {
+        styles.set (index, st);
+        styleBox.changeItemText (index + 1, st.name.endsWith ("(mine)") ? st.name : st.name + " (mine)");
+    }
+    if (select) styleBox.setSelectedId (index + 1, juce::sendNotificationSync);
+}
+
+void MainComponent::openStyleEditor()
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) return;
+    if (styles[i].isKit()) { log ("Kits mix other styles - pick one of its recipes to edit."); return; }
+    styleEditorWindow.reset();
+    auto* editor = new StyleEditor (styles[i]);
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    editor->onSave = [safe] (const Style& st) { if (safe != nullptr) { safe->addOrReplaceStyle (st, true); safe->log ("Saved your style \"" + st.name + "\""); } };
+    editor->onApply = [safe] (const Style& st) { if (safe != nullptr) safe->addOrReplaceStyle (st, true); };
+    styleEditorWindow = std::make_unique<ToolWindow> ("Edit Style", editor, [safe] { if (safe != nullptr) safe->styleEditorWindow.reset(); });
 }
 
 //==============================================================================

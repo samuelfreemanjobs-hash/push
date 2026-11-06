@@ -18,6 +18,9 @@ namespace forge
         int variety = 1;           // near-duplicate removal: 0 off, 1 normal (only near-identical), 2 strict
         std::vector<juce::AudioProcessor*> extraInstances; // more copies of the instrument for parallel rendering
 
+        // Chord exports: add the files to an existing folder (manifest / specs appended, nothing overwritten)
+        bool appendOnly = false;
+
         // "Octave copies for keepers": render only the register copies of these existing files
         bool registersOnly = false;
         std::vector<juce::File> existingFiles;              // same order as the specs

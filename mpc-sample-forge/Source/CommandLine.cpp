@@ -57,8 +57,9 @@ juce::String cliHelpText()
       << "  --scale-bank              each bank of 16 pads is one sound climbing the scale\n"
       << "                            (uses --key / --scale; random key = one key for all banks).\n"
       << "                            --count 64 = 4 banks\n"
-      << "  --bank-type <notes|chords> single notes per degree, or the diatonic chord of each\n"
-      << "                            degree (default: the style's)\n\n"
+      << "  --bank-type <notes|chords|progressions>\n"
+      << "                            single notes per degree, the diatonic chord of each degree,\n"
+      << "                            or 4 voice-led progressions per bank (one per row of pads)\n\n"
       << "MPC Sample friendly output:\n"
       << "  --registers <list>        also render every kept sample in other registers, in\n"
       << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
@@ -224,8 +225,8 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
     req.plan.scaleBank = args.contains ("--scale-bank") || args.contains ("--bank-type");
     req.plan.bankType = option (args, "--bank-type").toLowerCase();
-    if (req.plan.bankType.isNotEmpty() && req.plan.bankType != "notes" && req.plan.bankType != "chords")
-        return fail ("--bank-type must be notes or chords");
+    if (req.plan.bankType.isNotEmpty() && req.plan.bankType != "notes" && req.plan.bankType != "chords" && req.plan.bankType != "progressions")
+        return fail ("--bank-type must be notes, chords or progressions");
     req.render.loudnessMatch = args.contains ("--loudness");
     {
         auto v = option (args, "--variety", "normal").toLowerCase();

@@ -74,6 +74,51 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 
 ---
 
+## Chord row: hear and export the recipe's chords
+
+Above the keyboard, **seven buttons** show the diatonic chords of the selected recipe in your
+key, e.g. `i Cm9`, `ii Dm7`, `III Ebmaj7`, `IV F7` in C Dorian. They use the recipe's own
+chord types wherever they fit the key.
+
+* **Click** a chord to hear it through the current instrument. The preview is raw; the
+  recipe's FX are added on export.
+* **Octave** (C1–C5) and **inversion** (root, 1st, 2nd, 3rd) change what you hear and what
+  gets exported.
+* **Export chord** renders the selected chord at that octave and inversion, with the recipe's
+  processing. **Export all 7** renders the whole row. Files go to
+  `Chord Picks/<recipe>_<key>_<scale>/`, e.g. `03_EPBell_III-Ebmaj7_inv1_G2.wav`. Earlier
+  exports are never overwritten.
+* "Random keys" previews in C; pick a Key to change it.
+
+## Progression banks
+
+Choose **Scale banks: progressions** (or `--bank-type progressions`). Each bank holds **4
+progressions in your key, one per row of 4 pads**. For example ii–V–I–vi, IV–iii–ii–I and
+I–vi–IV–V in major; i–VI–III–VII and i–iv–VII–III in minor; i–II–i–VII in Phrygian.
+
+The chords are **voice-led**: each chord takes the inversion closest to the previous one, so a
+row plays smoothly. In the self-test, voices move about half a semitone on average.
+`_MPC_Setup.txt` names each row.
+
+## More like this
+
+In Review, select a sample and press **M** (or click **More like this**). You get 16 close
+variations: the same recipe and chord, with new tone (built-in synth), inversions, drop-2 and
+open voicings, and new velocity and length. They go into a new `…_more_…` batch, and Review
+opens on it. Variety removes any that come out identical.
+
+## Style editor
+
+Click **Edit Style...** to change the selected style without touching JSON:
+* chord types and voicings (checkboxes);
+* chord and single-note register, velocity and hold (range sliders that show notes like `G2 to G3`);
+* chord share, strum, stab chance and max length;
+* engine, scale and bank type.
+
+**Save as my style** writes it to `<app data>/MPCSampleForge/Styles/`; it loads every time the
+app starts and shows as "(mine)". **Use now** applies it for this session only. Effects and pad
+notes come from the style you started from.
+
 ## Fast rounds instead of one long render
 
 * **Parallel rendering.** The built-in synth uses all your CPU cores. For a VST3, choose
@@ -427,7 +472,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--variety <off\|normal\|strict>` | Drop near-duplicates (default normal) |
 | `--instances <1-4>` | VST3: render with this many plugin copies in parallel |
 | `--scale-bank` | 16 pads per sound climbing the key's scale (use with `--key`, `--scale`) |
-| `--bank-type <notes\|chords>` | Note or chord banks (default: the style's) |
+| `--bank-type <notes\|chords\|progressions>` | Note, chord or progression banks (default: the style's) |
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
