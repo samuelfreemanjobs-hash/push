@@ -100,6 +100,31 @@ The chords are **voice-led**: each chord takes the inversion closest to the prev
 row plays smoothly. In the self-test, voices move about half a semitone on average.
 `_MPC_Setup.txt` names each row.
 
+## Trap Progressions
+
+The **Trap Progressions** recipe (`trap-progressions`) holds 20 well-known trap progression
+sets, each a main progression plus 2 alternates (60 progressions). Each set gets **one bank**:
+
+* the main progression from pad 1, alternate 1 on the next row and alternate 2 on the row
+  after (or back to back when a set is too long for that);
+* **808 root notes** of the main progression on every spare pad (C0–B0), so each bank is a
+  playable beat kit;
+* chords are voice-led triads (power chords for the `5` sets) on a dark, filtered Rhodes.
+
+Pick a set from the **Progression** menu next to the description (or **All sets** for
+Samples ÷ 16 sets chosen by the seed; Samples 320 = all 20). **Random keys** keeps each set's
+original key; pick a Key to move it. The chord buttons play the chosen set's chords. The tip
+for each set and the numerals of every progression go into `_MPC_Setup.txt`.
+
+```
+mpcforge --list-progressions                          # all 20 with numerals and tips
+mpcforge --style trap-progressions --progression 1 --out ~/MPC/Trap1
+mpcforge --style trap-progressions --count 320 --key F# --out ~/MPC/TrapAll
+```
+
+The source article lists #9 as G minor, but its chords (Em-Bm-Am-Eb) centre on E minor, so the
+numerals use E minor. Sharps such as G# are shown as flats (Ab) in file names.
+
 ## More like this
 
 In Review, select a sample and press **M** (or click **More like this**). You get 16 close
@@ -209,6 +234,7 @@ folder is one sound laid out across 16 pads.** Load file 01 on Pad 1 … file 16
 | `smooth-jazz-chords` | chords | maj9 / m11 / 13 / 9sus4 / maj7#11 on chorused Rhodes |
 | `rnb-80s-chords` | chords | Quiet storm: maj9 / m9 / 9sus4 on DX-style EP, chorus, plate |
 | `smooth-jazz-sax` | notes | Breathy alto sax that scoops into the note, vibrato |
+| `trap-progressions` | progressions | 20 trap progression sets (main + 2 alternates + 808 roots per bank) |
 
 New engines: `808`, `clav`, `talkbox`, `wurli`, `musicbox`, `pizz`, `flute`, `logdrum` and `sax`.
 Each is checked in the self-test, and each note bank measures in tune.
@@ -473,6 +499,8 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--instances <1-4>` | VST3: render with this many plugin copies in parallel |
 | `--scale-bank` | 16 pads per sound climbing the key's scale (use with `--key`, `--scale`) |
 | `--bank-type <notes\|chords\|progressions>` | Note, chord or progression banks (default: the style's) |
+| `--progression <1-20>` | Trap Progressions: render only this set (one bank) |
+| `--list-progressions` | Print the 20 trap progression sets with numerals and tips |
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |

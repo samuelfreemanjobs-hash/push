@@ -36,7 +36,8 @@ set(FORGE_ENGINE_SOURCES
     Source/BuiltInSynth.cpp
     Source/Effects.cpp
     Source/Diagnostics.cpp
-    Source/Analysis.cpp)
+    Source/Analysis.cpp
+    Source/ProgressionLibrary.cpp)
 
 set(FORGE_DEFINITIONS
     FORGE_VERSION_STRING="${PROJECT_VERSION}"

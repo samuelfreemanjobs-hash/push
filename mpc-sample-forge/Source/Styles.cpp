@@ -1,4 +1,5 @@
 #include "Styles.h"
+#include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 
 namespace forge
@@ -578,7 +579,18 @@ static const char* builtInStyleJson = R"JSON(
    "chordRootRange": [55, 66], "keyRange": [55, 79], "velocity": [95, 115], "hold": [0.7, 1.1], "stabChance": 0, "stabHold": 0.2, "strumMs": 0,
    "processing": { "maxLength": 1.4, "fxTailMs": 300,
                    "fx": [ { "type": "peak", "freq": 1800, "gainDb": 2 }, { "type": "reverb", "kind": "plate", "decay": 1.6, "mix": 0.2 } ] },
-   "pad": { "muteGroup": 1, "fullLevel": false, "phrasing": "Short phrases with space between them; Mute Group keeps it one horn." } }
+   "pad": { "muteGroup": 1, "fullLevel": false, "phrasing": "Short phrases with space between them; Mute Group keeps it one horn." } },
+
+ { "id": "trap-progressions", "name": "Trap Progressions", "tag": "TrapProg", "short": "TrapProg",
+   "description": "20 classic trap chord progressions, each with 2 alternates (60 in all). One bank per set: main progression, alternate 1 and alternate 2, voice-led, plus 808 roots on spare pads. Original key, or any key you pick.",
+   "engine": "epiano", "root": 60, "scale": "minor", "progressionLibrary": "trap",
+   "chords": { "min": 1, "maj": 1, "5": 1 }, "voicings": { "close": 1 }, "chordRatio": 1.0,
+   "keyTypes": { "note": 1, "octave": 0, "fifth": 0, "stab": 0 },
+   "chordRootRange": [53, 64], "keyRange": [36, 60], "velocity": [90, 108], "hold": [1.6, 2.0], "stabChance": 0, "stabHold": 0.3, "strumMs": 0,
+   "processing": { "maxLength": 2.2, "fxTailMs": 350,
+                   "fx": [ { "type": "highpass", "freq": 120, "poles": 2 }, { "type": "lowpass", "freq": 6500, "poles": 2 },
+                           { "type": "reverb", "kind": "plate", "decay": 1.8, "mix": 0.22 } ] },
+   "pad": { "muteGroup": 0, "fullLevel": true, "phrasing": "Play a row left to right, one chord per bar (or two), over 808s and hats; switch rows for the next section." } }
 ]
 )JSON";
 
@@ -632,6 +644,7 @@ juce::var Style::toVar() const
     if (shortTag.isNotEmpty()) o->setProperty ("short", shortTag);
     if (scaleBank.isNotEmpty()) o->setProperty ("scaleBank", scaleBank);
     if (scaleBankOnly) o->setProperty ("scaleBankOnly", true);
+    if (progressionLibrary.isNotEmpty()) o->setProperty ("progressionLibrary", progressionLibrary);
     if (root >= 0) o->setProperty ("root", root);
     if (isKit()) o->setProperty ("kit", weightsToVar (kit));
 
@@ -776,6 +789,17 @@ bool Style::fromVar (const juce::var& v, Style& s, juce::String& error)
         return false;
     }
     s.scaleBankOnly = (bool) v.getProperty ("scaleBankOnly", false);
+    s.progressionLibrary = v["progressionLibrary"].toString().toLowerCase();
+    if (s.progressionLibrary.isNotEmpty())
+    {
+        if (forge::progressionLibrary (s.progressionLibrary).empty())
+        {
+            error = "style '" + s.id + "': unknown \"progressionLibrary\" '" + s.progressionLibrary + "' (known: trap)";
+            return false;
+        }
+        s.scaleBank = "progressions";
+        s.scaleBankOnly = true;
+    }
 
     auto pad = v["pad"];
     s.pad.tune      = juce::jlimit (-36, 36, (int) pad.getProperty ("tune", 0));

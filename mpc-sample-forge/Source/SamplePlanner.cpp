@@ -1,5 +1,6 @@
 #include "SamplePlanner.h"
 #include "BuiltInSynth.h"
+#include "ProgressionLibrary.h"
 #include <set>
 #include <map>
 #include <numeric>
@@ -769,8 +770,198 @@ static std::vector<SampleSpec> planScaleBanks (const Style& kitOrStyle, const Pl
     return result;
 }
 
+//==============================================================================
+// Progression-library banks (e.g. Trap Progressions): one bank per set - the main
+// progression, then alternate 1 and alternate 2, each starting on a new row of 4 pads
+// when they fit (else one after another), voice-led; spare pads get 808 roots.
+static std::vector<SampleSpec> planLibraryBanks (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    const auto& library = progressionLibrary (style.progressionLibrary);
+    if (library.empty()) { error = "unknown progression library '" + style.progressionLibrary + "'"; return result; }
+    juce::Random rng (opt.seed);
+
+    // which sets: one chosen set, or a seed-shuffled mix (one per bank)
+    std::vector<int> order;
+    if (opt.progressionNumber > 0)
+    {
+        if (opt.progressionNumber > (int) library.size())
+        {
+            error = "progression " + juce::String (opt.progressionNumber) + " does not exist (1-" + juce::String ((int) library.size()) + ")";
+            return result;
+        }
+        order.push_back (opt.progressionNumber - 1);
+    }
+    else
+    {
+        const int banks = juce::jlimit (1, (int) library.size(), (juce::jlimit (1, 2000, opt.count) + 15) / 16);
+        std::vector<int> all ((size_t) library.size());
+        std::iota (all.begin(), all.end(), 0);
+        for (size_t i = all.size(); i > 1; --i) std::swap (all[i - 1], all[(size_t) rng.nextInt ((int) i)]);
+        order.assign (all.begin(), all.begin() + banks);
+        std::sort (order.begin(), order.end()); // banks in the article's order
+    }
+
+    // a fixed key moves every set there; "random" keeps each set's original key
+    const int chosenTonic = (opt.key.isEmpty() || opt.key.equalsIgnoreCase ("random")) ? -1 : parsePitchClass (opt.key);
+    auto engineList = engineIds();
+    const int ps = style.processing.pitchShift;
+    const auto velocity = (style.velocityLow + style.velocityHigh) / 2;
+    const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+    for (auto setIndex : order)
+    {
+        const auto& set = library[(size_t) setIndex];
+        const int tonic = chosenTonic >= 0 ? chosenTonic : set.tonicPc;
+        const int shift = ((tonic - set.tonicPc) % 12 + 12) % 12;
+        const auto keyName = pitchClassName (tonic) + (set.minor ? " minor" : " major");
+        const auto info = "#" + juce::String (set.number) + " " + set.main.text + " in " + set.keyName
+                          + (shift != 0 ? " - moved to " + keyName : juce::String());
+
+        auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+        if (engineName == "mixed" || engineName.isEmpty()) engineName = engineList[rng.nextInt (engineList.size())];
+        const auto variation = rng.nextInt64();
+
+        auto moved = [&] (const NamedChord& c) { NamedChord m = c; m.rootPc = (c.rootPc + shift) % 12; return m; };
+        auto chordName = [&] (const NamedChord& c)
+        {
+            return pitchClassName (c.rootPc + ps) + (c.quality == "min" ? "m" : c.quality == "5" ? "5" : "");
+        };
+        auto progText = [&] (const NamedProgression& p)
+        {
+            juce::StringArray names, numerals;
+            for (auto& c : p.chords) { auto m = moved (c); names.add (chordName (m)); numerals.add (romanNumeralFor (m, tonic)); }
+            return names.joinIntoString ("-") + " (" + numerals.joinIntoString ("-") + ")";
+        };
+
+        auto makeSpec = [&] (int pad, const std::vector<int>& notes, int root, const juce::String& engine, juce::int64 var)
+        {
+            SampleSpec s;
+            s.pad = pad;
+            s.rootNote = juce::jlimit (0, 127, root + ps);
+            s.engine = engine;
+            s.variation = var;
+            s.processing = style.processing;
+            s.styleId = style.id;
+            s.tag = style.tag;
+            s.shortTag = style.shortTag;
+            s.bankInfo = info;
+            s.progressionSet = set.number;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                NoteEvent e;
+                e.note = notes[i];
+                e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() ? 4 : 0));
+                e.lengthSec = hold;
+                s.notes.push_back (e);
+            }
+            return s;
+        };
+
+        // layout: each progression on its own row(s) when everything fits, else back to back
+        const NamedProgression* progs[] = { &set.main, &set.alt1, &set.alt2 };
+        const char* sections[] = { "Main", "Alt 1", "Alt 2" };
+        int rows = 0;
+        for (auto* p : progs) rows += ((int) p->chords.size() + 3) / 4;
+        const bool rowAligned = rows <= 4;
+
+        int pad = 1;
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& p = *progs[k];
+            if (rowAligned && pad > 1) pad = ((pad - 2) / 4 + 1) * 4 + 1; // start of the next row
+            const auto group = juce::String (sections[k]) + ": " + progText (p);
+            std::vector<int> previous;
+            for (auto& named : p.chords)
+            {
+                if (pad > 16) break;
+                auto c = moved (named);
+                auto* q = findQuality (c.quality);
+                if (q == nullptr) { error = "unknown chord quality " + c.quality; return {}; }
+                int inversion = 0;
+                std::vector<int> notes;
+                if (previous.empty())
+                {
+                    auto root = placePitchClass (c.rootPc, style.chordRootLow);
+                    if (root > style.chordRootHigh) root -= 12;
+                    notes = invertChord (root, q->intervals, 0);
+                    if (lowIntervalViolations (notes) > 0) notes = invertChord (root + 12, q->intervals, 0);
+                }
+                else
+                    notes = voiceLead (previous, c.rootPc, q->intervals, style.chordRootLow, style.chordRootHigh, inversion);
+                previous = notes;
+
+                auto rootMidi = notes.front();
+                for (auto n : notes) if (((n - c.rootPc) % 12 + 12) % 12 == 0) { rootMidi = n; break; }
+                auto s = makeSpec (pad, notes, rootMidi, engineName, variation);
+                s.kind = "Chord";
+                s.label = romanNumeralFor (c, tonic) + "-" + chordName (c);
+                s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
+                s.group = group;
+                result.push_back (s);
+                ++pad;
+            }
+        }
+
+        // spare pads: the main progression's roots as 808s (C0-B0 in MPC naming), so the bank is a full beat kit
+        std::vector<int> roots;
+        for (auto& named : set.main.chords)
+        {
+            auto pc = moved (named).rootPc;
+            if (std::find (roots.begin(), roots.end(), pc) == roots.end()) roots.push_back (pc);
+        }
+        Processing bassProcessing;
+        bassProcessing.maxLength = 1.6;
+        bassProcessing.ampDecayMs = 1400;
+        std::vector<int> freePads;
+        for (int fp = 1; fp <= 16; ++fp)
+            if (std::none_of (result.begin(), result.end(), [&] (const SampleSpec& x) { return x.progressionSet == set.number && x.pad == fp; }))
+                freePads.push_back (fp);
+        for (size_t r = 0; r < freePads.size() && ! roots.empty(); ++r)
+        {
+            pad = freePads[r];
+            auto note = placePitchClass (roots[r % roots.size()], 24) + (r >= roots.size() ? 12 : 0);
+            NamedChord rc { roots[r % roots.size()], "maj" };
+            auto s = makeSpec (pad, { note }, note, "808", variation ^ 0x808);
+            s.processing = bassProcessing;
+            s.rootNote = note;
+            s.notes.front().velocity = 118;
+            s.notes.front().lengthSec = 1.4;
+            s.kind = "Key";
+            s.label = "808-" + romanNumeralFor (rc, tonic) + "-" + midiNoteName (note);
+            s.voicing = "-";
+            s.group = "808 roots of the main progression";
+            result.push_back (s);
+        }
+    }
+
+    std::stable_sort (result.begin(), result.end(), [] (const SampleSpec& a, const SampleSpec& b)
+                      { return a.progressionSet != b.progressionSet ? a.progressionSet < b.progressionSet : a.pad < b.pad; });
+    for (auto& s : result)
+    {
+        auto setTag = "P" + juce::String (s.progressionSet).paddedLeft ('0', 2);
+        if (opt.shortNames)
+        {
+            s.stemHead = {};
+            s.stemTail = setTag + "_" + s.label + (s.kind == "Chord" ? "_" + shortVoicing (s.voicing) : juce::String());
+        }
+        else
+        {
+            auto tonicName = s.bankInfo.contains ("moved to ") ? s.bankInfo.fromLastOccurrenceOf ("moved to ", false, false)
+                                                               : s.bankInfo.fromFirstOccurrenceOf (" in ", false, false);
+            s.stemHead = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.tag) + "_" + setTag + "_"
+                         + tonicName.replace (" minor", "m").replace (" major", "");
+            s.stemTail = s.kind + "_" + s.label + (s.kind == "Chord" ? "_" + s.voicing : juce::String());
+        }
+    }
+    renumberSamples (result);
+    return result;
+}
+
 std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt, juce::String& error)
 {
+    if (style.progressionLibrary.isNotEmpty())
+        return planLibraryBanks (style, opt, error);
     if (opt.scaleBank || style.scaleBankOnly)
         return planScaleBanks (style, opt, error);
 

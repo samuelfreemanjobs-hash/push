@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
 #include "ReviewPanel.h"
@@ -130,6 +131,20 @@ MainComponent::MainComponent()
     }
     styleBox.onChange = [this] { styleChanged(); };
     addAndMakeVisible (styleBox);
+
+    progressionBox.addItem ("All sets (--count / 16, by seed)", 1);
+    for (auto& set : progressionLibrary ("trap"))
+        progressionBox.addItem ("#" + juce::String (set.number) + "  " + set.keyName + ":  " + set.main.text, set.number + 1);
+    progressionBox.setSelectedId (juce::jlimit (1, 21, settings->getIntValue ("progressionSet", 1)), juce::dontSendNotification);
+    progressionBox.setTooltip ("Which progression set to render: one bank = main progression + 2 alternates + 808 roots. "
+                               "The chord buttons below play the chosen set. Random keys = the set's original key.");
+    progressionBox.onChange = [this]
+    {
+        props.getUserSettings()->setValue ("progressionSet", progressionBox.getSelectedId());
+        lastPlan.clear();
+        styleChanged();
+    };
+    addChildComponent (progressionBox);
     editStyleButton.setTooltip ("Change chord types, voicings, register, velocity, hold ... with checkboxes and sliders, "
                                 "then save it as your own style");
     editStyleButton.onClick = [this] { openStyleEditor(); };
@@ -448,6 +463,7 @@ void MainComponent::resized()
 
     r = row (40);
     r.removeFromLeft (labelW);
+    if (progressionBox.isVisible()) { progressionBox.setBounds (r.removeFromRight (340).withSizeKeepingCentre (340, 28)); r.removeFromRight (8); }
     styleDesc.setBounds (r);
 
     r = row();
@@ -667,7 +683,13 @@ void MainComponent::styleChanged()
 {
     auto i = styleBox.getSelectedItemIndex();
     if (! juce::isPositiveAndBelow (i, styles.size())) return;
-    styleDesc.setText (styles[i].description + "   (scale: " + styles[i].scale + ")", juce::dontSendNotification);
+    const bool library = styles[i].progressionLibrary.isNotEmpty();
+    styleDesc.setText (styles[i].description + (library ? juce::String() : "   (scale: " + styles[i].scale + ")"), juce::dontSendNotification);
+    if (library)
+        if (auto* set = selectedProgressionSet())
+            styleDesc.setText ("#" + juce::String (set->number) + " " + set->keyName + ": " + set->main.text + " / "
+                               + set->alt1.text + " / " + set->alt2.text + ".  " + set->tip, juce::dontSendNotification);
+    if (progressionBox.isVisible() != library) { progressionBox.setVisible (library); resized(); }
     props.getUserSettings()->setValue ("styleIndex", i);
     lastPlan.clear();
     applyLiveEngine();
@@ -708,6 +730,7 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.render.normalise = levelBox.getSelectedId() != 3;
     req.render.loudnessMatch = levelBox.getSelectedId() == 1;
     req.plan.shortNames = shortNamesToggle.getToggleState();
+    req.plan.progressionNumber = req.style.progressionLibrary.isNotEmpty() ? progressionBox.getSelectedId() - 1 : 0;
     req.variety = varietyBox.getSelectedId() - 1;
     req.plan.scaleBank = bankBox.getSelectedId() > 1;
     req.plan.bankType = bankBox.getSelectedId() == 3 ? "notes" : bankBox.getSelectedId() == 4 ? "chords"
@@ -1094,12 +1117,58 @@ std::vector<int> MainComponent::currentScale() const
     return scale;
 }
 
+const ProgressionSet* MainComponent::selectedProgressionSet (bool orFirst) const
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size()) || styles[i].progressionLibrary.isEmpty()) return nullptr;
+    const auto& lib = progressionLibrary (styles[i].progressionLibrary);
+    auto n = progressionBox.getSelectedId() - 1;
+    if (n < 1) n = orFirst ? 1 : 0;
+    return juce::isPositiveAndNotGreaterThan (n, (int) lib.size()) && n > 0 ? &lib[(size_t) n - 1] : nullptr;
+}
+
 void MainComponent::updateChordRow()
 {
     auto i = styleBox.getSelectedItemIndex();
     if (! juce::isPositiveAndBelow (i, styles.size())) return;
     const auto st = styles[i];
     if (st.isKit()) { currentChords.clear(); for (auto* b : chordButtons) { b->setButtonText ("-"); b->setEnabled (false); } return; }
+
+    if (auto* set = st.progressionLibrary.isNotEmpty() ? selectedProgressionSet (true) : nullptr)
+    {
+        // the chosen set's chords (main, then the alternates' new ones), in the chosen key
+        const int tonic = keyBox.getSelectedId() <= 1 ? set->tonicPc : keyBox.getSelectedId() - 2;
+        const int shift = tonic - set->tonicPc;
+        currentChords.clear();
+        for (auto* p : { &set->main, &set->alt1, &set->alt2 })
+            for (auto& named : p->chords)
+            {
+                NamedChord c = named;
+                c.rootPc = ((c.rootPc + shift) % 12 + 12) % 12;
+                auto name = pitchClassName (c.rootPc) + (c.quality == "min" ? "m" : c.quality == "5" ? "5" : "");
+                if (currentChords.size() >= 7 || std::any_of (currentChords.begin(), currentChords.end(), [&] (auto& d) { return d.name == name; }))
+                    continue;
+                DiatonicChord d;
+                d.degree = (int) currentChords.size();
+                d.rootPc = c.rootPc;
+                d.roman = romanNumeralFor (c, tonic);
+                d.name = name;
+                if (auto* q = findQuality (c.quality)) d.intervals = q->intervals;
+                currentChords.push_back (d);
+            }
+        for (int b = 0; b < chordButtons.size(); ++b)
+        {
+            auto* button = chordButtons[b];
+            auto has = b < (int) currentChords.size();
+            button->setEnabled (has);
+            button->setButtonText (has ? currentChords[(size_t) b].roman + " " + currentChords[(size_t) b].name : juce::String ("-"));
+            button->setColour (juce::TextButton::buttonColourId, b == selectedChord ? accent.withAlpha (0.6f) : panel.brighter (0.1f));
+        }
+        chordRowLabel.setText ("#" + juce::String (set->number), juce::dontSendNotification);
+        chordRowLabel.setTooltip ("Chords of progression set #" + juce::String (set->number) + " in " + pitchClassName (tonic)
+                                  + (set->minor ? " minor" : " major"));
+        return;
+    }
 
     currentChords = diatonicChords (st, currentTonic(), currentScale());
     for (int b = 0; b < chordButtons.size(); ++b)

@@ -1,4 +1,5 @@
 #include "CommandLine.h"
+#include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "Diagnostics.h"
 #include "Analysis.h"
@@ -59,7 +60,11 @@ juce::String cliHelpText()
       << "                            --count 64 = 4 banks\n"
       << "  --bank-type <notes|chords|progressions>\n"
       << "                            single notes per degree, the diatonic chord of each degree,\n"
-      << "                            or 4 voice-led progressions per bank (one per row of pads)\n\n"
+      << "                            or 4 voice-led progressions per bank (one per row of pads)\n"
+      << "  --progression <1-20>      Trap Progressions recipe: render only this set (main + 2\n"
+      << "                            alternates + 808 roots in one bank). Default: --count / 16\n"
+      << "                            sets picked by the seed. --key random = each set's own key\n"
+      << "  --list-progressions       print the 20 trap progression sets with numerals and tips\n\n"
       << "MPC Sample friendly output:\n"
       << "  --registers <list>        also render every kept sample in other registers, in\n"
       << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
@@ -92,7 +97,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions" })
         if (args.contains (a))
             return true;
     return false;
@@ -148,6 +153,25 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
              + juce::String (reader->bitsPerSample) + "-bit, root " + midiNoteName (root));
         out ("  centroid   " + juce::String (juce::roundToInt (feat.centroidHz)) + " Hz, mud " + juce::String (feat.mudShare, 2)
              + ", harsh " + juce::String (feat.harshShare, 2) + ", pitch clarity " + juce::String (feat.harmonicity, 2));
+        return onDone (0);
+    }
+
+    if (args.contains ("--list-progressions"))
+    {
+        for (auto& set : progressionLibrary ("trap"))
+        {
+            auto line = [&] (const char* what, const NamedProgression& p)
+            {
+                juce::StringArray numerals;
+                for (auto& c : p.chords) numerals.add (romanNumeralFor (c, set.tonicPc));
+                out (juce::String ("     ") + what + p.text.paddedRight (' ', 24) + numerals.joinIntoString ("-"));
+            };
+            out ("#" + juce::String (set.number).paddedLeft (' ', 2) + "  " + set.keyName);
+            line ("main   ", set.main);
+            line ("alt 1  ", set.alt1);
+            line ("alt 2  ", set.alt2);
+            out ("     tip: " + set.tip + "\n");
+        }
         return onDone (0);
     }
 
@@ -233,6 +257,12 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         req.variety = v == "off" ? 0 : v == "strict" ? 2 : 1;
     }
     req.plan.shortNames = args.contains ("--short-names");
+    if (args.contains ("--progression"))
+    {
+        req.plan.progressionNumber = option (args, "--progression").getIntValue();
+        if (req.plan.progressionNumber < 1 || req.plan.progressionNumber > (int) progressionLibrary ("trap").size())
+            return fail ("--progression must be 1-" + juce::String ((int) progressionLibrary ("trap").size()));
+    }
     if (args.contains ("--registers"))
     {
         auto list = option (args, "--registers");

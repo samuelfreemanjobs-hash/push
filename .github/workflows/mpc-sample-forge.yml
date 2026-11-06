@@ -83,6 +83,12 @@ jobs:
           echo "progression bank: $p pads"
           test "$p" -eq 16
           grep -q "pads 1-4:" demo-out/GospelRnB_Progressions_Ebmajor/_MPC_Setup.txt
+          # trap progressions: all 20 sets, one bank each, with tips
+          "${{ steps.bin.outputs.cli }}" --recipe trap-progressions --count 320 --seed 1 --short-names --loudness --out demo-out/Trap_Progressions_All20
+          t=$(find demo-out/Trap_Progressions_All20 -name '*.wav' | wc -l | tr -d ' ')
+          echo "trap progressions: $t pads"
+          test "$t" -eq 320
+          grep -q "Tip:" demo-out/Trap_Progressions_All20/_MPC_Setup.txt
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

@@ -52,6 +52,9 @@ CHORDS AND PROGRESSIONS
   The row of 7 buttons above the keyboard plays the recipe's chords in your Key. Pick an octave
   and inversion, then "Export chord" (or "Export all 7") -> Chord Picks folder.
   "Scale banks: progressions" gives 4 smooth progressions per bank, one per row of pads.
+  Style "Trap Progressions": 20 trap progression sets. Pick one in the Progression menu
+  (next to the description) - one bank = main + 2 alternates + 808 roots. Random keys =
+  the set's original key. Tips are in _MPC_Setup.txt.
   In Review, press M on a sample you like for 16 variations of it.
   "Edit Style..." lets you change a recipe with checkboxes and save it as your own.
 

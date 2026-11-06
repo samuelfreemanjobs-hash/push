@@ -1,4 +1,5 @@
 #include "BatchJob.h"
+#include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "Analysis.h"
 #include <thread>
@@ -97,14 +98,22 @@ juce::String BatchJob::mpcSetupSheet() const
                 }
                 t << "\n";
             }
-            // progression banks: name each row
+            // progression banks: which pads play which progression
             juce::StringArray rowsText;
-            for (int row = 0; row < 4; ++row)
+            for (size_t i = b * 16; i < specs.size() && i < b * 16 + 16;)
             {
-                auto i = b * 16 + (size_t) (row * 4);
-                if (i < specs.size() && specs[i].group.isNotEmpty())
-                    rowsText.add ("   pads " + juce::String (row * 4 + 1) + "-" + juce::String (row * 4 + 4) + ": " + specs[i].group);
+                auto j = i;
+                while (j + 1 < specs.size() && j + 1 < b * 16 + 16 && specs[j + 1].group == specs[i].group) ++j;
+                if (specs[i].group.isNotEmpty())
+                    rowsText.add ("   pads " + juce::String (specs[i].pad) + (j > i ? "-" + juce::String (specs[j].pad) : juce::String())
+                                  + ": " + specs[i].group);
+                i = j + 1;
             }
+            if (first.progressionSet > 0)
+                if (auto* lib = st != nullptr ? &progressionLibrary (st->progressionLibrary) : nullptr)
+                    for (auto& set : *lib)
+                        if (set.number == first.progressionSet && set.tip.isNotEmpty())
+                            rowsText.add ("   Tip: " + set.tip);
             if (! rowsText.isEmpty()) t << rowsText.joinIntoString ("\n") << "\n";
             t << "\n";
         }
@@ -194,6 +203,7 @@ juce::var specToVar (const SampleSpec& s)
     o->setProperty ("variation", juce::String (s.variation));
     o->setProperty ("styleId", s.styleId);     o->setProperty ("tag", s.tag);
     o->setProperty ("shortTag", s.shortTag);   o->setProperty ("bankInfo", s.bankInfo);
+    o->setProperty ("group", s.group);         o->setProperty ("progressionSet", s.progressionSet);
     juce::Array<juce::var> notes;
     for (auto& n : s.notes)
     {
@@ -221,6 +231,7 @@ bool specFromVar (const juce::var& v, SampleSpec& s)
     s.kind = v["kind"]; s.label = v["label"]; s.voicing = v["voicing"];
     s.rootNote = v["rootNote"]; s.engine = v["engine"]; s.variation = v["variation"].toString().getLargeIntValue();
     s.styleId = v["styleId"]; s.tag = v["tag"]; s.shortTag = v["shortTag"]; s.bankInfo = v["bankInfo"];
+    s.group = v["group"]; s.progressionSet = v["progressionSet"];
     for (auto& e : *v["notes"].getArray())
         s.notes.push_back ({ (int) e["note"], (int) e["velocity"], (double) e["start"], (double) e["length"] });
     auto p = v["processing"];

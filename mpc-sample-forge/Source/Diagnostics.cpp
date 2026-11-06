@@ -3,6 +3,7 @@
 #include "OfflineRenderer.h"
 #include "Styles.h"
 #include "Analysis.h"
+#include "ProgressionLibrary.h"
 #include <cmath>
 
 namespace forge
@@ -419,6 +420,31 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
         say (inKey && avg < 3.0 ? L::Pass : L::Fail, "Progression banks",
              juce::String (prog.size()) + " pads, rows like " + (prog.empty() ? juce::String() : prog[0].group)
              + ", voices move " + juce::String (avg, 1) + " semitones on average" + (inKey ? "" : ", NOT in key"));
+    }
+
+    // ------------------------------------------------------------ trap progression library
+    {
+        const auto& lib = progressionLibrary ("trap");
+        int parsed = 0;
+        for (auto& set : lib)
+            for (auto* p : { &set.main, &set.alt1, &set.alt2 })
+                if (! p->chords.empty() && (int) p->chords.size() == juce::StringArray::fromTokens (p->text, "-", "").size()) ++parsed;
+        auto* trap = findBuiltInStyle ("trap-progressions");
+        PlanOptions o; o.count = 16; o.seed = 1; o.progressionNumber = 1; o.key = "random";
+        juce::String err;
+        auto bank = trap != nullptr ? planSamples (*trap, o, err) : std::vector<SampleSpec>();
+        // set #1 in its own key (C minor): pads 1-4 Cm Gm Ab Fm, 13-16 808 roots
+        const int expected[] = { 0, 7, 8, 5 };
+        bool ok = lib.size() == 20 && parsed == 60 && bank.size() == 16;
+        for (int k = 0; ok && k < 4; ++k) ok = bank[(size_t) k].notes.size() == 3 && bank[(size_t) k].rootNote % 12 == expected[k];
+        for (size_t k = 0; ok && k < bank.size(); ++k) ok = bank[k].pad == (int) k + 1;
+        ok = ok && bank.back().engine == "808";
+        o.key = "A";
+        auto moved = trap != nullptr ? planSamples (*trap, o, err) : std::vector<SampleSpec>();
+        ok = ok && moved.size() == 16 && moved.front().rootNote % 12 == 9;
+        say (ok ? L::Pass : L::Fail, "Trap progressions",
+             juce::String ((int) lib.size()) + " sets, " + juce::String (parsed) + "/60 progressions parse; set #1 bank: "
+             + (bank.empty() ? juce::String ("none") : bank[0].group) + (moved.empty() ? "" : "; moved to A: " + moved[0].label));
     }
     if (cancel) return;
 

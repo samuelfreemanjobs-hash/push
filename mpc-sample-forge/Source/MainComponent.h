@@ -1,4 +1,5 @@
 #pragma once
+#include "ProgressionLibrary.h"
 #include "BatchJob.h"
 #include "PluginHost.h"
 #include "Diagnostics.h"
@@ -42,6 +43,7 @@ namespace forge
         void openStyleEditor();
         void addOrReplaceStyle (const Style& st, bool select);
         void updateChordRow();
+        const ProgressionSet* selectedProgressionSet (bool orFirst = false) const;
         void playChord (int index);
         SampleSpec chordSpec (int index) const;
         void exportChords (const std::vector<int>& indices);
@@ -80,7 +82,8 @@ namespace forge
 
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
-        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox, varietyBox, instancesBox;
+        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox, varietyBox, instancesBox,
+                       progressionBox;   // progression-library recipes (Trap Progressions): which set
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },

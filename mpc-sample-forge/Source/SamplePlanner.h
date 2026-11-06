@@ -28,6 +28,7 @@ namespace forge
         int pad = 0;                // scale banks: pad 1-16 inside its bank (also the number in the file name)
         juce::String bankInfo;      // scale banks: e.g. "C minor - chords"
         juce::String group;         // progression banks: the progression this pad belongs to
+        int progressionSet = 0;     // progression-library banks: the set number (1-20), 0 = none
         std::vector<NoteEvent> notes;
 
         double holdSec() const;
@@ -48,6 +49,7 @@ namespace forge
         bool scaleBank = false;        // 16 pads per sound, climbing the scale (notes or diatonic chords)
         juce::String bankType;         // "notes" / "chords" (empty = the style's)
         bool shortNames = false;       // "014_EPBell_C3" instead of "JetLifeEPBell_C3_014_Key_C3" (easier on a small screen)
+        int progressionNumber = 0;     // progression-library recipes: only this set (1-20), 0 = a mix chosen by the seed
     };
 
     /** Creates a list of unique, musically sensible samples for a style. */

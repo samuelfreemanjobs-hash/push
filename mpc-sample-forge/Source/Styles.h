@@ -46,6 +46,7 @@ namespace forge
 
         juce::String scaleBank;                            // "notes" or "chords": what a scale bank of this style holds
         bool scaleBankOnly = false;                        // this recipe is always rendered as scale banks
+        juce::String progressionLibrary;                   // e.g. "trap": banks play named progressions from a library
 
         juce::String bankType() const { return scaleBank.isNotEmpty() ? scaleBank : (chordRatio >= 0.5f ? "chords" : "notes"); }
         bool isKit() const { return ! kit.empty(); }
