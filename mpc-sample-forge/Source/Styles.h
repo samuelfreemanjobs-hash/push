@@ -1,5 +1,6 @@
 #pragma once
 #include "Theory.h"
+#include "Effects.h"
 #include <juce_core/juce_core.h>
 
 namespace forge
@@ -27,8 +28,22 @@ namespace forge
         double stabHold = 0.25;
         double strumMs = 15.0;                             // max spread between chord notes
 
-        juce::String recipe = "epiano";                    // built-in synth engine (or "mixed")
-        double maxLength = 0;                              // cap on each file in seconds (0 = no cap)
+        juce::String engine = "epiano";                    // built-in synth engine (or "mixed")
+        Processing processing;                             // trim / envelope / FX applied after rendering
+
+        juce::String tag;                                  // short name used in kit file names
+        int root = -1;                                     // MIDI root used in 16 Levels mode (-1 = C3 / 60)
+        std::vector<Weighted<juce::String>> kit;           // a kit mixes other (built-in) styles
+
+        struct Pad                                         // suggested MPC pad settings, written to _MPC_Setup.txt
+        {
+            int tune = 0;                                  // pad tune in semitones
+            int muteGroup = 1;                             // 0 = none; choke group for monophonic runs
+            bool fullLevel = false;                        // Full Level (Shift + Pad 1)
+            juce::String phrasing;                         // 16 Levels phrasing strategy
+        } pad;
+
+        bool isKit() const { return ! kit.empty(); }
 
         juce::var toVar() const;
         static bool fromVar (const juce::var& v, Style& out, juce::String& error);

@@ -5,24 +5,24 @@
 namespace forge
 {
     /** The built-in sound engines ("recipes") for one-shot melodic material. */
-    enum class Recipe { EPiano, Bell, Organ, Pluck, Choir, Supersaw };
+    enum class Engine { EPiano, Bell, Organ, Pluck, Choir, Supersaw, EPBell, Triangle, Cowbell, ComboOrgan, Harp, Brass };
 
-    juce::StringArray recipeIds();                      // epiano, bell, organ, pluck, choir, supersaw
-    juce::String recipeId (Recipe r);
-    juce::String recipeDisplayName (Recipe r);           // "Bell", "Organ" ...
-    bool parseRecipe (const juce::String& id, Recipe& out);
+    juce::StringArray engineIds();   // epiano, bell, organ, pluck, choir, supersaw, epbell, triangle, cowbell, comboorgan, harp, brass
+    juce::String engineId (Engine r);
+    juce::String engineDisplayName (Engine r);           // "Bell", "Organ" ...
+    bool parseEngine (const juce::String& id, Engine& out);
 
     /** A small multi-engine synth so the app makes real material without any
         VST3 installed. Each sample gets its own "variation" seed, which
-        randomises the timbre within the recipe (brightness, decay, drawbars,
+        randomises the timbre within the engine (brightness, decay, drawbars,
         vowel, detune ...), so 100 renders give 100 different sounds. */
     class BuiltInSynth final : public juce::AudioProcessor
     {
     public:
         BuiltInSynth();
 
-        void setRecipe (Recipe r)            { recipe.store ((int) r); }
-        Recipe getRecipe() const             { return (Recipe) recipe.load(); }
+        void setEngine (Engine r)            { engine.store ((int) r); }
+        Engine getEngine() const             { return (Engine) engine.load(); }
         void setVariation (juce::int64 seed) { variation.store (seed); }
         juce::int64 getVariation() const     { return variation.load(); }
 
@@ -64,7 +64,7 @@ namespace forge
         };
         class Voice;
 
-        std::atomic<int> recipe { (int) Recipe::EPiano };
+        std::atomic<int> engine { (int) Engine::EPiano };
         std::atomic<juce::int64> variation { 1 };
         juce::Synthesiser synth;
 

@@ -107,7 +107,10 @@ bool OfflineRenderer::render (const SampleSpec& spec, juce::AudioBuffer<float>& 
     std::stable_sort (events.begin(), events.end(), [] (auto& a, auto& b) { return a.pos < b.pos; });
 
     auto latency = (juce::int64) juce::jmax (0, proc.getLatencySamples());
-    auto maxSec  = settings.trimToSec > 0 ? juce::jmin (settings.maxLengthSec, settings.trimToSec + 0.05) : settings.maxLengthSec;
+    const auto& P = spec.processing;
+    const auto endSec = settings.trimToSec >= 0 ? settings.trimToSec : P.maxLength;
+    const auto speed = std::pow (2.0, P.pitchShift / 12.0); // varispeed needs more (or less) raw audio
+    auto maxSec  = endSec > 0 ? juce::jmin (settings.maxLengthSec, endSec * speed + 0.05) : settings.maxLengthSec;
     auto maxLen  = (juce::int64) (maxSec * settings.sampleRate) + latency;
     auto tailEnd = lastOff + (juce::int64) (settings.maxTailSec * settings.sampleRate) + latency;
     auto threshold = juce::Decibels::decibelsToGain ((float) settings.silenceDb);
@@ -172,32 +175,61 @@ bool OfflineRenderer::render (const SampleSpec& spec, juce::AudioBuffer<float>& 
     if (last < 0) last = total - 1;
 
     first = juce::jmax (0, first - 8);
-    auto length = juce::jmin (total - first, last - first + 1 + (int) (0.01 * settings.sampleRate));
+    const auto sr = settings.sampleRate;
+    auto natural = juce::jmin (total - first, last - first + 1 + (int) (0.01 * sr));
 
-    // Cut long sustains: one-shots for 16 Levels should stay short and rhythmic.
+    juce::AudioBuffer<float> raw (2, natural);
+    for (int ch = 0; ch < 2; ++ch)
+        raw.copyFrom (ch, 0, captured, ch, first, natural);
+    if (first > 0) // tiny fade-in where we trimmed, to avoid a click
+        raw.applyGainRamp (0, juce::jmin (natural, 16), 0.0f, 1.0f);
+
+    // 1. tape-style varispeed (pitch and formants move together)
+    varispeed (raw, P.pitchShift);
+
+    // 2. end point: one-shots for 16 Levels stay short and rhythmic
+    auto length = raw.getNumSamples();
     auto fadeOutMs = settings.fadeOutMs;
-    if (settings.trimToSec > 0 && length > (int) (settings.trimToSec * settings.sampleRate))
+    if (endSec > 0 && length > (int) (endSec * sr))
     {
-        length = juce::jmax (64, (int) (settings.trimToSec * settings.sampleRate));
-        fadeOutMs = juce::jmax (fadeOutMs, juce::jmin (150.0, 0.2 * settings.trimToSec * 1000.0));
+        length = juce::jmax (64, (int) (endSec * sr));
+        fadeOutMs = juce::jmax (fadeOutMs, juce::jmin (150.0, 0.2 * endSec * 1000.0));
     }
 
-    out.setSize (2, length);
+    auto tail = (int) (P.fxTailMs * 0.001 * sr);
+    out.setSize (2, length + tail);
+    out.clear();
     for (int ch = 0; ch < 2; ++ch)
-        out.copyFrom (ch, 0, captured, ch, first, length);
+        out.copyFrom (ch, 0, raw, ch, 0, length);
 
-    // ---- tiny fade-in (avoids a click where we trimmed) and a fade-out
-    auto fadeIn = juce::jmin (length, 16);
-    if (first > 0)
-        out.applyGainRamp (0, fadeIn, 0.0f, 1.0f);
-
-    auto fadeOut = juce::jmin (length / 2, (int) (fadeOutMs * 0.001 * settings.sampleRate));
+    auto fadeOut = juce::jmin (length / 2, (int) (fadeOutMs * 0.001 * sr));
     for (int ch = 0; ch < 2; ++ch) // equal-power-ish curve sounds smoother than linear
         for (int i = 0; i < fadeOut; ++i)
         {
             auto x = (float) (fadeOut - i) / (float) fadeOut;
             out.setSample (ch, length - fadeOut + i, out.getSample (ch, length - fadeOut + i) * x * x);
         }
+
+    // 3. amp envelope (attack fade-in + One-Shot decay), then 4. filters & FX inserts
+    applyAmpEnvelope (out, sr, P.attackMs, P.ampDecayMs);
+    applyFxChain (out, sr, P.fx, P.tempo, spec.variation);
+
+    // 5. let reverb / delay tails ring into the extra room, then end cleanly
+    if (tail > 0)
+    {
+        auto tailThreshold = juce::Decibels::decibelsToGain (-60.0f) * out.getMagnitude (0, out.getNumSamples());
+        auto end = length;
+        for (int i = out.getNumSamples() - 1; i >= length; --i)
+            if (std::abs (out.getSample (0, i)) > tailThreshold || std::abs (out.getSample (1, i)) > tailThreshold)
+            {
+                end = i + 1;
+                break;
+            }
+        out.setSize (2, end, true);
+        auto f = juce::jmin (end / 4, (int) (0.02 * sr));
+        out.applyGainRamp (end - f, f, 1.0f, 0.0f);
+    }
+    length = out.getNumSamples();
 
     // ---- normalise
     if (settings.normalise)

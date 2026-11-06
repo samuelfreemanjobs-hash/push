@@ -2,41 +2,47 @@
 
 namespace forge
 {
-static const std::vector<std::tuple<Recipe, const char*, const char*>>& recipeTable()
+static const std::vector<std::tuple<Engine, const char*, const char*>>& engineTable()
 {
-    static const std::vector<std::tuple<Recipe, const char*, const char*>> t {
-        { Recipe::EPiano,   "epiano",   "EPiano" },
-        { Recipe::Bell,     "bell",     "Bell" },
-        { Recipe::Organ,    "organ",    "Organ" },
-        { Recipe::Pluck,    "pluck",    "Pluck" },
-        { Recipe::Choir,    "choir",    "Choir" },
-        { Recipe::Supersaw, "supersaw", "Synth" },
+    static const std::vector<std::tuple<Engine, const char*, const char*>> t {
+        { Engine::EPiano,   "epiano",   "EPiano" },
+        { Engine::Bell,     "bell",     "Bell" },
+        { Engine::Organ,    "organ",    "Organ" },
+        { Engine::Pluck,    "pluck",    "Pluck" },
+        { Engine::Choir,    "choir",    "Choir" },
+        { Engine::Supersaw, "supersaw", "Synth" },
+        { Engine::EPBell,     "epbell",     "EPBell" },
+        { Engine::Triangle,   "triangle",   "Triangle" },
+        { Engine::Cowbell,    "cowbell",    "Cowbell" },
+        { Engine::ComboOrgan, "comboorgan", "ComboOrgan" },
+        { Engine::Harp,       "harp",       "Harp" },
+        { Engine::Brass,      "brass",      "Brass" },
     };
     return t;
 }
 
-juce::StringArray recipeIds()
+juce::StringArray engineIds()
 {
     juce::StringArray s;
-    for (auto& [r, id, name] : recipeTable()) s.add (id);
+    for (auto& [r, id, name] : engineTable()) s.add (id);
     return s;
 }
 
-juce::String recipeId (Recipe r)
+juce::String engineId (Engine r)
 {
-    for (auto& [rr, id, name] : recipeTable()) if (rr == r) return id;
+    for (auto& [rr, id, name] : engineTable()) if (rr == r) return id;
     return "epiano";
 }
 
-juce::String recipeDisplayName (Recipe r)
+juce::String engineDisplayName (Engine r)
 {
-    for (auto& [rr, id, name] : recipeTable()) if (rr == r) return name;
+    for (auto& [rr, id, name] : engineTable()) if (rr == r) return name;
     return "EPiano";
 }
 
-bool parseRecipe (const juce::String& s, Recipe& out)
+bool parseEngine (const juce::String& s, Engine& out)
 {
-    for (auto& [r, id, name] : recipeTable())
+    for (auto& [r, id, name] : engineTable())
         if (s.equalsIgnoreCase (id) || s.equalsIgnoreCase (name)) { out = r; return true; }
     return false;
 }
@@ -89,6 +95,16 @@ namespace
         return v;
     }
 
+    /** Band-limited square / pulse made from two saws. */
+    inline float blepPulse (double& phase, double inc, double width = 0.5)
+    {
+        auto a = (float) (2.0 * phase - 1.0) - polyBlep (phase, inc);
+        auto p2 = phase + width; if (p2 >= 1.0) p2 -= 1.0;
+        auto b = (float) (2.0 * p2 - 1.0) - polyBlep (p2, inc);
+        phase += inc; if (phase >= 1.0) phase -= 1.0;
+        return 0.5f * (a - b);
+    }
+
     // Hammond-style registrations: 16' 5 1/3' 8' 4' 2 2/3' 2' 1 3/5' 1 1/3' 1'
     const int registrations[][9] = {
         { 8, 8, 8, 0, 0, 0, 0, 0, 0 },
@@ -126,7 +142,7 @@ public:
 
     void startNote (int note, float vel, juce::SynthesiserSound*, int) override
     {
-        recipe = owner.getRecipe();
+        engine = owner.getEngine();
         sr = getSampleRate();
         freq = juce::MidiMessage::getMidiNoteInHertz (note);
         velocity = vel;
@@ -150,13 +166,13 @@ public:
         for (auto& p : phases) p = perNote.nextDouble();
         phase = modPhase = 0;
 
-        switch (recipe)
+        switch (engine)
         {
-            case Recipe::EPiano:
+            case Engine::EPiano:
                 decayTau = (1.5 + 2.5 * decayAmt) * noteScale;
                 break;
 
-            case Recipe::Bell:
+            case Engine::Bell:
             {
                 // ratios >= 2 keep every FM partial at or above the root, so the pitch reads clearly
                 static const double ratios[] = { 3.5, 2.0, 2.76, 4.0, 5.19, 3.0 };
@@ -165,7 +181,7 @@ public:
                 break;
             }
 
-            case Recipe::Organ:
+            case Engine::Organ:
             {
                 auto& reg = registrations[(int) (colour * 7.99f)];
                 float sum = 0;
@@ -176,7 +192,38 @@ public:
                 break;
             }
 
-            case Recipe::Pluck:
+            case Engine::EPBell:
+                decayTau = (1.2 + 1.8 * decayAmt) * noteScale;
+                modRatio = 3.5;
+                break;
+
+            case Engine::Triangle:
+                filter.clear(); filter2.clear();
+                decayTau = (0.25 + 0.5 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Cowbell:
+                filter.clear();
+                decayTau = 0.05 + 0.08 * decayAmt;
+                break;
+
+            case Engine::ComboOrgan:
+                vibrato = extra > 0.5f;
+                break;
+
+            case Engine::Brass:
+                filter.clear();
+                attackSec = 0.012 + 0.03 * (1.0 - bright);
+                decayTau = (0.4 + 0.8 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Harp:
+                // a concert harp is a bright, long-ringing plucked string
+                bright = 0.3f + 0.3f * bright;      // gut / nylon strings: warm, not buzzy
+                decayAmt = 0.55f + 0.45f * decayAmt;
+                [[fallthrough]];
+
+            case Engine::Pluck:
             {
                 // Karplus-Strong: loop delay = sr / f, minus the half sample of the averaging filter
                 period = juce::jlimit (2.0, (double) delay.size() - 6, sr / freq - 1.0);
@@ -204,7 +251,7 @@ public:
                 break;
             }
 
-            case Recipe::Choir:
+            case Engine::Choir:
             {
                 auto& vw = vowels[(int) (colour * 4.99f)];
                 for (int i = 0; i < 3; ++i)
@@ -216,7 +263,7 @@ public:
                 break;
             }
 
-            case Recipe::Supersaw:
+            case Engine::Supersaw:
                 filter.clear();
                 attackSec = 0.002;
                 decayTau = (0.15 + 0.9 * decayAmt) * noteScale;
@@ -250,7 +297,7 @@ public:
             float rel = 1.0f;
             if (releasing)
             {
-                auto relTime = recipe == Recipe::Organ ? 0.05 : recipe == Recipe::Choir ? 0.3 : 0.25;
+                auto relTime = (engine == Engine::Organ || engine == Engine::ComboOrgan) ? 0.05 : engine == Engine::Choir ? 0.3 : 0.25;
                 rel = (float) std::exp (-releaseTime / (relTime / 4.0));
                 releaseTime += dt;
             }
@@ -276,9 +323,9 @@ private:
         const auto t = time;
         const auto inc = freq / sr;
 
-        switch (recipe)
+        switch (engine)
         {
-            case Recipe::EPiano:
+            case Engine::EPiano:
             {
                 auto env = (float) std::exp (-t / decayTau);
                 auto modEnv = (float) std::exp (-t / (0.3 * decayTau));
@@ -291,7 +338,7 @@ private:
                 return s * env * attack;
             }
 
-            case Recipe::Bell:
+            case Engine::Bell:
             {
                 auto env = (float) std::exp (-t / decayTau);
                 auto modEnv = (float) std::exp (-t / (0.25 * decayTau));
@@ -306,7 +353,7 @@ private:
                 return s * env * attack * 0.8f;
             }
 
-            case Recipe::Organ:
+            case Engine::Organ:
             {
                 float s = 0;
                 for (size_t i = 0; i < 9; ++i)
@@ -321,7 +368,84 @@ private:
                 return s * amp * 0.7f;
             }
 
-            case Recipe::Pluck:
+            case Engine::EPBell:
+            {
+                // Rhodes-style FM tine layered with a soft 2-operator sine bell
+                auto env = (float) std::exp (-t / decayTau);
+                auto modEnv = (float) std::exp (-t / (0.3 * decayTau));
+                auto index = (0.5 + 1.6 * bright) * (0.4 + 0.6 * velocity) * modEnv;
+                auto ep = (float) std::sin (twoPi * phase + index * std::sin (twoPi * phase));
+                auto bellIndex = (0.6 + 1.2 * colour) * std::exp (-t / (0.18 * decayTau));
+                auto bell = (float) std::sin (twoPi * phase * 2.0 + bellIndex * std::sin (twoPi * modPhase)) * (float) std::exp (-t / (0.5 * decayTau));
+                phase += inc; if (phase >= 1.0) phase -= 1.0;
+                modPhase += inc * modRatio * 2.0; if (modPhase >= 1.0) modPhase -= 1.0;
+                auto attack = (float) juce::jmin (1.0, t / 0.0015);
+                if (env < 0.0003f) done = true;
+                return (ep + 0.35f * bell) * env * attack;
+            }
+
+            case Engine::Triangle:
+            {
+                // triangle + sub-octave sine, 4-pole low-pass with an instant-attack filter envelope
+                auto tri = (float) (phase < 0.5 ? 4.0 * phase - 1.0 : 3.0 - 4.0 * phase);
+                auto sub = (float) std::sin (twoPi * modPhase);
+                phase += inc; if (phase >= 1.0) phase -= 1.0;
+                modPhase += inc * 0.5; if (modPhase >= 1.0) modPhase -= 1.0;
+                auto fenv = std::exp (-t / 0.06); // ~180 ms to settle
+                auto cutoff = 2800.0 * (1.0 + 0.45 * 10.0 * fenv * (0.5 + bright));
+                filter.set (cutoff, 0.54, sr);
+                filter2.set (cutoff, 1.31, sr);
+                auto x = filter2.process (filter.process (tri + 0.5f * sub).first).first;
+                auto env = (float) std::exp (-t / decayTau);
+                if (env < 0.0003f) done = true;
+                return x * env;
+            }
+
+            case Engine::Cowbell:
+            {
+                // TR-808 style: two square waves 800/540 apart, band-limited, two-stage decay.
+                // The upper tone is the played note: it dominates after the 800 Hz-3.5 kHz band-pass,
+                // so that is the pitch you hear (G5 gives the classic 784 / 529 Hz pair).
+                auto a = blepPulse (phases[0], inc);
+                auto b = blepPulse (phases[1], inc / 1.4815);
+                filter.set (freq * 1.2, 1.0, sr);
+                auto x = filter.process (a + b).second;
+                auto env = (float) (0.75 * std::exp (-t / decayTau) + 0.25 * std::exp (-t / (decayTau * 6.0)));
+                auto attack = (float) juce::jmin (1.0, t / 0.0005);
+                if (env < 0.0003f) done = true;
+                return x * env * attack * 1.4f;
+            }
+
+            case Engine::ComboOrgan:
+            {
+                // transistor combo organ (Farfisa / Vox): bright pulse stops, 8' + 4' (+ 2')
+                auto vib = vibrato ? 1.0 + 0.003 * std::sin (twoPi * 6.2 * t) : 1.0;
+                auto s8 = blepPulse (phases[0], inc * vib, 0.5);
+                auto s4 = blepPulse (phases[1], inc * 2.0 * vib, 0.35 + 0.15 * colour);
+                auto s2 = blepPulse (phases[2], inc * 4.0 * vib, 0.5);
+                amp = (float) juce::jmin (1.0, t / 0.003);
+                return (s8 + 0.55f * s4 + 0.25f * bright * s2) * amp * 0.5f;
+            }
+
+            case Engine::Brass:
+            {
+                // bright 80s analog brass (detuned saws) with a horn-like soft layer, filter swell
+                float saws = 0;
+                const double spread[] = { -1.0, 0.0, 1.0 };
+                for (int v = 0; v < 3; ++v)
+                    saws += blepSaw (phases[(size_t) v], inc * (1.0 + spread[v] * (0.002 + 0.003 * detune)));
+                auto horn = (float) (std::sin (twoPi * phases[3]) + 0.4 * std::sin (2.0 * twoPi * phases[3]));
+                phases[3] += inc; if (phases[3] >= 1.0) phases[3] -= 1.0;
+                auto swell = juce::jmin (1.0, t / (attackSec * 2.5));
+                auto cutoff = freq * (1.5 + (3.0 + 7.0 * bright) * swell * (0.6 + 0.4 * std::exp (-t / 0.25)));
+                filter.set (cutoff, 0.9, sr);
+                auto x = filter.process (saws * 0.33f + 0.5f * horn).first;
+                amp = (float) (juce::jmin (1.0, t / attackSec) * (0.7 + 0.3 * std::exp (-t / decayTau)));
+                return x * amp * 1.2f;
+            }
+
+            case Engine::Harp:
+            case Engine::Pluck:
             {
                 // Read three consecutive delayed samples and apply the symmetric
                 // (linear-phase) loop filter [c, 1-2c, c]: its delay is exactly one
@@ -349,7 +473,7 @@ private:
                 return blocked * 1.6f;
             }
 
-            case Recipe::Choir:
+            case Engine::Choir:
             {
                 auto vib = 1.0 + 0.0025 * std::sin (twoPi * 5.2 * t) * juce::jlimit (0.0, 1.0, (t - 0.15) / 0.4);
                 float src = 0;
@@ -364,7 +488,7 @@ private:
                 return s * amp * 2.5f;
             }
 
-            case Recipe::Supersaw:
+            case Engine::Supersaw:
             {
                 const double spread[] = { -1.0, -0.55, -0.2, 0.0, 0.2, 0.55, 1.0 };
                 auto cents = 3.0 + 15.0 * detune;
@@ -393,7 +517,7 @@ private:
     }
 
     BuiltInSynth& owner;
-    Recipe recipe = Recipe::EPiano;
+    Engine engine = Engine::EPiano;
     double sr = 44100, freq = 440, time = 0, releaseTime = 0, phase = 0, modPhase = 0, modRatio = 3.5;
     double decayTau = 2, attackSec = 0.002, period = 100;
     float velocity = 1, level = 0.2f, pan = 0, amp = 0, releaseStartLevel = 1;
@@ -407,7 +531,8 @@ private:
     int writePos = 0;
     float feedback = 0.99f, damping = 0.5f, peakTracker = 1.0f, dcX = 0, dcY = 0;
     // (peakTracker resets per note in startNote)
-    Svf formant[3], filter;
+    Svf formant[3], filter, filter2;
+    bool vibrato = false;
 };
 
 //==============================================================================
@@ -421,7 +546,7 @@ BuiltInSynth::BuiltInSynth()
 void BuiltInSynth::getStateInformation (juce::MemoryBlock& mb)
 {
     juce::XmlElement xml ("BuiltInSynth");
-    xml.setAttribute ("recipe", recipeId (getRecipe()));
+    xml.setAttribute ("engine", engineId (getEngine()));
     xml.setAttribute ("variation", juce::String (getVariation()));
     copyXmlToBinary (xml, mb);
 }
@@ -430,8 +555,8 @@ void BuiltInSynth::setStateInformation (const void* data, int size)
 {
     if (auto xml = getXmlFromBinary (data, size))
     {
-        Recipe r;
-        if (parseRecipe (xml->getStringAttribute ("recipe"), r)) setRecipe (r);
+        Engine r;
+        if (parseEngine (xml->getStringAttribute ("engine"), r)) setEngine (r);
         setVariation (xml->getStringAttribute ("variation", "1").getLargeIntValue());
     }
 }

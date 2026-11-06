@@ -1,5 +1,6 @@
 #pragma once
 #include "SamplePlanner.h"
+#include "Effects.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
@@ -17,7 +18,7 @@ namespace forge
         double maxLengthSec = 15.0;
         double fadeOutMs = 25.0;
         double warmUpSec = 1.5;         // let sample-based plugins finish loading
-        double trimToSec = 0;           // hard cap on file length, with a smooth fade (0 = off)
+        double trimToSec = -1;          // override every style's end point: -1 = use the style's, 0 = no cap
     };
 
     /** Plays MIDI through an AudioProcessor faster than real time and returns

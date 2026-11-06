@@ -7,7 +7,7 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
 
 * **Hosts VST3 instruments** (pianos, Rhodes, synths, pads, organs and so on). Open the plugin's
   own window to pick or tweak a patch, then render with it.
-* **20 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
+* **33 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
   Drill, Modern R&B, Gospel, Deep House, Jazz, Boom Bap, Afrobeats, Pop, Cinematic, Ambient
   and Synthwave. There are also 6 **one-shot recipe styles** for 16 Levels: Bell Tines,
   Organ Stabs, Plucks, Choir Notes, Detuned Synth and One-Shot Palette. You can also
@@ -16,13 +16,24 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
   *16 Levels → Tune* spreads it across the pads from a known pitch. Samples are cut short
   with a smooth fade, so no long sustains clutter the chops. Files can be grouped into
   folders of 16, one per pad bank.
-* **Built-in recipe synth**, so you get usable material with no VST3. Each sample uses one of six engines:
-  * FM electric piano.
-  * FM bell / tine.
-  * Drawbar organ with key click and percussion.
+* **The 9 recipes from the One-Shot Recipe Guide** (Jet Life EP Bell, Polyester Pluck, Memphis
+  Organ, Phonk Cowbell, Zaytoven Organ, Luxury Harp, Screwed Choir, Trap Brass, Rhodes Bass).
+  There are also 3 genre kits (West Coast, Memphis / Phonk, Atlanta) and an all-nine palette.
+  Each recipe's trim, envelope, filters and FX are applied offline.
+  Every batch also writes an `_MPC_Setup.txt` sheet with the pad settings.
+* **Built-in synth**, so you get usable material with no VST3. It has 12 engines:
+  * Electric piano.
+  * EP + bell layer.
+  * FM bell.
+  * Drawbar organ.
+  * Transistor combo organ.
+  * Triangle pluck.
   * Karplus-Strong pluck.
-  * Formant choir ("aah / ooh / oh").
-  * Detuned supersaw.
+  * Concert harp.
+  * 808-style cowbell.
+  * Formant choir.
+  * Supersaw.
+  * Analog brass.
 
   Every sample gets its own timbre variation, so 100 renders give 100 different sounds.
   Recipe tuning was measured within a few cents of the target note.
@@ -141,6 +152,57 @@ samples on one note are all different. A VST3 on a single root can only vary in 
 length and voicing. If that isn't enough variety for the count you asked for, the tool
 says so. In that case, render a few patches as separate smaller batches.
 
+### The One-Shot Recipe Guide (9 recipes + 3 kits)
+
+Each recipe from *Technical Manual and Sound Recipe Guide for MPC One-Shot Melodic Synthesis*
+is a built-in style. The recipe's trim, fade-in, One-Shot amp decay, filter and FX inserts are
+**baked into the WAV**, in the guide's signal-flow order:
+
+source → (varispeed) → trim to end point → amp envelope → filters & FX
+
+| Recipe (`--recipe`) | Sound source (built-in engine) | End point | Shaping and FX | Root |
+|---|---|---|---|---|
+| `jetlife-ep-bell` | Rhodes tine + soft 2-op sine bell (`epbell`) | 350 ms | Decay 300 ms, 2-pole LP 4.2 kHz (res 12 %), tape saturation, chorus 0.8 Hz / 25 % | MIDI 60 |
+| `polyester-pluck` | Triangle + sub-octave sine, 4-pole LP 2.8 kHz with a 180 ms filter envelope (`triangle`) | 280 ms | HP 200 Hz, 1/16 tape delay at 15 % feedback | MIDI 48 |
+| `memphis-organ` | Transistor combo organ, minor stab (`comboorgan`) | 500 ms | 12 ms fade-in, decay 450 ms, 4-pole LP 2.4 kHz, wow & flutter 45 %, cassette hiss, 12-bit crush. Pad tune −3. | MIDI 60 |
+| `phonk-cowbell` | TR-808 style cowbell (`cowbell`) | 180 ms | Decay 150 ms, BP 800 Hz–3.5 kHz, warm overdrive, tape noise | MIDI 79 (784 / 529 Hz pair) |
+| `zaytoven-organ` | Drawbar organ with key click (`organ`) | 320 ms | Decay 300 ms, HP 150 Hz, +3 dB at 1.8 kHz, fast rotary, plate 0.6 s / 15 % | MIDI 60 |
+| `luxury-harp` | Concert harp pluck (`harp`) | 450 ms | Decay 400 ms, HP 300 Hz, stereo expander, +12 st shimmer at a low mix | MIDI 60 |
+| `screwed-choir` | Choir chord stab (`choir`), varispeed −5 st | 600 ms | 25 ms fade-in, decay 550 ms, 24 dB/oct LP 2.8 kHz, dark hall 2.2 s / 30 %, tape saturation | sounds at MIDI 55 |
+| `trap-brass` | Horn + 80s analog brass (`brass`) | 300 ms | Decay 280 ms, +4 dB at 1.2 kHz, 4:1 fast compressor, short room | MIDI 60 |
+| `rhodes-bass` | Low Rhodes note E1 (`epiano`) | 500 ms | Decay 480 ms, LP 1.8 kHz, tube overdrive | MIDI 28 (E1) |
+
+Kits mix several recipes, round-robin, so every 16-pad bank gets some of each:
+
+* `westcoast-kit`: Jet Life EP Bell, Polyester Pluck and Rhodes Bass.
+* `memphis-kit`: Memphis Organ, Phonk Cowbell and Screwed Choir.
+* `atlanta-kit`: Zaytoven Organ, Luxury Harp and Trap Brass.
+* `guide-palette`: all nine, for the guide's "puzzle-piece" layering.
+
+```bash
+mpcforge --recipe jetlife-ep-bell --16levels --count 32 --out ~/MPC/JetLifeBell
+mpcforge --recipe memphis-kit --16levels --count 64 --out ~/MPC/Memphis
+mpcforge --recipe polyester-pluck --16levels --tempo 84    # 1/16 delay synced to 84 BPM
+```
+
+**Root notes.** The guide gives pitches in scientific notation, where C4 = middle C. So "tuned
+to C4" is MIDI 60 and "E1" is MIDI 28. File names use the MPC convention instead, where
+MIDI 60 is called **C3**. A Jet Life bell file is therefore named `..._Key_C3.wav`, and the
+exact root is also stored inside the WAV.
+
+**FX tails.** Some recipes put a reverb or delay on the pad. For those, the file may run
+100–250 ms past the end point (`fxTailMs`) so the effect can decay before a clean fade. In
+practice, a Mute Group choke cuts the tail on the next note anyway.
+
+**`_MPC_Setup.txt`.** Every batch includes this sheet. It lists the pad settings for each recipe
+(One-Shot, decay, pad tune, Mute Group 1, Full Level, 16 Levels → Tune), the guide's phrasing
+strategy, and which files are in which bank.
+
+**Using your own VST3 with a recipe.** Load a matching patch, e.g. a Rhodes for `jetlife-ep-bell`
+or a B3 for `zaytoven-organ`, then pick the recipe. Its trim, envelope and FX are applied to
+the plugin's sound. Recipes play at fixed velocity (Full Level), so one VST3 patch on one root
+gives only a few distinct files. Use a smaller `--count`, or render several patches.
+
 ### Getting the samples onto the MPC
 
 * **Standalone MPC:** copy the batch folder to a USB stick or SD card. Then open the MPC
@@ -179,11 +241,13 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--plugin <file.vst3>` | VST3 instrument (its default preset) |
 | `--sound <file.forgesound>` | Plugin plus the exact sound saved from the app |
 | `--builtin` | Built-in recipe synth (default when no plugin is given) |
-| `--recipe <name>` | Built-in synth engine: `epiano, bell, organ, pluck, choir, supersaw, mixed` |
-| `--16levels` | Same as `--root C3 --banks` |
-| `--root <C3, Eb2, 60>` | Build every sample on this note (for 16 Levels → Tune) |
+| `--recipe <id>` | A guide recipe or kit (same as `--style`) |
+| `--engine <name>` | Override the built-in synth engine: `epiano, bell, organ, pluck, choir, supersaw, epbell, triangle, cowbell, comboorgan, harp, brass, mixed` |
+| `--16levels` | Same as `--root recipe --banks` |
+| `--root <C3, Eb2, 60, recipe>` | Build every sample on this note (for 16 Levels → Tune); `recipe` uses each recipe's own root |
+| `--tempo <bpm>` | Tempo for synced delays (default 90) |
 | `--banks` | Write files in folders of 16 (`Bank_A`, `Bank_B` …) |
-| `--max-length <sec>` | Cut each one-shot to this length with a fade (default: the style's; 0 = off) |
+| `--max-length <sec>` | Override every recipe's end point (default: the recipe's; 0 = no cap) |
 | `--style <id>` / `--style-file <json>` | Built-in style, or your own |
 | `--count <n>` | Number of samples (default 100) |
 | `--key <C, F#, Bb, random>` | Lock to a key (default random) |
@@ -228,8 +292,32 @@ Alternatively, copy `Examples/my-style.json`.
 | `hold` | How long chords are held, in seconds |
 | `stabChance`, `stabHold` | How often a chord is a short stab, and how long a stab lasts |
 | `strumMs` | Maximum roll between the chord's notes (0 = all notes hit together) |
-| `recipe` | Built-in synth engine (`epiano, bell, organ, pluck, choir, supersaw` or `mixed`) |
-| `maxLength` | Cut each file to this many seconds with a fade (0 = no cap) |
+| `engine` | Built-in synth engine (see `--engine`) or `mixed` |
+| `root` | MIDI root used in 16 Levels mode |
+| `processing` | `maxLength` (end point, s), `attackMs`, `ampDecayMs`, `fxTailMs`, `pitchShift` (varispeed semitones), `tempo`, and `fx`: an ordered list of effects |
+| `pad` | Notes for `_MPC_Setup.txt`: `tune`, `muteGroup`, `fullLevel`, `phrasing` |
+| `kit` | Mix other built-in styles by weight instead of planning chords |
+
+Effects for `processing.fx`, with their parameters:
+
+* `lowpass` / `highpass`: `freq`, `poles` (2 or 4), `resonance`
+* `bandpass`: `low`, `high`
+* `peak`: `freq`, `gainDb`, `q`
+* `tape`, `tube`: `drive`
+* `overdrive`: `drive`, `tone`
+* `bitcrush`: `bits`, `downsample`
+* `wowflutter`: `amount`
+* `hiss`: `levelDb`
+* `chorus`: `rate`, `depth`, `mix`
+* `widen`: `width`
+* `compressor`: `thresholdDb`, `ratio`, `attackMs`, `releaseMs`
+* `reverb`: `kind` (plate, room, hall, darkhall), `decay`, `mix`
+* `delay`: `sync` ("1/16", "1/8d") or `timeMs`, `feedback`, `mix`, `tape`
+* `shimmer`: `timeMs`, `semitones`, `feedback`, `mix`
+* `rotary`: `speed` (fast or slow)
+* `gain`: `db`
+
+See `mpcforge --dump-style jetlife-ep-bell` for a complete example.
 
 Chord types (`5` is a power chord, named "power" in file names): `maj min dim aug sus2 sus4 5 add9 madd9 madd11 6 m6 69 m69 maj7 m7 7 m7b5 dim7
 mmaj7 7sus4 maj9 m9 9 9sus4 mmaj9 m11 maj7s11 maj9s11 13 maj13 m13 7s9 7b9 7s5 13b9 quartal quintal`.
@@ -257,6 +345,7 @@ Source/PluginHost.*      VST3 scanning / loading, .forgesound files
 Source/BatchJob.*        background rendering + manifest
 Source/MainComponent.*   the app UI
 Source/CommandLine.*     shared CLI logic; CliMain.cpp = mpcforge
-Source/BuiltInSynth.*    built-in recipe synth (epiano, bell, organ, pluck, choir, supersaw)
+Source/BuiltInSynth.*    built-in synth (12 engines)
+Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
 ```

@@ -106,6 +106,9 @@ static const std::vector<std::pair<const char*, std::vector<int>>>& scaleTable()
         { "mixolydian",    { 0, 2, 4, 5, 7, 9, 10 } },
         { "harmonicminor", { 0, 2, 3, 5, 7, 8, 11 } },
         { "melodicminor",  { 0, 2, 3, 5, 7, 9, 11 } },
+        { "locrian",       { 0, 1, 3, 5, 6, 8, 10 } },
+        { "minorpentatonic", { 0, 3, 5, 7, 10 } },
+        { "majorpentatonic", { 0, 2, 4, 7, 9 } },
     };
     return t;
 }

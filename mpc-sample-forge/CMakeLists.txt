@@ -29,7 +29,8 @@ set(FORGE_ENGINE_SOURCES
     Source/PluginHost.cpp
     Source/BatchJob.cpp
     Source/CommandLine.cpp
-    Source/BuiltInSynth.cpp)
+    Source/BuiltInSynth.cpp
+    Source/Effects.cpp)
 
 set(FORGE_DEFINITIONS
     JUCE_PLUGINHOST_VST3=1

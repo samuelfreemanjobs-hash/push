@@ -86,7 +86,26 @@ namespace
     }
 }
 
-std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt, juce::String& error)
+static void nameSamples (std::vector<SampleSpec>& specs, const juce::String& prefix, bool withTag, bool withEngine)
+{
+    for (size_t i = 0; i < specs.size(); ++i)
+    {
+        auto& s = specs[i];
+        s.index = (int) i + 1;
+        auto stem = prefix + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_";
+        if (withTag && s.tag.isNotEmpty())
+            stem += s.tag + "_";
+        Engine r;
+        if (withEngine && parseEngine (s.engine, r))
+            stem += engineDisplayName (r) + "_";
+        stem += s.kind + "_" + s.label;
+        if (s.kind == "Chord" || s.kind == "Stab")
+            stem += "_" + s.voicing;
+        s.fileStem = safeFileName (stem);
+    }
+}
+
+static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions& opt, juce::String& error)
 {
     std::vector<SampleSpec> result;
     juce::Random rng (opt.seed);
@@ -116,35 +135,42 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         prefix += "_" + pitchClassName (c.tonic) + (scaleName.containsIgnoreCase ("minor") || scaleName == "dorian"
                                                        || scaleName == "phrygian" ? "min" : "maj");
 
-    const bool fixedRoot = juce::isPositiveAndBelow (opt.fixedRoot, 128);
+    // Tape-style varispeed after rendering moves the sounding pitch: names and the
+    // WAV root note describe what you hear, not what was played.
+    const int ps = style.processing.pitchShift;
+    if (c.keyLocked) // plan in the played key so the varispeeded result lands in the requested key
+        c.tonic = ((c.tonic - ps) % 12 + 12) % 12;
+
+    const int rootMidi = opt.fixedRoot == PlanOptions::styleRoot ? (style.root >= 0 ? style.root : 60) : opt.fixedRoot;
+    const bool fixedRoot = juce::isPositiveAndBelow (rootMidi, 128);
     if (fixedRoot)
     {
         // 16 Levels: the pads transpose from one root, so the key is irrelevant.
         c.keyLocked = false;
-        prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name) + "_" + midiNoteName (opt.fixedRoot);
+        prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name) + "_" + midiNoteName (rootMidi + ps);
     }
 
-    auto recipeName = (opt.recipe.isNotEmpty() ? opt.recipe : style.recipe).toLowerCase();
-    const bool mixedRecipe = recipeName == "mixed";
-    Recipe fixedRecipe = Recipe::EPiano;
-    if (! mixedRecipe && recipeName.isNotEmpty() && ! parseRecipe (recipeName, fixedRecipe))
+    auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+    const bool mixedEngine = engineName == "mixed";
+    Engine fixedEngine = Engine::EPiano;
+    if (! mixedEngine && engineName.isNotEmpty() && ! parseEngine (engineName, fixedEngine))
     {
-        error = "unknown recipe '" + recipeName + "'";
+        error = "unknown engine '" + engineName + "'";
         return result;
     }
-    auto allRecipes = recipeIds();
-    auto nextRecipe = [&]
+    auto allRecipes = engineIds();
+    auto nextEngine = [&]
     {
-        return mixedRecipe ? allRecipes[rng.nextInt (allRecipes.size())] : recipeId (fixedRecipe);
+        return mixedEngine ? allRecipes[rng.nextInt (allRecipes.size())] : engineId (fixedEngine);
     };
 
     // Unique-sample bookkeeping. In 16 Levels mode the same chord/note is allowed
     // again when it sounds different: a new synth variation, or (with a VST3)
     // a different velocity layer / length.
-    auto uniqueKey = [&] (const juce::String& base, const juce::String& recipe, int velocity, double hold, bool relaxed)
+    auto uniqueKey = [&] (const juce::String& base, const juce::String& engine, int velocity, double hold, bool relaxed)
     {
         if (! fixedRoot && ! relaxed) return base;
-        if (opt.builtIn) return base + recipe + juce::String (rng.nextInt64());
+        if (opt.builtIn) return base + engine + juce::String (rng.nextInt64());
         return base + "v" + juce::String (velocity / 12) + "h" + juce::String ((int) (hold * 4));
     };
 
@@ -192,7 +218,7 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         }
         else
         {
-            rootPc = fixedRoot ? opt.fixedRoot % 12 : rng.nextInt (12);
+            rootPc = fixedRoot ? rootMidi % 12 : rng.nextInt (12);
             quality = findQuality (pickWeighted (style.chords, rng));
         }
 
@@ -202,16 +228,16 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         auto isStab = rng.nextFloat() < style.stabChance;
 
         auto hold = isStab ? style.stabHold : randomDouble (rng, style.holdLow, style.holdHigh);
-        auto recipe = nextRecipe();
+        auto engine = nextEngine();
         auto velocity = c.velocity();
 
         // Allow the same chord twice only as a stab vs. a held chord.
         auto key = uniqueKey (juce::String (rootPc) + quality->id + voicingId (voicing) + (isStab ? "S" : ""),
-                              recipe, velocity, hold, attempts > numChords * 100);
+                              engine, velocity, hold, attempts > numChords * 100);
         if (used.count (key)) continue;
         used.insert (key);
 
-        auto root = fixedRoot ? opt.fixedRoot : placePitchClass (rootPc, style.chordRootLow);
+        auto root = fixedRoot ? rootMidi : placePitchClass (rootPc, style.chordRootLow);
         if (! fixedRoot && root > style.chordRootHigh) root -= 12;
 
         auto notes = buildVoicing (root, quality->intervals, voicing);
@@ -225,10 +251,10 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
 
         SampleSpec s;
         s.kind = isStab ? "Stab" : "Chord";
-        s.label = pitchClassName (rootPc) + quality->suffix;
+        s.label = pitchClassName (rootPc + ps) + quality->suffix;
         s.voicing = voicingId (voicing);
-        s.rootNote = root;
-        s.recipe = recipe;
+        s.rootNote = juce::jlimit (0, 127, root + ps);
+        s.engine = engine;
         s.variation = rng.nextInt64();
         s.notes = makeChordNotes (c, notes, hold, ! isStab, velocity);
         result.push_back (s);
@@ -245,12 +271,12 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
     for (int attempts = 0; (int) result.size() < keysEnd && attempts < numKeys * 300; ++attempts)
     {
         auto type = pickWeighted (keyTypes, rng);
-        auto note = fixedRoot ? opt.fixedRoot : randomInt (rng, style.keyLow, style.keyHigh);
+        auto note = fixedRoot ? rootMidi : randomInt (rng, style.keyLow, style.keyHigh);
         if (! c.inKey (note)) continue;
 
         std::vector<int> notes { note };
         auto hold = randomDouble (rng, style.holdLow, style.holdHigh) * 0.8;
-        juce::String label = midiNoteName (note);
+        juce::String label = midiNoteName (note + ps);
 
         if (type == "Octave")
         {
@@ -275,12 +301,12 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
             if (q == nullptr) continue;
             notes = buildVoicing (note, q->intervals, rng.nextBool() ? Voicing::Close : Voicing::Inversion1);
             hold = style.stabHold;
-            label = pitchClassName (note % 12) + q->suffix + "_" + midiNoteName (note);
+            label = pitchClassName (note + ps) + q->suffix + "_" + midiNoteName (note + ps);
         }
 
-        auto recipe = nextRecipe();
+        auto engine = nextEngine();
         auto velocity = c.velocity();
-        auto key = uniqueKey (type + juce::String (note) + label, recipe, velocity, hold, attempts > numKeys * 100);
+        auto key = uniqueKey (type + juce::String (note) + label, engine, velocity, hold, attempts > numKeys * 100);
         if (used.count (key)) continue;
         used.insert (key);
 
@@ -288,8 +314,8 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         s.kind = type == "Stab" ? "KeyStab" : type;
         s.label = label;
         s.voicing = type == "Stab" ? "close" : "-";
-        s.rootNote = note;
-        s.recipe = recipe;
+        s.rootNote = juce::jlimit (0, 127, note + ps);
+        s.engine = engine;
         s.variation = rng.nextInt64();
         s.notes = makeChordNotes (c, notes, hold, false, velocity);
         result.push_back (s);
@@ -318,21 +344,73 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         result = std::move (mixed);
     }
 
-    // ------------------------------------------------------------ file names
-    for (size_t i = 0; i < result.size(); ++i)
+    for (auto& sp : result)
     {
-        auto& s = result[i];
-        s.index = (int) i + 1;
-        auto stem = prefix + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_";
-        Recipe r;
-        if (opt.builtIn && mixedRecipe && parseRecipe (s.recipe, r))
-            stem += recipeDisplayName (r) + "_";
-        stem += s.kind + "_" + s.label;
-        if (s.kind == "Chord" || s.kind == "Stab")
-            stem += "_" + s.voicing;
-        s.fileStem = safeFileName (stem);
+        sp.processing = style.processing;
+        sp.styleId = style.id;
+        sp.tag = style.tag;
     }
 
+    nameSamples (result, prefix, false, opt.builtIn && mixedEngine);
+    return result;
+}
+
+std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    if (! style.isKit())
+        return planSingle (style, opt, error);
+
+    // ---- a kit: split the count between member styles by weight
+    std::vector<const Style*> members;
+    std::vector<float> weights;
+    for (auto& m : style.kit)
+    {
+        auto* member = findBuiltInStyle (m.value);
+        if (member == nullptr || member->isKit())
+        {
+            error = "kit '" + style.id + "' refers to unknown style '" + m.value + "'";
+            return {};
+        }
+        members.push_back (member);
+        weights.push_back (m.weight);
+    }
+
+    auto count = juce::jlimit (1, 2000, opt.count);
+    float total = 0;
+    for (auto w : weights) total += w;
+
+    std::vector<int> counts;
+    int assigned = 0;
+    for (auto w : weights) { counts.push_back ((int) std::floor (count * w / total)); assigned += counts.back(); }
+    for (size_t i = 0; assigned < count; i = (i + 1) % counts.size()) { ++counts[i]; ++assigned; }
+
+    std::vector<std::vector<SampleSpec>> parts;
+    juce::StringArray warnings;
+    for (size_t i = 0; i < members.size(); ++i)
+    {
+        if (counts[i] <= 0) continue;
+        auto o = opt;
+        o.count = counts[i];
+        o.seed = opt.seed + (juce::int64) (i + 1) * 7919;
+        o.prefix = {};
+        juce::String err;
+        parts.push_back (planSingle (*members[i], o, err));
+        if (err.isNotEmpty()) warnings.add (members[i]->name + ": " + err);
+    }
+
+    // round-robin so every 16-pad bank holds a bit of each recipe
+    std::vector<SampleSpec> result;
+    for (size_t k = 0;; ++k)
+    {
+        bool any = false;
+        for (auto& p : parts)
+            if (k < p.size()) { result.push_back (p[k]); any = true; }
+        if (! any) break;
+    }
+
+    auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.tag);
+    nameSamples (result, prefix, true, false);
+    error = warnings.joinIntoString ("; ");
     return result;
 }
 }

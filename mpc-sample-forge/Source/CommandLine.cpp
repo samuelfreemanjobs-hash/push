@@ -18,15 +18,23 @@ juce::String cliHelpText()
       << "  --plugin <file.vst3>      VST3 instrument to load\n"
       << "  --sound <file.forgesound> sound saved from the app (plugin + its settings)\n"
       << "  --builtin                 use the built-in synth (default if nothing given)\n"
-      << "  --recipe <name>           built-in synth engine: epiano, bell, organ, pluck, choir,\n"
-      << "                            supersaw or mixed (default: the style's recipe)\n\n"
+      << "  --engine <name>           override the built-in synth engine: epiano, bell, organ,\n"
+      << "                            pluck, choir, supersaw, epbell, triangle, cowbell,\n"
+      << "                            comboorgan, harp, brass or mixed (default: the style's)\n\n"
+      << "Recipe guide (one-shot recipes with trim, envelope and FX baked in):\n"
+      << "  --recipe <id>             same as --style; recipes: jetlife-ep-bell, polyester-pluck,\n"
+      << "                            memphis-organ, phonk-cowbell, zaytoven-organ, luxury-harp,\n"
+      << "                            screwed-choir, trap-brass, rhodes-bass\n"
+      << "                            kits: westcoast-kit, memphis-kit, atlanta-kit, guide-palette\n"
+      << "  --tempo <bpm>             tempo for synced delays (default 90)\n\n"
       << "16 Levels (MPC drum-program one-shots):\n"
-      << "  --16levels                same as --root C3 --banks\n"
-      << "  --root <C3|Eb2|60>        build every sample on this note, so 16 Levels > Tune\n"
-      << "                            spreads it chromatically from a known pitch\n"
+      << "  --16levels                same as --root recipe --banks\n"
+      << "  --root <C3|Eb2|60|recipe> build every sample on this note, so 16 Levels > Tune\n"
+      << "                            spreads it chromatically from a known pitch ('recipe' =\n"
+      << "                            each recipe's own root, C3 for styles without one)\n"
       << "  --banks                   write files in folders of 16 (Bank_A, Bank_B ...)\n"
       << "  --max-length <seconds>    cut each one-shot to this length with a fade\n"
-      << "                            (default: the style's maxLength; 0 = no cap)\n\n"
+      << "                            (default: the style's end point; 0 = no cap)\n\n"
       << "Batch:\n"
       << "  --style <id>              built-in style (see --list-styles), default neo-soul\n"
       << "  --style-file <file.json>  your own style (see --dump-style for the format)\n"
@@ -45,7 +53,9 @@ juce::String cliHelpText()
       << "Info:\n"
       << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --help\n\n"
       << "Example (16 Levels kit with the built-in synth):\n"
-      << "  mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette\n";
+      << "  mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette\n"
+      << "Example (a recipe from the guide):\n"
+      << "  mpcforge --recipe jetlife-ep-bell --16levels --count 32 --out ~/MPC/JetLifeBell\n";
     return s;
 }
 
@@ -115,8 +125,9 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     }
     else
     {
-        auto* s = findBuiltInStyle (option (args, "--style", "neo-soul"));
-        if (s == nullptr) return fail ("unknown style '" + option (args, "--style") + "' (see --list-styles)");
+        auto name = option (args, "--style", option (args, "--recipe", "neo-soul"));
+        auto* s = findBuiltInStyle (name);
+        if (s == nullptr) return fail ("unknown style '" + name + "' (see --list-styles)");
         req.style = *s;
     }
 
@@ -124,16 +135,20 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.plan.key    = option (args, "--key", "random");
     req.plan.scale  = option (args, "--scale");
     req.plan.prefix = option (args, "--prefix");
-    req.plan.recipe = option (args, "--recipe").toLowerCase();
-    if (req.plan.recipe.isNotEmpty() && req.plan.recipe != "mixed")
+    req.plan.engine = option (args, "--engine").toLowerCase();
+    if (req.plan.engine.isNotEmpty() && req.plan.engine != "mixed")
     {
-        Recipe r;
-        if (! parseRecipe (req.plan.recipe, r))
-            return fail ("unknown --recipe (use " + recipeIds().joinIntoString (", ") + " or mixed)");
+        Engine r;
+        if (! parseEngine (req.plan.engine, r))
+            return fail ("unknown --engine (use " + engineIds().joinIntoString (", ") + " or mixed)");
     }
 
-    auto rootText = option (args, "--root", args.contains ("--16levels") ? "C3" : "");
-    if (rootText.isNotEmpty() && ! rootText.equalsIgnoreCase ("free"))
+    auto rootText = option (args, "--root", args.contains ("--16levels") ? "recipe" : "");
+    if (rootText.equalsIgnoreCase ("recipe") || rootText.equalsIgnoreCase ("style"))
+    {
+        req.plan.fixedRoot = PlanOptions::styleRoot;
+    }
+    else if (rootText.isNotEmpty() && ! rootText.equalsIgnoreCase ("free"))
     {
         req.plan.fixedRoot = parseMidiNote (rootText);
         if (req.plan.fixedRoot < 0) return fail ("bad --root '" + rootText + "' (use e.g. C3, Eb2 or 60)");
@@ -148,8 +163,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.normalise  = ! args.contains ("--no-normalize");
     req.render.maxTailSec = option (args, "--tail", "6").getDoubleValue();
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
-    req.render.trimToSec  = args.contains ("--max-length") ? option (args, "--max-length").getDoubleValue()
-                                                           : req.style.maxLength;
+    req.render.trimToSec  = args.contains ("--max-length") ? option (args, "--max-length").getDoubleValue() : -1.0;
 
     juce::String pluginPath = option (args, "--plugin");
     SoundState sound;
@@ -172,6 +186,10 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     auto specs = planSamples (req.style, req.plan, error);
     if (specs.empty()) return fail (error);
     if (error.isNotEmpty()) std::cerr << "warning: " << error << std::endl;
+
+    if (args.contains ("--tempo"))
+        for (auto& sp : specs)
+            sp.processing.tempo = juce::jlimit (30.0, 300.0, option (args, "--tempo").getDoubleValue());
 
     if (args.contains ("--plan-only"))
     {
@@ -202,8 +220,9 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.instrumentName = instrument->getName();
     out ("Instrument: " + req.instrumentName);
     out ("Style:      " + req.style.name + "   key: " + req.plan.key + "   seed: " + juce::String (req.plan.seed)
-         + (req.plan.fixedRoot >= 0 ? "   16 Levels root: " + midiNoteName (req.plan.fixedRoot) : juce::String())
-         + (useBuiltIn ? "   recipe: " + (req.plan.recipe.isNotEmpty() ? req.plan.recipe : req.style.recipe) : juce::String()));
+         + (req.plan.fixedRoot >= 0 ? "   16 Levels root: " + midiNoteName (req.plan.fixedRoot)
+            : req.plan.fixedRoot == PlanOptions::styleRoot ? juce::String ("   16 Levels root: per recipe") : juce::String())
+         + (useBuiltIn ? "   engine: " + (req.plan.engine.isNotEmpty() ? req.plan.engine : req.style.engine) : juce::String()));
     out ("Output:     " + req.outputFolder.getFullPathName());
 
     job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));

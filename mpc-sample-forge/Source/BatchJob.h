@@ -30,6 +30,7 @@ namespace forge
 
     private:
         void post (int done, int total, const juce::String& msg);
+        juce::String mpcSetupSheet() const;
 
         juce::AudioProcessor& proc;
         BatchRequest request;
