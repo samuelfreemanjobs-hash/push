@@ -240,7 +240,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 |---|---|
 | `--plugin <file.vst3>` | VST3 instrument (its default preset) |
 | `--sound <file.forgesound>` | Plugin plus the exact sound saved from the app |
-| `--builtin` | Built-in recipe synth (default when no plugin is given) |
+| `--builtin` | Built-in synth (default when no plugin is given) |
 | `--recipe <id>` | A guide recipe or kit (same as `--style`) |
 | `--engine <name>` | Override the built-in synth engine: `epiano, bell, organ, pluck, choir, supersaw, epbell, triangle, cowbell, comboorgan, harp, brass, mixed` |
 | `--16levels` | Same as `--root recipe --banks` |
