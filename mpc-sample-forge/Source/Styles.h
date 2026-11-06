@@ -27,6 +27,9 @@ namespace forge
         double stabHold = 0.25;
         double strumMs = 15.0;                             // max spread between chord notes
 
+        juce::String recipe = "epiano";                    // built-in synth engine (or "mixed")
+        double maxLength = 0;                              // cap on each file in seconds (0 = no cap)
+
         juce::var toVar() const;
         static bool fromVar (const juce::var& v, Style& out, juce::String& error);
     };

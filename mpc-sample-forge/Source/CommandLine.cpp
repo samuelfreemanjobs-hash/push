@@ -1,5 +1,5 @@
 #include "CommandLine.h"
-#include "BuiltInKeys.h"
+#include "BuiltInSynth.h"
 #include <iostream>
 
 namespace forge
@@ -17,7 +17,16 @@ juce::String cliHelpText()
       << "Instrument (one of):\n"
       << "  --plugin <file.vst3>      VST3 instrument to load\n"
       << "  --sound <file.forgesound> sound saved from the app (plugin + its settings)\n"
-      << "  --builtin                 use the built-in FM keys (default if nothing given)\n\n"
+      << "  --builtin                 use the built-in synth (default if nothing given)\n"
+      << "  --recipe <name>           built-in synth engine: epiano, bell, organ, pluck, choir,\n"
+      << "                            supersaw or mixed (default: the style's recipe)\n\n"
+      << "16 Levels (MPC drum-program one-shots):\n"
+      << "  --16levels                same as --root C3 --banks\n"
+      << "  --root <C3|Eb2|60>        build every sample on this note, so 16 Levels > Tune\n"
+      << "                            spreads it chromatically from a known pitch\n"
+      << "  --banks                   write files in folders of 16 (Bank_A, Bank_B ...)\n"
+      << "  --max-length <seconds>    cut each one-shot to this length with a fade\n"
+      << "                            (default: the style's maxLength; 0 = no cap)\n\n"
       << "Batch:\n"
       << "  --style <id>              built-in style (see --list-styles), default neo-soul\n"
       << "  --style-file <file.json>  your own style (see --dump-style for the format)\n"
@@ -34,7 +43,9 @@ juce::String cliHelpText()
       << "  --tail <seconds>          max release tail after note-off, default 6\n"
       << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
       << "Info:\n"
-      << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --help\n";
+      << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --help\n\n"
+      << "Example (16 Levels kit with the built-in synth):\n"
+      << "  mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette\n";
     return s;
 }
 
@@ -73,7 +84,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     if (args.contains ("--list-styles"))
     {
         for (auto& s : builtInStyles())
-            out (s.id.paddedRight (' ', 12) + s.name.paddedRight (' ', 16) + s.description);
+            out (s.id.paddedRight (' ', 18) + s.name.paddedRight (' ', 18) + s.description);
         return onDone (0);
     }
 
@@ -113,6 +124,22 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.plan.key    = option (args, "--key", "random");
     req.plan.scale  = option (args, "--scale");
     req.plan.prefix = option (args, "--prefix");
+    req.plan.recipe = option (args, "--recipe").toLowerCase();
+    if (req.plan.recipe.isNotEmpty() && req.plan.recipe != "mixed")
+    {
+        Recipe r;
+        if (! parseRecipe (req.plan.recipe, r))
+            return fail ("unknown --recipe (use " + recipeIds().joinIntoString (", ") + " or mixed)");
+    }
+
+    auto rootText = option (args, "--root", args.contains ("--16levels") ? "C3" : "");
+    if (rootText.isNotEmpty() && ! rootText.equalsIgnoreCase ("free"))
+    {
+        req.plan.fixedRoot = parseMidiNote (rootText);
+        if (req.plan.fixedRoot < 0) return fail ("bad --root '" + rootText + "' (use e.g. C3, Eb2 or 60)");
+    }
+    req.splitBanks = args.contains ("--banks") || args.contains ("--16levels");
+
     req.plan.seed   = args.contains ("--seed") ? option (args, "--seed").getLargeIntValue()
                                                : juce::Random::getSystemRandom().nextInt64() & 0xffffffff;
 
@@ -121,6 +148,23 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.normalise  = ! args.contains ("--no-normalize");
     req.render.maxTailSec = option (args, "--tail", "6").getDoubleValue();
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
+    req.render.trimToSec  = args.contains ("--max-length") ? option (args, "--max-length").getDoubleValue()
+                                                           : req.style.maxLength;
+
+    juce::String pluginPath = option (args, "--plugin");
+    SoundState sound;
+    bool haveSound = false;
+
+    if (args.contains ("--sound"))
+    {
+        if (! sound.load (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--sound")), error))
+            return fail (error);
+        haveSound = true;
+        if (pluginPath.isEmpty()) pluginPath = sound.pluginPath;
+    }
+
+    const bool useBuiltIn = pluginPath.isEmpty() || args.contains ("--builtin");
+    req.plan.builtIn = useBuiltIn;
 
     if (req.render.sampleRate < 8000 || req.render.sampleRate > 192000) return fail ("bad --rate");
     if (req.render.bitDepth != 16 && req.render.bitDepth != 24) return fail ("--bits must be 16 or 24");
@@ -141,19 +185,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
               .getChildFile ("MPC Sample Forge").getChildFile (safeFileName (req.style.name));
 
     // -------------------------------------------------------- the instrument
-    juce::String pluginPath = option (args, "--plugin");
-    SoundState sound;
-    bool haveSound = false;
-
-    if (args.contains ("--sound"))
-    {
-        if (! sound.load (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--sound")), error))
-            return fail (error);
-        haveSound = true;
-        if (pluginPath.isEmpty()) pluginPath = sound.pluginPath;
-    }
-
-    if (pluginPath.isNotEmpty() && ! args.contains ("--builtin"))
+    if (! useBuiltIn)
     {
         out ("Loading " + pluginPath + " ...");
         auto plugin = host.load (pluginPath, req.render.sampleRate, req.render.blockSize, error);
@@ -164,12 +196,14 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     }
     else
     {
-        instrument = std::make_unique<BuiltInKeys>();
+        instrument = std::make_unique<BuiltInSynth>();
     }
 
     req.instrumentName = instrument->getName();
     out ("Instrument: " + req.instrumentName);
-    out ("Style:      " + req.style.name + "   key: " + req.plan.key + "   seed: " + juce::String (req.plan.seed));
+    out ("Style:      " + req.style.name + "   key: " + req.plan.key + "   seed: " + juce::String (req.plan.seed)
+         + (req.plan.fixedRoot >= 0 ? "   16 Levels root: " + midiNoteName (req.plan.fixedRoot) : juce::String())
+         + (useBuiltIn ? "   recipe: " + (req.plan.recipe.isNotEmpty() ? req.plan.recipe : req.style.recipe) : juce::String()));
     out ("Output:     " + req.outputFolder.getFullPathName());
 
     job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));

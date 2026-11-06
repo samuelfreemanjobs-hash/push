@@ -1,4 +1,5 @@
 #include "Styles.h"
+#include "BuiltInSynth.h"
 
 namespace forge
 {
@@ -130,7 +131,61 @@ static const char* builtInStyleJson = R"JSON(
    "voicings": { "close": 4, "inv1": 3, "inv2": 2, "open": 2 },
    "chordRatio": 0.7, "keyTypes": { "note": 4, "octave": 3, "fifth": 2, "stab": 2 },
    "chordRootRange": [45, 57], "keyRange": [36, 76], "velocity": [90, 120],
-   "hold": [1.2, 2.2], "stabChance": 0.25, "stabHold": 0.25, "strumMs": 0 }
+   "hold": [1.2, 2.2], "stabChance": 0.25, "stabHold": 0.25, "strumMs": 0 },
+
+ { "id": "bell-tines", "name": "Bell Tines",
+   "description": "16 Levels: glassy FM bells and tines, mostly single notes, short and clean for chromatic riffs.",
+   "recipe": "bell", "scale": "minor", "maxLength": 2.0,
+   "chords": { "5": 3, "sus2": 2, "maj": 1, "min": 1, "add9": 1 },
+   "voicings": { "close": 3, "open": 2 },
+   "chordRatio": 0.15, "keyTypes": { "note": 7, "octave": 2, "fifth": 1, "stab": 0 },
+   "chordRootRange": [60, 71], "keyRange": [55, 84], "velocity": [75, 115],
+   "hold": [0.25, 0.7], "stabChance": 0.3, "stabHold": 0.12, "strumMs": 0 },
+
+ { "id": "organ-stabs", "name": "Organ Stabs",
+   "description": "16 Levels: drawbar organ stabs and single hits with key click, cut short for rhythmic chops.",
+   "recipe": "organ", "scale": "dorian", "maxLength": 1.0,
+   "chords": { "min": 4, "m7": 4, "maj": 3, "7": 2, "m9": 2, "sus4": 2, "9": 1, "5": 2 },
+   "voicings": { "close": 4, "inv1": 3, "inv2": 3 },
+   "chordRatio": 0.55, "keyTypes": { "note": 4, "octave": 3, "fifth": 2, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [43, 72], "velocity": [95, 120],
+   "hold": [0.2, 0.5], "stabChance": 0.7, "stabHold": 0.16, "strumMs": 0 },
+
+ { "id": "plucks", "name": "Plucks",
+   "description": "16 Levels: plucked-string transients (Karplus-Strong), bright to muted, tight decays.",
+   "recipe": "pluck", "scale": "minor", "maxLength": 1.5,
+   "chords": { "5": 3, "min": 1, "maj": 1, "sus2": 1 },
+   "voicings": { "close": 2, "open": 1 },
+   "chordRatio": 0.1, "keyTypes": { "note": 7, "octave": 2, "fifth": 2, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [40, 79], "velocity": [80, 120],
+   "hold": [0.1, 0.35], "stabChance": 0.3, "stabHold": 0.1, "strumMs": 6 },
+
+ { "id": "choir", "name": "Choir Notes",
+   "description": "16 Levels: formant choir 'aah / ooh / oh' notes and small chords; great pitched down on the pads.",
+   "recipe": "choir", "scale": "minor", "maxLength": 2.5,
+   "chords": { "5": 3, "min": 3, "maj": 2, "sus2": 2, "madd9": 1 },
+   "voicings": { "close": 2, "open": 3, "spread": 1 },
+   "chordRatio": 0.3, "keyTypes": { "note": 6, "octave": 3, "fifth": 2, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [45, 74], "velocity": [70, 105],
+   "hold": [0.7, 1.5], "stabChance": 0.0, "stabHold": 0.3, "strumMs": 0 },
+
+ { "id": "detuned-synth", "name": "Detuned Synth",
+   "description": "16 Levels: detuned supersaw notes and power stabs with a snappy filter envelope.",
+   "recipe": "supersaw", "scale": "minor", "maxLength": 1.5,
+   "chords": { "5": 4, "min": 3, "maj": 2, "sus2": 2, "m7": 1 },
+   "voicings": { "close": 3, "open": 2, "inv1": 1 },
+   "chordRatio": 0.3, "keyTypes": { "note": 6, "octave": 3, "fifth": 3, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [36, 72], "velocity": [90, 120],
+   "hold": [0.2, 0.6], "stabChance": 0.5, "stabHold": 0.15, "strumMs": 0 },
+
+ { "id": "one-shot-palette", "name": "One-Shot Palette",
+   "description": "16 Levels: a mixed kit of bells, organ, plucks, choir, synth and keys - one sound per pad.",
+   "recipe": "mixed", "scale": "minor", "maxLength": 1.8,
+   "chords": { "5": 3, "min": 3, "maj": 2, "m7": 2, "sus2": 2 },
+   "voicings": { "close": 3, "open": 2, "inv1": 1 },
+   "chordRatio": 0.2, "keyTypes": { "note": 7, "octave": 2, "fifth": 2, "stab": 0 },
+   "chordRootRange": [48, 59], "keyRange": [45, 79], "velocity": [80, 115],
+   "hold": [0.2, 0.8], "stabChance": 0.5, "stabHold": 0.14, "strumMs": 0 }
 ]
 )JSON";
 
@@ -174,6 +229,8 @@ juce::var Style::toVar() const
     o->setProperty ("stabChance", stabChance);
     o->setProperty ("stabHold", stabHold);
     o->setProperty ("strumMs", strumMs);
+    o->setProperty ("recipe", recipe);
+    o->setProperty ("maxLength", maxLength);
     return juce::var (o);
 }
 
@@ -269,6 +326,15 @@ bool Style::fromVar (const juce::var& v, Style& s, juce::String& error)
     s.stabChance = juce::jlimit (0.0f, 1.0f, (float) v.getProperty ("stabChance", s.stabChance));
     s.stabHold   = juce::jlimit (0.03, 5.0, (double) v.getProperty ("stabHold", s.stabHold));
     s.strumMs    = juce::jlimit (0.0, 250.0, (double) v.getProperty ("strumMs", s.strumMs));
+    s.maxLength  = juce::jlimit (0.0, 30.0, (double) v.getProperty ("maxLength", 0.0));
+
+    s.recipe = v.getProperty ("recipe", "epiano").toString().toLowerCase();
+    Recipe r;
+    if (s.recipe != "mixed" && ! parseRecipe (s.recipe, r))
+    {
+        error = "unknown recipe '" + s.recipe + "' (use one of: " + recipeIds().joinIntoString (", ") + ", mixed)";
+        return false;
+    }
     return true;
 }
 

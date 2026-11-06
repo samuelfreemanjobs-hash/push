@@ -107,7 +107,8 @@ bool OfflineRenderer::render (const SampleSpec& spec, juce::AudioBuffer<float>& 
     std::stable_sort (events.begin(), events.end(), [] (auto& a, auto& b) { return a.pos < b.pos; });
 
     auto latency = (juce::int64) juce::jmax (0, proc.getLatencySamples());
-    auto maxLen  = (juce::int64) (settings.maxLengthSec * settings.sampleRate) + latency;
+    auto maxSec  = settings.trimToSec > 0 ? juce::jmin (settings.maxLengthSec, settings.trimToSec + 0.05) : settings.maxLengthSec;
+    auto maxLen  = (juce::int64) (maxSec * settings.sampleRate) + latency;
     auto tailEnd = lastOff + (juce::int64) (settings.maxTailSec * settings.sampleRate) + latency;
     auto threshold = juce::Decibels::decibelsToGain ((float) settings.silenceDb);
     auto quietNeeded = (juce::int64) (0.3 * settings.sampleRate);
@@ -173,6 +174,14 @@ bool OfflineRenderer::render (const SampleSpec& spec, juce::AudioBuffer<float>& 
     first = juce::jmax (0, first - 8);
     auto length = juce::jmin (total - first, last - first + 1 + (int) (0.01 * settings.sampleRate));
 
+    // Cut long sustains: one-shots for 16 Levels should stay short and rhythmic.
+    auto fadeOutMs = settings.fadeOutMs;
+    if (settings.trimToSec > 0 && length > (int) (settings.trimToSec * settings.sampleRate))
+    {
+        length = juce::jmax (64, (int) (settings.trimToSec * settings.sampleRate));
+        fadeOutMs = juce::jmax (fadeOutMs, juce::jmin (150.0, 0.2 * settings.trimToSec * 1000.0));
+    }
+
     out.setSize (2, length);
     for (int ch = 0; ch < 2; ++ch)
         out.copyFrom (ch, 0, captured, ch, first, length);
@@ -182,8 +191,13 @@ bool OfflineRenderer::render (const SampleSpec& spec, juce::AudioBuffer<float>& 
     if (first > 0)
         out.applyGainRamp (0, fadeIn, 0.0f, 1.0f);
 
-    auto fadeOut = juce::jmin (length / 2, (int) (settings.fadeOutMs * 0.001 * settings.sampleRate));
-    out.applyGainRamp (length - fadeOut, fadeOut, 1.0f, 0.0f);
+    auto fadeOut = juce::jmin (length / 2, (int) (fadeOutMs * 0.001 * settings.sampleRate));
+    for (int ch = 0; ch < 2; ++ch) // equal-power-ish curve sounds smoother than linear
+        for (int i = 0; i < fadeOut; ++i)
+        {
+            auto x = (float) (fadeOut - i) / (float) fadeOut;
+            out.setSample (ch, length - fadeOut + i, out.getSample (ch, length - fadeOut + i) * x * x);
+        }
 
     // ---- normalise
     if (settings.normalise)

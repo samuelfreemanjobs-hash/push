@@ -1,5 +1,5 @@
 #include "MainComponent.h"
-#include "BuiltInKeys.h"
+#include "BuiltInSynth.h"
 
 namespace forge
 {
@@ -62,6 +62,8 @@ MainComponent::MainComponent()
     setupLabel (prefixLabel, "Prefix");
     setupLabel (audioLabel, "Format");
     setupLabel (outLabel, "Output");
+    setupLabel (oneShotLabel, "Recipe");
+    setupLabel (rootLabel, "16 Levels root");
     styleDesc.setColour (juce::Label::textColourId, text);
     styleDesc.setJustificationType (juce::Justification::topLeft);
     addAndMakeVisible (styleDesc);
@@ -70,7 +72,7 @@ MainComponent::MainComponent()
 
     // ---------------------------------------------------------- instrument
     installedPlugins = host.findInstalledVST3();
-    pluginBox.addItem ("Built-in FM Keys", builtInId);
+    pluginBox.addItem ("Built-in Synth (recipes)", builtInId);
     if (! installedPlugins.isEmpty())
     {
         pluginBox.addSeparator();
@@ -130,6 +132,36 @@ MainComponent::MainComponent()
     bitsBox.setSelectedId (24);
     normaliseToggle.setToggleState (true, juce::dontSendNotification);
     for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &normaliseToggle })
+        addAndMakeVisible (c);
+
+    // ---------------------------------------------------------- one-shot / 16 Levels
+    recipeBox.addItem ("Style's recipe", 1);
+    {
+        auto ids = recipeIds();
+        for (int i = 0; i < ids.size(); ++i)
+        {
+            Recipe r;
+            parseRecipe (ids[i], r);
+            recipeBox.addItem (recipeDisplayName (r) + " (" + ids[i] + ")", i + 2);
+        }
+        recipeBox.addItem ("Mixed palette", 100);
+    }
+    recipeBox.setSelectedId (1);
+    recipeBox.setTooltip ("Sound engine of the built-in synth. Ignored when a VST3 is loaded.");
+    recipeBox.onChange = [this] { applyLiveRecipe(); lastPlan.clear(); };
+
+    rootBox.addItem ("Off (style ranges)", 1);
+    for (int midi = 36; midi <= 84; midi += 12)
+        rootBox.addItem (midiNoteName (midi), midi);
+    rootBox.setSelectedId (1);
+
+    lengthBox.addItem ("Style's length", 1);
+    for (auto ms : { 250, 500, 1000, 1500, 2000, 4000 })
+        lengthBox.addItem ("Max " + juce::String (ms / 1000.0, ms % 1000 == 0 ? 0 : 2) + " s", ms);
+    lengthBox.addItem ("No limit", 2);
+    lengthBox.setSelectedId (1);
+
+    for (auto* c : std::initializer_list<juce::Component*> { &recipeBox, &rootBox, &lengthBox, &banksToggle })
         addAndMakeVisible (c);
 
     outputFolder = juce::File (settings->getValue ("outputFolder",
@@ -194,7 +226,9 @@ MainComponent::MainComponent()
 
     log ("Pick a VST3 instrument, click 'Edit Sound' to dial in a patch, choose a style, then Generate.");
     log ("Play the on-screen keyboard (or a MIDI controller) to audition the sound.");
-    setSize (980, 720);
+    log ("16 Levels kits: pick a one-shot style (Bell Tines, Organ Stabs, Plucks, Choir, Detuned Synth, One-Shot Palette),");
+    log ("set '16 Levels root' to C3 and tick '16-pad banks'. Every sample is then built on C3 for Tune mode.");
+    setSize (980, 760);
 }
 
 MainComponent::~MainComponent()
@@ -214,7 +248,7 @@ void MainComponent::paint (juce::Graphics& g)
 {
     g.fillAll (bg);
     g.setColour (panel);
-    g.fillRoundedRectangle (getLocalBounds().reduced (10).withTrimmedTop (44).withHeight (330).toFloat(), 6.0f);
+    g.fillRoundedRectangle (getLocalBounds().reduced (10).withTrimmedTop (44).withHeight (366).toFloat(), 6.0f);
 }
 
 void MainComponent::resized()
@@ -262,6 +296,14 @@ void MainComponent::resized()
     rateBox.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
     bitsBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (12);
     normaliseToggle.setBounds (r.removeFromLeft (160));
+
+    r = row();
+    oneShotLabel.setBounds (r.removeFromLeft (labelW));
+    recipeBox.setBounds (r.removeFromLeft (180)); r.removeFromLeft (20);
+    rootLabel.setBounds (r.removeFromLeft (110));
+    rootBox.setBounds (r.removeFromLeft (150)); r.removeFromLeft (6);
+    lengthBox.setBounds (r.removeFromLeft (130)); r.removeFromLeft (12);
+    banksToggle.setBounds (r.removeFromLeft (140));
 
     r = row();
     outLabel.setBounds (r.removeFromLeft (labelW));
@@ -334,8 +376,9 @@ void MainComponent::setInstrument (std::unique_ptr<juce::AudioProcessor> p, cons
 
 void MainComponent::useBuiltIn()
 {
-    setInstrument (std::make_unique<BuiltInKeys>(), {});
+    setInstrument (std::make_unique<BuiltInSynth>(), {});
     pluginBox.setSelectedId (builtInId, juce::dontSendNotification);
+    applyLiveRecipe();
 }
 
 void MainComponent::loadInstrument (const juce::String& path)
@@ -431,6 +474,7 @@ void MainComponent::styleChanged()
     styleDesc.setText (styles[i].description + "   (scale: " + styles[i].scale + ")", juce::dontSendNotification);
     props.getUserSettings()->setValue ("styleIndex", i);
     lastPlan.clear();
+    applyLiveRecipe();
 }
 
 void MainComponent::loadStyleJson()
@@ -466,9 +510,16 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.render.bitDepth = bitsBox.getSelectedId();
     req.render.normalise = normaliseToggle.getToggleState();
     req.instrumentName = instrument->getName();
+    req.plan.recipe = selectedRecipe();
+    req.plan.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
+    req.plan.fixedRoot = rootBox.getSelectedId() > 1 ? rootBox.getSelectedId() : -1;
+    req.splitBanks = banksToggle.getToggleState();
+    auto lengthId = lengthBox.getSelectedId();
+    req.render.trimToSec = lengthId == 1 ? req.style.maxLength : lengthId == 2 ? 0.0 : lengthId / 1000.0;
 
     auto sub = safeFileName (req.plan.prefix.isNotEmpty() ? req.plan.prefix : req.style.name);
-    if (req.plan.key != "random") sub += "_" + req.plan.key;
+    if (req.plan.fixedRoot >= 0) sub += "_" + midiNoteName (req.plan.fixedRoot);
+    else if (req.plan.key != "random") sub += "_" + req.plan.key;
     req.outputFolder = outputFolder.getChildFile (sub).getNonexistentSibling (false);
 
     juce::String error;
@@ -491,6 +542,13 @@ void MainComponent::auditionSpec (int index)
     if (! juce::isPositiveAndBelow (index, (int) lastPlan.size()) || job != nullptr) return;
     auto& spec = lastPlan[(size_t) index];
     log ("> " + describeSpec (spec));
+
+    if (auto* b = dynamic_cast<BuiltInSynth*> (instrument.get()))
+    {
+        Recipe r;
+        if (parseRecipe (spec.recipe, r)) b->setRecipe (r);
+        b->setVariation (spec.variation);
+    }
 
     auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
     auto& collector = player.getMidiMessageCollector();
@@ -516,6 +574,7 @@ void MainComponent::setBusy (bool busy)
     for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &normaliseToggle,
+                                                             &recipeBox, &rootBox, &lengthBox, &banksToggle,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");
@@ -564,7 +623,32 @@ void MainComponent::jobFinished (bool ok, const juce::String& summary)
     log (summary);
     setBusy (false);
     if (instrument != nullptr) player.setProcessor (instrument.get());
+    applyLiveRecipe();
     seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999))); // next batch is different
+}
+
+juce::String MainComponent::selectedRecipe() const
+{
+    auto id = recipeBox.getSelectedId();
+    if (id == 100) return "mixed";
+    if (id >= 2) return recipeIds()[id - 2];
+    return {};
+}
+
+void MainComponent::applyLiveRecipe()
+{
+    // What you play on the keyboard should sound like what will be rendered.
+    auto* b = dynamic_cast<BuiltInSynth*> (instrument.get());
+    if (b == nullptr) return;
+
+    auto name = selectedRecipe();
+    auto i = styleBox.getSelectedItemIndex();
+    if (name.isEmpty() && juce::isPositiveAndBelow (i, styles.size())) name = styles[i].recipe;
+
+    Recipe r = Recipe::EPiano;
+    if (name == "mixed") r = Recipe::Bell;
+    else parseRecipe (name, r);
+    b->setRecipe (r);
 }
 
 //==============================================================================

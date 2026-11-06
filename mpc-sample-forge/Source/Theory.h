@@ -32,6 +32,8 @@ namespace forge
     int parsePitchClass (const juce::String& name);
     /** MIDI note name with the MPC / Ableton convention: 60 = C3. */
     juce::String midiNoteName (int midiNote);
+    /** Parses "C3", "Eb2", "F#-1" (60 = C3) or a plain MIDI number; -1 if invalid. */
+    int parseMidiNote (const juce::String& s);
 
     /** Builds the MIDI notes of a chord voicing. The result is sorted, has no
         duplicates and is kept inside the piano range. */

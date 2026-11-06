@@ -1,4 +1,5 @@
 #include "BatchJob.h"
+#include "BuiltInSynth.h"
 
 namespace forge
 {
@@ -50,7 +51,7 @@ void BatchJob::run()
 
     int written = 0;
     juce::StringArray failures;
-    juce::String manifest = "file,type,name,voicing,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds\n";
+    juce::String manifest = "file,type,name,voicing,recipe,root_note,root_midi,midi_notes,velocities,hold_seconds,length_seconds\n";
 
     {
         OfflineRenderer renderer (proc, request.render);
@@ -63,7 +64,23 @@ void BatchJob::run()
 
             juce::AudioBuffer<float> audio;
             juce::String error;
-            auto file = folder.getChildFile (spec.fileStem + ".wav");
+            auto target = folder;
+            if (request.splitBanks)
+            {
+                auto bank = i / 16;
+                target = folder.getChildFile ("Bank_" + juce::String::charToString ((juce::juce_wchar) ('A' + bank % 26))
+                                              + (bank >= 26 ? juce::String (bank / 26 + 1) : juce::String()));
+                target.createDirectory();
+            }
+            auto file = target.getChildFile (spec.fileStem + ".wav");
+
+            auto* builtIn = dynamic_cast<BuiltInSynth*> (&proc);
+            if (builtIn != nullptr)
+            {
+                Recipe r;
+                if (parseRecipe (spec.recipe, r)) builtIn->setRecipe (r);
+                builtIn->setVariation (spec.variation);
+            }
 
             if (! renderer.render (spec, audio, error)
                 || ! OfflineRenderer::writeWav (file, audio, request.render.sampleRate, request.render.bitDepth, spec.rootNote, error))
@@ -76,7 +93,8 @@ void BatchJob::run()
             juce::StringArray notes, vels;
             for (auto& n : spec.notes) { notes.add (juce::String (n.note)); vels.add (juce::String (n.velocity)); }
 
-            manifest << csv (file.getFileName()) << "," << spec.kind << "," << csv (spec.label) << "," << spec.voicing << ","
+            manifest << csv (file.getRelativePathFrom (folder).replaceCharacter ('\\', '/')) << "," << spec.kind << ","
+                     << csv (spec.label) << "," << spec.voicing << "," << (builtIn != nullptr ? spec.recipe : juce::String ("-")) << ","
                      << midiNoteName (spec.rootNote) << "," << spec.rootNote << "," << csv (notes.joinIntoString (" ")) << ","
                      << csv (vels.joinIntoString (" ")) << "," << juce::String (spec.holdSec(), 3) << ","
                      << juce::String (audio.getNumSamples() / request.render.sampleRate, 3) << "\n";
@@ -95,6 +113,9 @@ void BatchJob::run()
     info->setProperty ("count", request.plan.count);
     info->setProperty ("sampleRate", request.render.sampleRate);
     info->setProperty ("bitDepth", request.render.bitDepth);
+    info->setProperty ("fixedRoot", request.plan.fixedRoot >= 0 ? midiNoteName (request.plan.fixedRoot) : juce::String ("free"));
+    info->setProperty ("recipe", request.plan.recipe.isNotEmpty() ? request.plan.recipe : request.style.recipe);
+    info->setProperty ("maxLength", request.render.trimToSec);
     info->setProperty ("created", juce::Time::getCurrentTime().toISO8601 (true));
     folder.getChildFile ("_batch.json").replaceWithText (juce::JSON::toString (juce::var (info)));
 

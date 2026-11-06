@@ -11,6 +11,7 @@ namespace forge
         RenderSettings render;
         juce::File outputFolder;
         juce::String instrumentName;
+        bool splitBanks = false;   // put every 16 files into Bank_A, Bank_B ... (one MPC pad bank each)
     };
 
     /** Renders a whole plan on a background thread. Callbacks arrive on the

@@ -1,4 +1,5 @@
 #include "SamplePlanner.h"
+#include "BuiltInSynth.h"
 #include <set>
 #include <algorithm>
 
@@ -61,10 +62,9 @@ namespace
     };
 
     /** Velocity per chord note, with a slightly louder top voice like a real player. */
-    std::vector<NoteEvent> makeChordNotes (const Context& c, const std::vector<int>& notes, double hold, bool strum)
+    std::vector<NoteEvent> makeChordNotes (const Context& c, const std::vector<int>& notes, double hold, bool strum, int base)
     {
         std::vector<NoteEvent> out;
-        auto base = c.velocity();
         auto spread = strum ? randomDouble (c.rng, 0.3, 1.0) * c.style.strumMs / 1000.0 : 0.0;
         auto perNote = notes.size() > 1 ? spread / (double) (notes.size() - 1) : 0.0;
 
@@ -116,6 +116,38 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         prefix += "_" + pitchClassName (c.tonic) + (scaleName.containsIgnoreCase ("minor") || scaleName == "dorian"
                                                        || scaleName == "phrygian" ? "min" : "maj");
 
+    const bool fixedRoot = juce::isPositiveAndBelow (opt.fixedRoot, 128);
+    if (fixedRoot)
+    {
+        // 16 Levels: the pads transpose from one root, so the key is irrelevant.
+        c.keyLocked = false;
+        prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name) + "_" + midiNoteName (opt.fixedRoot);
+    }
+
+    auto recipeName = (opt.recipe.isNotEmpty() ? opt.recipe : style.recipe).toLowerCase();
+    const bool mixedRecipe = recipeName == "mixed";
+    Recipe fixedRecipe = Recipe::EPiano;
+    if (! mixedRecipe && recipeName.isNotEmpty() && ! parseRecipe (recipeName, fixedRecipe))
+    {
+        error = "unknown recipe '" + recipeName + "'";
+        return result;
+    }
+    auto allRecipes = recipeIds();
+    auto nextRecipe = [&]
+    {
+        return mixedRecipe ? allRecipes[rng.nextInt (allRecipes.size())] : recipeId (fixedRecipe);
+    };
+
+    // Unique-sample bookkeeping. In 16 Levels mode the same chord/note is allowed
+    // again when it sounds different: a new synth variation, or (with a VST3)
+    // a different velocity layer / length.
+    auto uniqueKey = [&] (const juce::String& base, const juce::String& recipe, int velocity, double hold, bool relaxed)
+    {
+        if (! fixedRoot && ! relaxed) return base;
+        if (opt.builtIn) return base + recipe + juce::String (rng.nextInt64());
+        return base + "v" + juce::String (velocity / 12) + "h" + juce::String ((int) (hold * 4));
+    };
+
     std::set<juce::String> used;
 
     // For a locked key: the scale degrees and which of the style's chords fit on each.
@@ -147,7 +179,7 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
     }
 
     // ---------------------------------------------------------------- chords
-    for (int attempts = 0; (int) result.size() < numChords && attempts < numChords * 200; ++attempts)
+    for (int attempts = 0; (int) result.size() < numChords && attempts < numChords * 300; ++attempts)
     {
         int rootPc;
         const ChordQuality* quality = nullptr;
@@ -160,7 +192,7 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         }
         else
         {
-            rootPc = rng.nextInt (12);
+            rootPc = fixedRoot ? opt.fixedRoot % 12 : rng.nextInt (12);
             quality = findQuality (pickWeighted (style.chords, rng));
         }
 
@@ -169,23 +201,36 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         auto voicing = pickWeighted (style.voicings, rng);
         auto isStab = rng.nextFloat() < style.stabChance;
 
+        auto hold = isStab ? style.stabHold : randomDouble (rng, style.holdLow, style.holdHigh);
+        auto recipe = nextRecipe();
+        auto velocity = c.velocity();
+
         // Allow the same chord twice only as a stab vs. a held chord.
-        auto key = juce::String (rootPc) + quality->id + voicingId (voicing) + (isStab ? "S" : "");
+        auto key = uniqueKey (juce::String (rootPc) + quality->id + voicingId (voicing) + (isStab ? "S" : ""),
+                              recipe, velocity, hold, attempts > numChords * 100);
         if (used.count (key)) continue;
         used.insert (key);
 
-        auto root = placePitchClass (rootPc, style.chordRootLow);
-        if (root > style.chordRootHigh) root -= 12;
+        auto root = fixedRoot ? opt.fixedRoot : placePitchClass (rootPc, style.chordRootLow);
+        if (! fixedRoot && root > style.chordRootHigh) root -= 12;
 
         auto notes = buildVoicing (root, quality->intervals, voicing);
-        auto hold = isStab ? style.stabHold : randomDouble (rng, style.holdLow, style.holdHigh);
+        if (fixedRoot && ! notes.empty() && notes.front() < root)
+        {
+            // keep the pad's root as the lowest note so 16 Levels tuning is unambiguous
+            for (auto& n : notes) if (n < root) n += 12;
+            std::sort (notes.begin(), notes.end());
+            notes.erase (std::unique (notes.begin(), notes.end()), notes.end());
+        }
 
         SampleSpec s;
         s.kind = isStab ? "Stab" : "Chord";
         s.label = pitchClassName (rootPc) + quality->suffix;
         s.voicing = voicingId (voicing);
         s.rootNote = root;
-        s.notes = makeChordNotes (c, notes, hold, ! isStab);
+        s.recipe = recipe;
+        s.variation = rng.nextInt64();
+        s.notes = makeChordNotes (c, notes, hold, ! isStab, velocity);
         result.push_back (s);
     }
 
@@ -197,10 +242,10 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
     if (style.keyStab > 0)   keyTypes.push_back ({ "Stab", style.keyStab });
 
     auto keysEnd = (int) result.size() + numKeys;
-    for (int attempts = 0; (int) result.size() < keysEnd && attempts < numKeys * 200; ++attempts)
+    for (int attempts = 0; (int) result.size() < keysEnd && attempts < numKeys * 300; ++attempts)
     {
         auto type = pickWeighted (keyTypes, rng);
-        auto note = randomInt (rng, style.keyLow, style.keyHigh);
+        auto note = fixedRoot ? opt.fixedRoot : randomInt (rng, style.keyLow, style.keyHigh);
         if (! c.inKey (note)) continue;
 
         std::vector<int> notes { note };
@@ -233,7 +278,9 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
             label = pitchClassName (note % 12) + q->suffix + "_" + midiNoteName (note);
         }
 
-        auto key = type + juce::String (note) + label;
+        auto recipe = nextRecipe();
+        auto velocity = c.velocity();
+        auto key = uniqueKey (type + juce::String (note) + label, recipe, velocity, hold, attempts > numKeys * 100);
         if (used.count (key)) continue;
         used.insert (key);
 
@@ -242,20 +289,45 @@ std::vector<SampleSpec> planSamples (const Style& style, const PlanOptions& opt,
         s.label = label;
         s.voicing = type == "Stab" ? "close" : "-";
         s.rootNote = note;
-        s.notes = makeChordNotes (c, notes, hold, false);
+        s.recipe = recipe;
+        s.variation = rng.nextInt64();
+        s.notes = makeChordNotes (c, notes, hold, false, velocity);
         result.push_back (s);
     }
 
-    if ((int) result.size() < count)
+    if ((int) result.size() < count && fixedRoot && ! opt.builtIn)
+        error = "only " + juce::String ((int) result.size()) + " distinct samples: with a VST3 on one root, variety comes only "
+                "from velocity, length and voicing. Lower the count, or render several patches into separate batches";
+    else if ((int) result.size() < count)
         error = "only " + juce::String ((int) result.size()) + " unique samples are possible with these settings "
                 "(widen the style's ranges, add chord types, or use key=random)";
+
+    if (fixedRoot)
+    {
+        // Interleave chords and single notes so every 16-pad bank gets a mix.
+        std::vector<SampleSpec> keys (result.begin() + (std::ptrdiff_t) std::min ((size_t) numChords, result.size()), result.end());
+        result.resize (std::min ((size_t) numChords, result.size()));
+        std::vector<SampleSpec> mixed;
+        size_t ci = 0, ki = 0;
+        while (ci < result.size() || ki < keys.size())
+        {
+            auto chordTurn = ki >= keys.size()
+                             || (ci < result.size() && (double) ci / (double) result.size() <= (double) ki / (double) keys.size());
+            mixed.push_back (chordTurn ? result[ci++] : keys[ki++]);
+        }
+        result = std::move (mixed);
+    }
 
     // ------------------------------------------------------------ file names
     for (size_t i = 0; i < result.size(); ++i)
     {
         auto& s = result[i];
         s.index = (int) i + 1;
-        auto stem = prefix + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_" + s.kind + "_" + s.label;
+        auto stem = prefix + "_" + juce::String (s.index).paddedLeft ('0', 3) + "_";
+        Recipe r;
+        if (opt.builtIn && mixedRecipe && parseRecipe (s.recipe, r))
+            stem += recipeDisplayName (r) + "_";
+        stem += s.kind + "_" + s.label;
         if (s.kind == "Chord" || s.kind == "Stab")
             stem += "_" + s.voicing;
         s.fileStem = safeFileName (stem);

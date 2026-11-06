@@ -36,6 +36,8 @@ namespace forge
         void jobFinished (bool ok, const juce::String& summary);
         void auditionSpec (int index);
         void setBusy (bool busy);
+        void applyLiveRecipe();
+        juce::String selectedRecipe() const;
         void log (const juce::String& s);
 
         void handleNoteOn (juce::MidiKeyboardState*, int ch, int note, float vel) override;
@@ -58,8 +60,9 @@ namespace forge
         double progress = 0;
 
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
-                    prefixLabel, audioLabel, outLabel, outPath;
-        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox;
+                    prefixLabel, audioLabel, outLabel, outPath, oneShotLabel, rootLabel;
+        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, recipeBox, rootBox, lengthBox;
+        juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },

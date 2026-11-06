@@ -7,9 +7,25 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
 
 * **Hosts VST3 instruments** (pianos, Rhodes, synths, pads, organs and so on). Open the plugin's
   own window to pick or tweak a patch, then render with it.
-* **14 built-in styles:** Neo-Soul, Lo-Fi Hip Hop, Dark Trap, Drill, Modern R&B, Gospel,
-  Deep House, Jazz, Boom Bap, Afrobeats, Pop, Cinematic, Ambient, Synthwave. You can also
+* **20 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
+  Drill, Modern R&B, Gospel, Deep House, Jazz, Boom Bap, Afrobeats, Pop, Cinematic, Ambient
+  and Synthwave. There are also 6 **one-shot recipe styles** for 16 Levels: Bell Tines,
+  Organ Stabs, Plucks, Choir Notes, Detuned Synth and One-Shot Palette. You can also
   **write your own style** as a small JSON file.
+* **16 Levels mode** (`--16levels`). Every sample is built on one root (C3), so
+  *16 Levels → Tune* spreads it across the pads from a known pitch. Samples are cut short
+  with a smooth fade, so no long sustains clutter the chops. Files can be grouped into
+  folders of 16, one per pad bank.
+* **Built-in recipe synth**, so you get usable material with no VST3. Each sample uses one of six engines:
+  * FM electric piano.
+  * FM bell / tine.
+  * Drawbar organ with key click and percussion.
+  * Karplus-Strong pluck.
+  * Formant choir ("aah / ooh / oh").
+  * Detuned supersaw.
+
+  Every sample gets its own timbre variation, so 100 renders give 100 different sounds.
+  Recipe tuning was measured within a few cents of the target note.
 * **Music theory engine:** 38 chord types (triads to 13ths and altered dominants) and 8 voicing
   types (close, inversions, drop-2, open, rootless, shell, spread). Chords can be rolled like a
   real player, with natural velocity variation.
@@ -27,7 +43,6 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
 * **Reproducible:** the same seed gives the same batch. Every batch also writes
   `_manifest.csv` (the notes in each file) and `_batch.json` (the settings used).
 * **Automation:** `mpcforge`, a command-line tool, can run batches from scripts.
-* A small **built-in FM electric piano** lets the app work even before you install a VST3.
 
 Example output for `--style neo-soul --key Eb`:
 
@@ -96,6 +111,36 @@ macOS and Linux versions. Download them from the run's **Artifacts** section.
 7. **Generate.** Each batch goes into its own subfolder of the output folder. That folder
    opens when the batch finishes.
 
+### 16 Levels one-shot kits (drum program workflow)
+
+The workflow: put short one-shots on drum-program pads and play them chromatically with
+**16 Levels → Tune**.
+
+1. Choose one of the one-shot styles:
+   * **Bell Tines**
+   * **Organ Stabs**
+   * **Plucks**
+   * **Choir Notes**
+   * **Detuned Synth**
+   * **One-Shot Palette**, which mixes all the recipes
+2. Pick a sound source:
+   * Keep **Built-in Synth**: the style picks the recipe, or you can override it with **Recipe**.
+   * Or load a VST3 and dial in a bell, organ, pluck, choir or synth patch.
+3. Set **16 Levels root** to **C3** and tick **16-pad banks**.
+4. Optional: set a **Max length**. Each style already has a short default, e.g. 1 s for
+   organ stabs and 1.5 s for plucks.
+5. Generate. You get `Bank_A`, `Bank_B` and so on, each with 16 files whose root is C3.
+
+On the MPC:
+1. Load a bank into a drum program, one sample per pad.
+2. Select a pad, turn on **16 Levels**, and choose **Tune**.
+3. The 16 pads now play that sound chromatically. Down-pitching the choir notes works especially well.
+
+With the built-in synth, every sample is a new timbre on the same root, so even 100
+samples on one note are all different. A VST3 on a single root can only vary in velocity,
+length and voicing. If that isn't enough variety for the count you asked for, the tool
+says so. In that case, render a few patches as separate smaller batches.
+
 ### Getting the samples onto the MPC
 
 * **Standalone MPC:** copy the batch folder to a USB stick or SD card. Then open the MPC
@@ -119,6 +164,12 @@ mpcforge --sound rhodes.forgesound --style neo-soul --count 100 --out ~/MPC/NeoS
 # Everything in Ab major, gospel style, 48 kHz / 16-bit
 mpcforge --plugin "/Library/Audio/Plug-Ins/VST3/Keyscape.vst3" --style gospel --key Ab --rate 48000 --bits 16
 
+# A 16 Levels kit from the built-in synth: 64 one-shots on C3, in four 16-pad banks
+mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette
+
+# Organ stabs from your own VST3 organ, all on C3, max 0.5 s each
+mpcforge --sound b3.forgesound --style organ-stabs --16levels --max-length 0.5 --count 48
+
 # See what would be rendered without rendering it
 mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 ```
@@ -127,7 +178,12 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 |---|---|
 | `--plugin <file.vst3>` | VST3 instrument (its default preset) |
 | `--sound <file.forgesound>` | Plugin plus the exact sound saved from the app |
-| `--builtin` | Built-in FM keys |
+| `--builtin` | Built-in recipe synth (default when no plugin is given) |
+| `--recipe <name>` | Built-in synth engine: `epiano, bell, organ, pluck, choir, supersaw, mixed` |
+| `--16levels` | Same as `--root C3 --banks` |
+| `--root <C3, Eb2, 60>` | Build every sample on this note (for 16 Levels → Tune) |
+| `--banks` | Write files in folders of 16 (`Bank_A`, `Bank_B` …) |
+| `--max-length <sec>` | Cut each one-shot to this length with a fade (default: the style's; 0 = off) |
 | `--style <id>` / `--style-file <json>` | Built-in style, or your own |
 | `--count <n>` | Number of samples (default 100) |
 | `--key <C, F#, Bb, random>` | Lock to a key (default random) |
@@ -172,8 +228,10 @@ Alternatively, copy `Examples/my-style.json`.
 | `hold` | How long chords are held, in seconds |
 | `stabChance`, `stabHold` | How often a chord is a short stab, and how long a stab lasts |
 | `strumMs` | Maximum roll between the chord's notes (0 = all notes hit together) |
+| `recipe` | Built-in synth engine (`epiano, bell, organ, pluck, choir, supersaw` or `mixed`) |
+| `maxLength` | Cut each file to this many seconds with a fade (0 = no cap) |
 
-Chord types: `maj min dim aug sus2 sus4 5 add9 madd9 madd11 6 m6 69 m69 maj7 m7 7 m7b5 dim7
+Chord types (`5` is a power chord, named "power" in file names): `maj min dim aug sus2 sus4 5 add9 madd9 madd11 6 m6 69 m69 maj7 m7 7 m7b5 dim7
 mmaj7 7sus4 maj9 m9 9 9sus4 mmaj9 m11 maj7s11 maj9s11 13 maj13 m13 7s9 7b9 7s5 13b9 quartal quintal`.
 
 ---
@@ -199,6 +257,6 @@ Source/PluginHost.*      VST3 scanning / loading, .forgesound files
 Source/BatchJob.*        background rendering + manifest
 Source/MainComponent.*   the app UI
 Source/CommandLine.*     shared CLI logic; CliMain.cpp = mpcforge
-Source/BuiltInKeys.h     fallback FM electric piano
-Tests/TestPlugin.cpp     builds the FM keys as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
+Source/BuiltInSynth.*    built-in recipe synth (epiano, bell, organ, pluck, choir, supersaw)
+Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
 ```

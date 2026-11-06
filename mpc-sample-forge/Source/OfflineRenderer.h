@@ -17,6 +17,7 @@ namespace forge
         double maxLengthSec = 15.0;
         double fadeOutMs = 25.0;
         double warmUpSec = 1.5;         // let sample-based plugins finish loading
+        double trimToSec = 0;           // hard cap on file length, with a smooth fade (0 = off)
     };
 
     /** Plays MIDI through an AudioProcessor faster than real time and returns

@@ -13,7 +13,7 @@ const std::vector<ChordQuality>& allQualities()
         { "aug",     "aug",     { 0, 4, 8 } },
         { "sus2",    "sus2",    { 0, 2, 7 } },
         { "sus4",    "sus4",    { 0, 5, 7 } },
-        { "5",       "5",       { 0, 7, 12 } },
+        { "5",       "power",   { 0, 7, 12 } },
         { "add9",    "add9",    { 0, 4, 7, 14 } },
         { "madd9",   "madd9",   { 0, 3, 7, 14 } },
         { "madd11",  "madd11",  { 0, 3, 7, 17 } },
@@ -156,6 +156,26 @@ int parsePitchClass (const juce::String& nameIn)
 juce::String midiNoteName (int midi)
 {
     return pitchClassName (midi) + juce::String (midi / 12 - 2);
+}
+
+int parseMidiNote (const juce::String& in)
+{
+    auto s = in.trim();
+    if (s.isEmpty()) return -1;
+    if (s.containsOnly ("0123456789"))
+    {
+        auto n = s.getIntValue();
+        return juce::isPositiveAndBelow (n, 128) ? n : -1;
+    }
+
+    auto split = s.indexOfAnyOf ("-0123456789");
+    if (split <= 0) return -1;
+    auto pc = parsePitchClass (s.substring (0, split));
+    auto octaveText = s.substring (split);
+    if (pc < 0 || ! octaveText.trimCharactersAtStart ("-").containsOnly ("0123456789")) return -1;
+
+    auto n = (octaveText.getIntValue() + 2) * 12 + pc;
+    return juce::isPositiveAndBelow (n, 128) ? n : -1;
 }
 
 static std::vector<int> normalise (std::vector<int> notes)

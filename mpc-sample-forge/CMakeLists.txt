@@ -28,7 +28,8 @@ set(FORGE_ENGINE_SOURCES
     Source/OfflineRenderer.cpp
     Source/PluginHost.cpp
     Source/BatchJob.cpp
-    Source/CommandLine.cpp)
+    Source/CommandLine.cpp
+    Source/BuiltInSynth.cpp)
 
 set(FORGE_DEFINITIONS
     JUCE_PLUGINHOST_VST3=1
@@ -100,7 +101,7 @@ if(FORGE_BUILD_TEST_PLUGIN)
         FORMATS VST3
         COPY_PLUGIN_AFTER_BUILD FALSE)
 
-    target_sources(ForgeTestKeys PRIVATE Tests/TestPlugin.cpp)
+    target_sources(ForgeTestKeys PRIVATE Tests/TestPlugin.cpp Source/BuiltInSynth.cpp)
     target_compile_definitions(ForgeTestKeys PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
     target_include_directories(ForgeTestKeys PRIVATE Source)
     target_link_libraries(ForgeTestKeys PRIVATE juce::juce_audio_utils PUBLIC juce::juce_recommended_config_flags)
