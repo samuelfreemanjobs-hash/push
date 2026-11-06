@@ -1,0 +1,52 @@
+name: MPC Sample Forge build
+
+on:
+  push:
+    paths: [ "mpc-sample-forge/**", ".github/workflows/mpc-sample-forge.yml" ]
+  pull_request:
+    paths: [ "mpc-sample-forge/**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-24.04 ]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: mpc-sample-forge
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+            libxcomposite-dev libxext-dev libfreetype-dev libfontconfig1-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Smoke test (plan a batch)
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            BIN="build/MPCSampleForge_artefacts/Release/MPC Sample Forge.exe"
+          else
+            BIN="build/MPCSampleForge_artefacts/Release/MPC Sample Forge"
+          fi
+          "$BIN" --cli --style neo-soul --seed 1 --plan-only | tail -3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MPCSampleForge-${{ runner.os }}
+          path: |
+            mpc-sample-forge/build/MPCSampleForge_artefacts/Release/MPC Sample Forge*
+            mpc-sample-forge/Examples/

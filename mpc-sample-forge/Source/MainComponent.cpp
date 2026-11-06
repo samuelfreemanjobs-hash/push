@@ -1,0 +1,584 @@
+#include "MainComponent.h"
+#include "BuiltInKeys.h"
+
+namespace forge
+{
+namespace
+{
+    const juce::Colour bg (0xff16181d), panel (0xff20232a), accent (0xffe8483b), text (0xffe6e6e6), dim (0xff9aa0a6);
+
+    class EditorWindow final : public juce::DocumentWindow
+    {
+    public:
+        EditorWindow (juce::AudioProcessorEditor* editor, const juce::String& name, std::function<void()> closed)
+            : DocumentWindow (name, bg, DocumentWindow::closeButton), onClosed (std::move (closed))
+        {
+            setUsingNativeTitleBar (true);
+            setContentOwned (editor, true);
+            setResizable (editor->isResizable(), false);
+            centreWithSize (getWidth(), getHeight());
+            setVisible (true);
+        }
+
+        void closeButtonPressed() override
+        {
+            if (onClosed) juce::MessageManager::callAsync (onClosed);
+        }
+
+    private:
+        std::function<void()> onClosed;
+    };
+
+    enum { builtInId = 1, firstInstalledId = 100 };
+}
+
+MainComponent::MainComponent()
+{
+    juce::PropertiesFile::Options o;
+    o.applicationName = "MPCSampleForge";
+    o.filenameSuffix = ".settings";
+    o.folderName = "MPCSampleForge";
+    o.osxLibrarySubFolder = "Application Support";
+    props.setStorageParameters (o);
+    auto* settings = props.getUserSettings();
+
+    auto setupLabel = [this] (juce::Label& l, const juce::String& t)
+    {
+        l.setText (t, juce::dontSendNotification);
+        l.setColour (juce::Label::textColourId, dim);
+        addAndMakeVisible (l);
+    };
+
+    title.setText ("MPC SAMPLE FORGE", juce::dontSendNotification);
+    title.setFont (juce::FontOptions (22.0f, juce::Font::bold));
+    title.setColour (juce::Label::textColourId, accent);
+    addAndMakeVisible (title);
+
+    setupLabel (pluginLabel, "Instrument");
+    setupLabel (styleLabel, "Style");
+    setupLabel (keyLabel, "Key / Scale");
+    setupLabel (countLabel, "Samples");
+    setupLabel (seedLabel, "Seed");
+    setupLabel (prefixLabel, "Prefix");
+    setupLabel (audioLabel, "Format");
+    setupLabel (outLabel, "Output");
+    styleDesc.setColour (juce::Label::textColourId, text);
+    styleDesc.setJustificationType (juce::Justification::topLeft);
+    addAndMakeVisible (styleDesc);
+    outPath.setColour (juce::Label::textColourId, text);
+    addAndMakeVisible (outPath);
+
+    // ---------------------------------------------------------- instrument
+    installedPlugins = host.findInstalledVST3();
+    pluginBox.addItem ("Built-in FM Keys", builtInId);
+    if (! installedPlugins.isEmpty())
+    {
+        pluginBox.addSeparator();
+        for (int i = 0; i < installedPlugins.size(); ++i)
+            pluginBox.addItem (juce::File (installedPlugins[i]).getFileNameWithoutExtension(), firstInstalledId + i);
+    }
+    pluginBox.onChange = [this] { choosePlugin (pluginBox.getSelectedId()); };
+    addAndMakeVisible (pluginBox);
+
+    browseButton.onClick = [this] { browseForPlugin(); };
+    editButton.onClick = [this] { openEditor(); };
+    saveSoundButton.onClick = [this] { saveSound(); };
+    loadSoundButton.onClick = [this] { loadSound(); };
+    for (auto* b : { &browseButton, &editButton, &saveSoundButton, &loadSoundButton })
+        addAndMakeVisible (b);
+
+    // ---------------------------------------------------------- style
+    styles = builtInStyles();
+    for (int i = 0; i < styles.size(); ++i)
+        styleBox.addItem (styles[i].name, i + 1);
+    styleBox.onChange = [this] { styleChanged(); };
+    addAndMakeVisible (styleBox);
+    styleFileButton.onClick = [this] { loadStyleJson(); };
+    addAndMakeVisible (styleFileButton);
+
+    keyBox.addItem ("Random keys", 1);
+    for (int pc = 0; pc < 12; ++pc)
+        keyBox.addItem (pitchClassName (pc), pc + 2);
+    keyBox.setSelectedId (1);
+    addAndMakeVisible (keyBox);
+
+    scaleBox.addItem ("Style's scale", 1);
+    auto scales = allScaleNames();
+    for (int i = 0; i < scales.size(); ++i)
+        scaleBox.addItem (scales[i], i + 2);
+    scaleBox.setSelectedId (1);
+    addAndMakeVisible (scaleBox);
+
+    countSlider.setRange (1, 500, 1);
+    countSlider.setValue (100);
+    addAndMakeVisible (countSlider);
+
+    seedEditor.setInputRestrictions (10, "0123456789");
+    seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999)));
+    addAndMakeVisible (seedEditor);
+    diceButton.onClick = [this] { seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999))); };
+    addAndMakeVisible (diceButton);
+
+    prefixEditor.setTextToShowWhenEmpty ("(style name)", dim);
+    addAndMakeVisible (prefixEditor);
+
+    rateBox.addItem ("44.1 kHz", 44100);
+    rateBox.addItem ("48 kHz", 48000);
+    rateBox.setSelectedId (44100);
+    bitsBox.addItem ("24-bit", 24);
+    bitsBox.addItem ("16-bit", 16);
+    bitsBox.setSelectedId (24);
+    normaliseToggle.setToggleState (true, juce::dontSendNotification);
+    for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &normaliseToggle })
+        addAndMakeVisible (c);
+
+    outputFolder = juce::File (settings->getValue ("outputFolder",
+        juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("MPC Sample Forge").getFullPathName()));
+    outPath.setText (outputFolder.getFullPathName(), juce::dontSendNotification);
+    outButton.onClick = [this]
+    {
+        chooser = std::make_unique<juce::FileChooser> ("Output folder", outputFolder);
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                              [this] (const juce::FileChooser& fc)
+                              {
+                                  if (fc.getResult() == juce::File()) return;
+                                  outputFolder = fc.getResult();
+                                  outPath.setText (outputFolder.getFullPathName(), juce::dontSendNotification);
+                                  props.getUserSettings()->setValue ("outputFolder", outputFolder.getFullPathName());
+                              });
+    };
+    addAndMakeVisible (outButton);
+
+    planButton.onClick = [this] { previewPlan(); };
+    auditionButton.onClick = [this]
+    {
+        if (lastPlan.empty()) previewPlan();
+        if (! lastPlan.empty()) auditionSpec (juce::Random::getSystemRandom().nextInt ((int) lastPlan.size()));
+    };
+    generateButton.onClick = [this] { generateOrCancel(); };
+    generateButton.setColour (juce::TextButton::buttonColourId, accent);
+    for (auto* b : { &planButton, &auditionButton, &generateButton })
+        addAndMakeVisible (b);
+
+    addAndMakeVisible (progressBar);
+
+    logView.setMultiLine (true);
+    logView.setReadOnly (true);
+    logView.setScrollbarsShown (true);
+    logView.setFont (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::plain));
+    logView.setColour (juce::TextEditor::backgroundColourId, panel);
+    addAndMakeVisible (logView);
+
+    keyboard.setAvailableRange (21, 108);
+    keyboardState.addListener (this);
+    addAndMakeVisible (keyboard);
+
+    // ---------------------------------------------------------- audio
+    deviceManager.initialiseWithDefaultDevices (0, 2);
+    deviceManager.addAudioCallback (&player);
+    for (auto& m : juce::MidiInput::getAvailableDevices())
+    {
+        deviceManager.setMidiInputDeviceEnabled (m.identifier, true);
+        deviceManager.addMidiInputDeviceCallback (m.identifier, &player);
+    }
+
+    styleBox.setSelectedItemIndex (juce::jmax (0, settings->getIntValue ("styleIndex", 0)), juce::sendNotificationSync);
+
+    auto lastPlugin = settings->getValue ("plugin");
+    auto idx = installedPlugins.indexOf (lastPlugin);
+    if (idx >= 0)                                  pluginBox.setSelectedId (firstInstalledId + idx, juce::dontSendNotification);
+    else                                           pluginBox.setSelectedId (builtInId, juce::dontSendNotification);
+
+    if (lastPlugin.isNotEmpty() && juce::File (lastPlugin).exists()) loadInstrument (lastPlugin);
+    else                                                              useBuiltIn();
+
+    log ("Pick a VST3 instrument, click 'Edit Sound' to dial in a patch, choose a style, then Generate.");
+    log ("Play the on-screen keyboard (or a MIDI controller) to audition the sound.");
+    setSize (980, 720);
+}
+
+MainComponent::~MainComponent()
+{
+    if (job) job->stopThread (10000);
+    job.reset();
+    keyboardState.removeListener (this);
+    closeEditor();
+    for (auto& m : juce::MidiInput::getAvailableDevices())
+        deviceManager.removeMidiInputDeviceCallback (m.identifier, &player);
+    deviceManager.removeAudioCallback (&player);
+    player.setProcessor (nullptr);
+    instrument.reset();
+}
+
+void MainComponent::paint (juce::Graphics& g)
+{
+    g.fillAll (bg);
+    g.setColour (panel);
+    g.fillRoundedRectangle (getLocalBounds().reduced (10).withTrimmedTop (44).withHeight (330).toFloat(), 6.0f);
+}
+
+void MainComponent::resized()
+{
+    auto area = getLocalBounds().reduced (20, 12);
+    title.setBounds (area.removeFromTop (34));
+    area.removeFromTop (12);
+
+    auto row = [&area] (int h = 28) { auto r = area.removeFromTop (h); area.removeFromTop (8); return r; };
+    const int labelW = 100;
+
+    auto r = row();
+    pluginLabel.setBounds (r.removeFromLeft (labelW));
+    loadSoundButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    saveSoundButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    editButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    browseButton.setBounds (r.removeFromRight (90)); r.removeFromRight (6);
+    pluginBox.setBounds (r);
+
+    r = row();
+    styleLabel.setBounds (r.removeFromLeft (labelW));
+    styleFileButton.setBounds (r.removeFromRight (110)); r.removeFromRight (6);
+    styleBox.setBounds (r);
+
+    r = row (40);
+    r.removeFromLeft (labelW);
+    styleDesc.setBounds (r);
+
+    r = row();
+    keyLabel.setBounds (r.removeFromLeft (labelW));
+    keyBox.setBounds (r.removeFromLeft (150)); r.removeFromLeft (6);
+    scaleBox.setBounds (r.removeFromLeft (170)); r.removeFromLeft (20);
+    countLabel.setBounds (r.removeFromLeft (70));
+    countSlider.setBounds (r.removeFromLeft (150));
+
+    r = row();
+    seedLabel.setBounds (r.removeFromLeft (labelW));
+    seedEditor.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
+    diceButton.setBounds (r.removeFromLeft (60)); r.removeFromLeft (20);
+    prefixLabel.setBounds (r.removeFromLeft (60));
+    prefixEditor.setBounds (r.removeFromLeft (200));
+
+    r = row();
+    audioLabel.setBounds (r.removeFromLeft (labelW));
+    rateBox.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
+    bitsBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (12);
+    normaliseToggle.setBounds (r.removeFromLeft (160));
+
+    r = row();
+    outLabel.setBounds (r.removeFromLeft (labelW));
+    outButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    outPath.setBounds (r);
+
+    area.removeFromTop (14);
+    r = row (34);
+    generateButton.setBounds (r.removeFromRight (160)); r.removeFromRight (8);
+    auditionButton.setBounds (r.removeFromRight (140)); r.removeFromRight (8);
+    planButton.setBounds (r.removeFromRight (120)); r.removeFromRight (12);
+    progressBar.setBounds (r);
+
+    keyboard.setBounds (area.removeFromBottom (80));
+    keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f); // 88 keys = 52 white keys
+    keyboard.setLowestVisibleKey (21);
+    area.removeFromBottom (8);
+    logView.setBounds (area);
+}
+
+void MainComponent::log (const juce::String& s)
+{
+    logView.moveCaretToEnd();
+    logView.insertTextAtCaret (s + "\n");
+}
+
+//==============================================================================
+void MainComponent::choosePlugin (int id)
+{
+    if (id == builtInId) useBuiltIn();
+    else if (id >= firstInstalledId) loadInstrument (installedPlugins[id - firstInstalledId]);
+}
+
+void MainComponent::browseForPlugin()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Choose a VST3 instrument", juce::File(), "*.vst3");
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles
+                              | juce::FileBrowserComponent::canSelectDirectories,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              auto f = fc.getResult();
+                              if (f != juce::File()) loadInstrument (f.getFullPathName());
+                          });
+}
+
+void MainComponent::setInstrument (std::unique_ptr<juce::AudioProcessor> p, const juce::String& path)
+{
+    closeEditor();
+    player.setProcessor (nullptr);
+    instrument = std::move (p);
+    instrumentPath = path;
+    lastPlan.clear();
+
+    if (instrument != nullptr)
+    {
+        // make sure it has a stereo out for the audition device too
+        auto layout = instrument->getBusesLayout();
+        if (layout.outputBuses.size() > 0)
+        {
+            layout.outputBuses.getReference (0) = juce::AudioChannelSet::stereo();
+            if (instrument->checkBusesLayoutSupported (layout)) instrument->setBusesLayout (layout);
+        }
+        player.setProcessor (instrument.get());
+        editButton.setEnabled (instrument->hasEditor());
+        log ("Loaded: " + instrument->getName());
+    }
+
+    props.getUserSettings()->setValue ("plugin", path);
+}
+
+void MainComponent::useBuiltIn()
+{
+    setInstrument (std::make_unique<BuiltInKeys>(), {});
+    pluginBox.setSelectedId (builtInId, juce::dontSendNotification);
+}
+
+void MainComponent::loadInstrument (const juce::String& path)
+{
+    juce::String error;
+    double sr = 44100;
+    int bs = 512;
+    if (auto* dev = deviceManager.getCurrentAudioDevice())
+    {
+        sr = dev->getCurrentSampleRate();
+        bs = dev->getCurrentBufferSizeSamples();
+    }
+
+    log ("Loading " + path + " ...");
+    auto plugin = host.load (path, sr, bs, error);
+
+    if (plugin == nullptr)
+    {
+        log ("ERROR: " + error);
+        juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Could not load plugin", error);
+        return;
+    }
+
+    setInstrument (std::move (plugin), path);
+
+    auto idx = installedPlugins.indexOf (path);
+    if (idx >= 0) pluginBox.setSelectedId (firstInstalledId + idx, juce::dontSendNotification);
+    else          pluginBox.setText (juce::File (path).getFileNameWithoutExtension(), juce::dontSendNotification);
+}
+
+void MainComponent::openEditor()
+{
+    if (instrument == nullptr || ! instrument->hasEditor()) return;
+    if (editorWindow != nullptr) { editorWindow->toFront (true); return; }
+
+    if (auto* ed = instrument->createEditorIfNeeded())
+        editorWindow = std::make_unique<EditorWindow> (ed, instrument->getName(),
+                                                       [safe = juce::Component::SafePointer<MainComponent> (this)]
+                                                       { if (safe) safe->closeEditor(); });
+}
+
+void MainComponent::closeEditor()
+{
+    editorWindow.reset(); // deletes the editor before the plugin goes away
+}
+
+void MainComponent::saveSound()
+{
+    if (instrument == nullptr) return;
+    chooser = std::make_unique<juce::FileChooser> ("Save sound", outputFolder.getChildFile (safeFileName (instrument->getName()) + ".forgesound"),
+                                                   "*.forgesound");
+    chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              auto f = fc.getResult();
+                              if (f == juce::File() || instrument == nullptr) return;
+                              f = f.withFileExtension (".forgesound");
+                              if (captureState (*instrument, instrumentPath).save (f))
+                                  log ("Saved sound to " + f.getFullPathName() + "  (use with --sound for automation)");
+                              else
+                                  log ("ERROR: could not save " + f.getFullPathName());
+                          });
+}
+
+void MainComponent::loadSound()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Load sound", outputFolder, "*.forgesound");
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              auto f = fc.getResult();
+                              if (f == juce::File()) return;
+                              SoundState s;
+                              juce::String err;
+                              if (! s.load (f, err)) { log ("ERROR: " + err); return; }
+
+                              if (s.pluginPath.isEmpty()) useBuiltIn();
+                              else if (s.pluginPath != instrumentPath) loadInstrument (s.pluginPath);
+
+                              if (instrument != nullptr && s.state.getSize() > 0)
+                              {
+                                  instrument->setStateInformation (s.state.getData(), (int) s.state.getSize());
+                                  log ("Restored sound for " + s.pluginName);
+                              }
+                          });
+}
+
+//==============================================================================
+void MainComponent::styleChanged()
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) return;
+    styleDesc.setText (styles[i].description + "   (scale: " + styles[i].scale + ")", juce::dontSendNotification);
+    props.getUserSettings()->setValue ("styleIndex", i);
+    lastPlan.clear();
+}
+
+void MainComponent::loadStyleJson()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Load style", juce::File(), "*.json");
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              auto f = fc.getResult();
+                              if (f == juce::File()) return;
+                              Style s;
+                              juce::String err;
+                              if (! loadStyleFile (f, s, err)) { log ("ERROR: " + err); return; }
+                              styles.add (s);
+                              styleBox.addItem (s.name + " (custom)", styles.size());
+                              styleBox.setSelectedId (styles.size());
+                              log ("Loaded style '" + s.name + "' from " + f.getFileName());
+                          });
+}
+
+bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& specs)
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size()) || instrument == nullptr) return false;
+
+    req.style = styles[i];
+    req.plan.count = (int) countSlider.getValue();
+    req.plan.key = keyBox.getSelectedId() <= 1 ? juce::String ("random") : keyBox.getText();
+    req.plan.scale = scaleBox.getSelectedId() <= 1 ? juce::String() : scaleBox.getText();
+    req.plan.seed = seedEditor.getText().getLargeIntValue();
+    req.plan.prefix = prefixEditor.getText().trim();
+    req.render.sampleRate = rateBox.getSelectedId();
+    req.render.bitDepth = bitsBox.getSelectedId();
+    req.render.normalise = normaliseToggle.getToggleState();
+    req.instrumentName = instrument->getName();
+
+    auto sub = safeFileName (req.plan.prefix.isNotEmpty() ? req.plan.prefix : req.style.name);
+    if (req.plan.key != "random") sub += "_" + req.plan.key;
+    req.outputFolder = outputFolder.getChildFile (sub).getNonexistentSibling (false);
+
+    juce::String error;
+    specs = planSamples (req.style, req.plan, error);
+    if (error.isNotEmpty()) log ("WARNING: " + error);
+    return ! specs.empty();
+}
+
+void MainComponent::previewPlan()
+{
+    BatchRequest req;
+    if (! buildRequest (req, lastPlan)) return;
+    log ("---- " + juce::String ((int) lastPlan.size()) + " samples planned (" + req.style.name + ", seed "
+         + juce::String (req.plan.seed) + ") ----");
+    for (auto& s : lastPlan) log (describeSpec (s));
+}
+
+void MainComponent::auditionSpec (int index)
+{
+    if (! juce::isPositiveAndBelow (index, (int) lastPlan.size()) || job != nullptr) return;
+    auto& spec = lastPlan[(size_t) index];
+    log ("> " + describeSpec (spec));
+
+    auto now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    auto& collector = player.getMidiMessageCollector();
+    for (auto& n : spec.notes)
+    {
+        auto on = juce::MidiMessage::noteOn (1, n.note, (juce::uint8) n.velocity);
+        on.setTimeStamp (now);
+        collector.addMessageToQueue (on);
+        // schedule note-offs on the message thread
+        juce::Timer::callAfterDelay ((int) ((n.startSec + n.lengthSec) * 1000.0),
+                                     [safe = juce::Component::SafePointer<MainComponent> (this), note = n.note]
+                                     {
+                                         if (safe == nullptr) return;
+                                         auto off = juce::MidiMessage::noteOff (1, note);
+                                         off.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+                                         safe->player.getMidiMessageCollector().addMessageToQueue (off);
+                                     });
+    }
+}
+
+void MainComponent::setBusy (bool busy)
+{
+    for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
+                                                             &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
+                                                             &diceButton, &prefixEditor, &rateBox, &bitsBox, &normaliseToggle,
+                                                             &outButton, &planButton, &auditionButton, &keyboard })
+        c->setEnabled (! busy);
+    generateButton.setButtonText (busy ? "Cancel" : "Generate");
+}
+
+void MainComponent::generateOrCancel()
+{
+    if (job != nullptr)
+    {
+        job->signalThreadShouldExit();
+        log ("Cancelling ...");
+        return;
+    }
+
+    BatchRequest req;
+    std::vector<SampleSpec> specs;
+    if (! buildRequest (req, specs)) return;
+
+    keyboardState.allNotesOff (0);
+    player.setProcessor (nullptr); // the job owns the instrument while it renders
+    setBusy (true);
+    progress = 0;
+    log ("==== Generating " + juce::String ((int) specs.size()) + " samples into " + req.outputFolder.getFullPathName());
+
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
+    job->onProgress = [safe] (int done, int total, const juce::String& msg)
+    {
+        if (safe == nullptr) return;
+        safe->progress = total > 0 ? (double) done / total : 0.0;
+        safe->log (msg);
+    };
+    job->onFinished = [safe, folder = req.outputFolder] (bool ok, const juce::String& summary)
+    {
+        if (safe == nullptr) return;
+        safe->jobFinished (ok, summary);
+        if (folder.isDirectory()) folder.revealToUser();
+    };
+    job->startThread();
+}
+
+void MainComponent::jobFinished (bool ok, const juce::String& summary)
+{
+    job.reset();
+    progress = ok ? 1.0 : progress;
+    log (summary);
+    setBusy (false);
+    if (instrument != nullptr) player.setProcessor (instrument.get());
+    seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999))); // next batch is different
+}
+
+//==============================================================================
+void MainComponent::handleNoteOn (juce::MidiKeyboardState*, int ch, int note, float vel)
+{
+    auto m = juce::MidiMessage::noteOn (ch, note, vel);
+    m.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+    player.getMidiMessageCollector().addMessageToQueue (m);
+}
+
+void MainComponent::handleNoteOff (juce::MidiKeyboardState*, int ch, int note, float vel)
+{
+    auto m = juce::MidiMessage::noteOff (ch, note, vel);
+    m.setTimeStamp (juce::Time::getMillisecondCounterHiRes() * 0.001);
+    player.getMidiMessageCollector().addMessageToQueue (m);
+}
+}
