@@ -1,0 +1,1292 @@
+#include "SamplePlanner.h"
+#include "BuiltInSynth.h"
+#include "ProgressionLibrary.h"
+#include "RecipeCard.h"
+#include <set>
+#include <map>
+#include <numeric>
+#include <algorithm>
+#include <deque>
+
+namespace forge
+{
+double SampleSpec::holdSec() const
+{
+    double end = 0;
+    for (auto& n : notes) end = std::max (end, n.startSec + n.lengthSec);
+    return end;
+}
+
+juce::String safeFileName (const juce::String& s)
+{
+    auto r = s.replace ("#", "s").replace ("/", "-").replace (" ", "");
+    return r.retainCharacters ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-+.");
+}
+
+template <typename T>
+static const T& pickWeighted (const std::vector<Weighted<T>>& items, juce::Random& rng)
+{
+    float total = 0;
+    for (auto& i : items) total += i.weight;
+    auto r = rng.nextFloat() * total;
+    for (auto& i : items)
+    {
+        if (r < i.weight) return i.value;
+        r -= i.weight;
+    }
+    return items.back().value;
+}
+
+static int randomInt (juce::Random& rng, int lo, int hi) { return lo + rng.nextInt (hi - lo + 1); }
+static double randomDouble (juce::Random& rng, double lo, double hi) { return lo + rng.nextDouble() * (hi - lo); }
+
+/** First MIDI note >= low with the given pitch class. */
+static int placePitchClass (int pc, int low)
+{
+    return low + (((pc - low) % 12) + 12) % 12;
+}
+
+namespace
+{
+    struct Context
+    {
+        const Style& style;
+        juce::Random& rng;
+        bool keyLocked;
+        int tonic;
+        std::vector<int> scale;
+
+        bool inKey (int midi) const
+        {
+            if (! keyLocked) return true;
+            auto rel = ((midi - tonic) % 12 + 12) % 12;
+            return std::find (scale.begin(), scale.end(), rel) != scale.end();
+        }
+
+        int velocity() const { return randomInt (rng, style.velocityLow, style.velocityHigh); }
+    };
+
+    /** Velocity per chord note, with a slightly louder top voice like a real player. */
+    std::vector<NoteEvent> makeChordNotes (const Context& c, const std::vector<int>& notes, double hold, bool strum, int base)
+    {
+        std::vector<NoteEvent> out;
+        auto spread = strum ? randomDouble (c.rng, 0.3, 1.0) * c.style.strumMs / 1000.0 : 0.0;
+        auto perNote = notes.size() > 1 ? spread / (double) (notes.size() - 1) : 0.0;
+
+        for (size_t i = 0; i < notes.size(); ++i)
+        {
+            NoteEvent e;
+            e.note = notes[i];
+            auto accent = (i + 1 == notes.size()) ? 6 : 0;
+            e.velocity = juce::jlimit (1, 127, base + accent + randomInt (c.rng, -5, 5));
+            e.startSec = perNote * (double) i + (strum ? randomDouble (c.rng, 0.0, 0.004) : 0.0);
+            e.lengthSec = juce::jmax (0.02, hold - e.startSec);
+            out.push_back (e);
+        }
+
+        auto minStart = std::min_element (out.begin(), out.end(),
+                                          [] (auto& a, auto& b) { return a.startSec < b.startSec; })->startSec;
+        for (auto& e : out) e.startSec -= minStart;
+        return out;
+    }
+}
+
+static juce::String shortVoicing (const juce::String& v)
+{
+    static const std::map<juce::String, juce::String> m { { "close", "cl" }, { "inv1", "i1" }, { "inv2", "i2" }, { "drop2", "d2" },
+                                                          { "open", "op" }, { "rootless", "rl" }, { "shell", "sh" }, { "spread", "sp" },
+                                                          { "root", "rt" }, { "inv3", "i3" }, { "inv4", "i4" } };
+    auto it = m.find (v);
+    return it != m.end() ? it->second : v;
+}
+
+static juce::String shortKind (const juce::String& kind)
+{
+    if (kind == "Octave") return "oct";
+    if (kind == "Fifth") return "5th";
+    if (kind == "Stab" || kind == "KeyStab") return "stab";
+    return {};
+}
+
+static void nameSamples (std::vector<SampleSpec>& specs, const juce::String& prefix, bool withTag, bool withEngine,
+                         bool shortNames = false, const juce::String& shortTag = {})
+{
+    for (size_t i = 0; i < specs.size(); ++i)
+    {
+        auto& s = specs[i];
+        if (shortNames)
+        {
+            // number first so the MPC's alphabetical list matches pad order
+            juce::String tail;
+            Engine r;
+            if (withTag && s.shortTag.isNotEmpty())        tail += s.shortTag + "_";
+            else if (shortTag.isNotEmpty())                 tail += shortTag + "_";
+            if (withEngine && parseEngine (s.engine, r))    tail += engineDisplayName (r).substring (0, 6) + "_";
+            tail += s.kind == "KeyStab" ? s.label.upToFirstOccurrenceOf ("_", false, false) : s.label;
+            auto extra = (s.kind == "Chord" || s.kind == "Stab") ? shortVoicing (s.voicing) : juce::String();
+            if (s.kind == "Stab" || s.kind == "KeyStab") extra = (extra.isNotEmpty() ? extra + "_" : juce::String()) + "stab";
+            else if (shortKind (s.kind).isNotEmpty())      extra = shortKind (s.kind);
+            if (extra.isNotEmpty()) tail += "_" + extra;
+            s.stemHead = {};
+            s.stemTail = tail;
+            continue;
+        }
+
+        juce::String tail;
+        if (withTag && s.tag.isNotEmpty())
+            tail += s.tag + "_";
+        Engine r;
+        if (withEngine && parseEngine (s.engine, r))
+            tail += engineDisplayName (r) + "_";
+        tail += s.kind + "_" + s.label;
+        if (s.kind == "Chord" || s.kind == "Stab")
+            tail += "_" + s.voicing;
+        s.stemHead = prefix;
+        s.stemTail = tail;
+    }
+    renumberSamples (specs);
+}
+
+void renumberSamples (std::vector<SampleSpec>& specs)
+{
+    for (size_t i = 0; i < specs.size(); ++i)
+    {
+        auto& s = specs[i];
+        s.index = (int) i + 1;
+        auto number = s.pad > 0 ? juce::String (s.pad).paddedLeft ('0', 2) : juce::String (s.index).paddedLeft ('0', 3);
+        s.fileStem = safeFileName (s.stemHead.isEmpty() ? number + "_" + s.stemTail
+                                                         : s.stemHead + "_" + number + "_" + s.stemTail);
+    }
+}
+
+SampleSpec roundRobinTake (const SampleSpec& in, int take)
+{
+    if (take <= 1) return in;
+    SampleSpec s = in;
+    juce::Random rng ((juce::int64) in.fileStem.hashCode64() * 31 + take * 7919);
+    const double lengthScale = 0.94 + rng.nextDouble() * 0.12;            // held 6% shorter ... 6% longer
+    const bool chord = s.notes.size() > 1;
+    for (auto& n : s.notes)
+    {
+        n.velocity = juce::jlimit (1, 127, n.velocity + rng.nextInt (juce::Range<int> (-8, 9)));
+        if (chord) n.startSec += rng.nextDouble() * 0.008;                // a slightly different roll
+        n.lengthSec = juce::jmax (0.02, n.lengthSec * lengthScale);
+    }
+    if (chord)
+    {
+        double first = 1e9;
+        for (auto& n : s.notes) first = std::min (first, n.startSec);
+        for (auto& n : s.notes) n.startSec -= first;                      // still starts right on the transient
+    }
+    const auto suffix = "_rr" + juce::String (take);
+    s.stemTail += suffix;
+    s.fileStem += suffix;
+    return s;
+}
+
+bool transposeSpec (const SampleSpec& in, int semitones, SampleSpec& out, bool pianoRangeOnly)
+{
+    out = in;
+    if (semitones == 0) return true;
+    const int lowest = pianoRangeOnly ? 21 : 0, highest = pianoRangeOnly ? 108 : 124;
+    for (auto& n : out.notes)
+    {
+        n.note += semitones;
+        if (n.note < lowest || n.note > highest) return false; // stay on the piano: below that it is rumble, above it whistle
+    }
+    out.rootNote = in.rootNote + semitones;
+    if (out.rootNote < (pianoRangeOnly ? 24 : 0) || out.rootNote > highest) return false;
+
+    auto oldRoot = midiNoteName (in.rootNote), newRoot = midiNoteName (out.rootNote);
+    if (in.kind == "Key" || in.kind == "Octave" || in.kind == "Fifth")
+        out.label = newRoot;
+    else if (in.kind == "KeyStab")
+        out.label = in.label.upToLastOccurrenceOf ("_", true, false) + newRoot;
+
+    // octave numbers in the name follow the new register (short stab names carry none)
+    if (out.label != in.label)
+        out.stemTail = in.stemTail.replaceFirstOccurrenceOf (in.label, out.label);
+    if (in.stemHead.endsWith ("_" + oldRoot))
+        out.stemHead = in.stemHead.dropLastCharacters (oldRoot.length()) + newRoot;
+
+    auto number = out.pad > 0 ? juce::String (out.pad).paddedLeft ('0', 2) : juce::String (out.index).paddedLeft ('0', 3);
+    out.fileStem = safeFileName (out.stemHead.isEmpty() ? number + "_" + out.stemTail : out.stemHead + "_" + number + "_" + out.stemTail);
+    return true;
+}
+
+static std::vector<SampleSpec> planSingle (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    juce::Random rng (opt.seed);
+
+    Context c { style, rng, false, 0, {} };
+
+    auto scaleName = opt.scale.isNotEmpty() ? opt.scale : style.scale;
+    if (! getScale (scaleName, c.scale))
+    {
+        error = "unknown scale '" + scaleName + "'";
+        return result;
+    }
+
+    if (opt.key.isNotEmpty() && ! opt.key.equalsIgnoreCase ("random"))
+    {
+        c.tonic = parsePitchClass (opt.key);
+        if (c.tonic < 0) { error = "unknown key '" + opt.key + "'"; return result; }
+        c.keyLocked = true;
+    }
+
+    auto count = juce::jlimit (1, 2000, opt.count);
+    auto numChords = (int) std::round ((float) count * style.chordRatio);
+    auto numKeys = count - numChords;
+
+    auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name);
+    if (c.keyLocked)
+        prefix += "_" + pitchClassName (c.tonic) + (scaleName.containsIgnoreCase ("minor") || scaleName == "dorian"
+                                                       || scaleName == "phrygian" ? "min" : "maj");
+
+    // Tape-style varispeed after rendering moves the sounding pitch: names and the
+    // WAV root note describe what you hear, not what was played.
+    const int ps = style.processing.pitchShift;
+    if (c.keyLocked) // plan in the played key so the varispeeded result lands in the requested key
+        c.tonic = ((c.tonic - ps) % 12 + 12) % 12;
+
+    const int rootMidi = opt.fixedRoot == PlanOptions::styleRoot ? (style.root >= 0 ? style.root : 60) : opt.fixedRoot;
+    const bool fixedRoot = juce::isPositiveAndBelow (rootMidi, 128);
+    if (fixedRoot)
+    {
+        // 16 Levels: the pads transpose from one root, so the key is irrelevant.
+        c.keyLocked = false;
+        prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name) + "_" + midiNoteName (rootMidi + ps);
+    }
+
+    auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+    const bool mixedEngine = engineName == "mixed";
+    Engine fixedEngine = Engine::EPiano;
+    if (! mixedEngine && engineName.isNotEmpty() && ! parseEngine (engineName, fixedEngine))
+    {
+        error = "unknown engine '" + engineName + "'";
+        return result;
+    }
+    auto allRecipes = engineIds();
+    auto nextEngine = [&]
+    {
+        return mixedEngine ? allRecipes[rng.nextInt (allRecipes.size())] : engineId (fixedEngine);
+    };
+
+    // Unique-sample bookkeeping. In 16 Levels mode the same chord/note is allowed
+    // again when it sounds different: a new synth variation, or (with a VST3)
+    // a different velocity layer / length.
+    auto uniqueKey = [&] (const juce::String& base, const juce::String& engine, int velocity, double hold, bool relaxed)
+    {
+        if (! fixedRoot && ! relaxed) return base;
+        if (opt.builtIn) return base + engine + juce::String (rng.nextInt64());
+        return base + "v" + juce::String (velocity / 12) + "h" + juce::String ((int) (hold * 4));
+    };
+
+    std::set<juce::String> used;
+
+    // For a locked key: the scale degrees and which of the style's chords fit on each.
+    std::vector<std::pair<int, std::vector<Weighted<juce::String>>>> diatonic;
+    if (c.keyLocked)
+    {
+        for (auto degree : c.scale)
+        {
+            auto rootPc = (c.tonic + degree) % 12;
+            std::vector<Weighted<juce::String>> fitting;
+            for (auto& w : style.chords)
+                if (auto* q = findQuality (w.value); q != nullptr && chordFitsScale (rootPc, q->intervals, c.tonic, c.scale))
+                    fitting.push_back (w);
+            if (! fitting.empty())
+                diatonic.push_back ({ rootPc, fitting });
+        }
+
+        if (diatonic.empty()) // none of the style's chords fit this scale: use plain diatonic triads
+            for (auto degree : c.scale)
+            {
+                auto rootPc = (c.tonic + degree) % 12;
+                for (auto id : { "min", "maj", "dim", "sus2", "5" })
+                    if (chordFitsScale (rootPc, findQuality (id)->intervals, c.tonic, c.scale))
+                    {
+                        diatonic.push_back ({ rootPc, { { id, 1.0f } } });
+                        break;
+                    }
+            }
+    }
+
+    // ---------------------------------------------------------------- chords
+    for (int attempts = 0; (int) result.size() < numChords && attempts < numChords * 300; ++attempts)
+    {
+        int rootPc;
+        const ChordQuality* quality = nullptr;
+
+        if (c.keyLocked)
+        {
+            auto& [degreeRoot, fitting] = diatonic[(size_t) rng.nextInt ((int) diatonic.size())];
+            rootPc = degreeRoot;
+            quality = findQuality (pickWeighted (fitting, rng));
+        }
+        else
+        {
+            rootPc = fixedRoot ? rootMidi % 12 : rng.nextInt (12);
+            quality = findQuality (pickWeighted (style.chords, rng));
+        }
+
+        if (quality == nullptr) continue;
+
+        auto voicing = pickWeighted (style.voicings, rng);
+        auto isStab = rng.nextFloat() < style.stabChance;
+
+        auto hold = isStab ? style.stabHold : randomDouble (rng, style.holdLow, style.holdHigh);
+        auto engine = nextEngine();
+        auto velocity = c.velocity();
+
+        // Allow the same chord twice only as a stab vs. a held chord.
+        auto key = uniqueKey (juce::String (rootPc) + quality->id + voicingId (voicing) + (isStab ? "S" : ""),
+                              engine, velocity, hold, attempts > numChords * 100);
+        if (used.count (key)) continue;
+        used.insert (key);
+
+        auto root = fixedRoot ? rootMidi : placePitchClass (rootPc, style.chordRootLow);
+        if (! fixedRoot && root > style.chordRootHigh) root -= 12;
+
+        auto notes = buildVoicing (root, quality->intervals, voicing);
+
+        // Skip muddy low voicings (low interval limits) while there are other options.
+        if (attempts < numChords * 150 && lowIntervalViolations (notes) > 0)
+        {
+            used.erase (key);
+            continue;
+        }
+        if (fixedRoot && ! notes.empty() && notes.front() < root)
+        {
+            // keep the pad's root as the lowest note so 16 Levels tuning is unambiguous
+            for (auto& n : notes) if (n < root) n += 12;
+            std::sort (notes.begin(), notes.end());
+            notes.erase (std::unique (notes.begin(), notes.end()), notes.end());
+        }
+
+        SampleSpec s;
+        s.kind = isStab ? "Stab" : "Chord";
+        s.label = pitchClassName (rootPc + ps) + quality->suffix;
+        s.voicing = voicingId (voicing);
+        s.rootNote = juce::jlimit (0, 127, root + ps);
+        s.engine = engine;
+        s.variation = rng.nextInt64();
+        s.notes = makeChordNotes (c, notes, hold, ! isStab, velocity);
+        result.push_back (s);
+    }
+
+    // ------------------------------------------------------ single-key shots
+    std::vector<Weighted<juce::String>> keyTypes;
+    if (style.keyNote > 0)   keyTypes.push_back ({ "Key", style.keyNote });
+    if (style.keyOctave > 0) keyTypes.push_back ({ "Octave", style.keyOctave });
+    if (style.keyFifth > 0)  keyTypes.push_back ({ "Fifth", style.keyFifth });
+    if (style.keyStab > 0)   keyTypes.push_back ({ "Stab", style.keyStab });
+
+    auto keysEnd = (int) result.size() + numKeys;
+    for (int attempts = 0; (int) result.size() < keysEnd && attempts < numKeys * 300; ++attempts)
+    {
+        auto type = pickWeighted (keyTypes, rng);
+        auto note = fixedRoot ? rootMidi : randomInt (rng, style.keyLow, style.keyHigh);
+        if (! c.inKey (note)) continue;
+
+        std::vector<int> notes { note };
+        auto hold = randomDouble (rng, style.holdLow, style.holdHigh) * 0.8;
+        juce::String label = midiNoteName (note + ps);
+
+        if (type == "Octave")
+        {
+            notes.push_back (note + 12);
+        }
+        else if (type == "Fifth")
+        {
+            notes.push_back (note + 7);
+            notes.push_back (note + 12);
+            if (! c.inKey (note + 7)) continue;
+        }
+        else if (type == "Stab")
+        {
+            // short triad stab, diatonic when a key is chosen
+            const ChordQuality* q = nullptr;
+            for (auto id : { rng.nextBool() ? "min" : "maj", "min", "maj", "sus2", "5" })
+                if (auto* cand = findQuality (id); ! c.keyLocked || chordFitsScale (note % 12, cand->intervals, c.tonic, c.scale))
+                {
+                    q = cand;
+                    break;
+                }
+            if (q == nullptr) continue;
+            notes = buildVoicing (note, q->intervals, rng.nextBool() ? Voicing::Close : Voicing::Inversion1);
+            hold = style.stabHold;
+            label = pitchClassName (note + ps) + q->suffix + "_" + midiNoteName (note + ps);
+        }
+
+        auto engine = nextEngine();
+        auto velocity = c.velocity();
+        auto key = uniqueKey (type + juce::String (note) + label, engine, velocity, hold, attempts > numKeys * 100);
+        if (used.count (key)) continue;
+        used.insert (key);
+
+        SampleSpec s;
+        s.kind = type == "Stab" ? "KeyStab" : type;
+        s.label = label;
+        s.voicing = type == "Stab" ? "close" : "-";
+        s.rootNote = juce::jlimit (0, 127, note + ps);
+        s.engine = engine;
+        s.variation = rng.nextInt64();
+        s.notes = makeChordNotes (c, notes, hold, false, velocity);
+        result.push_back (s);
+    }
+
+    if ((int) result.size() < count && fixedRoot && ! opt.builtIn)
+        error = "only " + juce::String ((int) result.size()) + " distinct samples: with a VST3 on one root, variety comes only "
+                "from velocity, length and voicing. Lower the count, or render several patches into separate batches";
+    else if ((int) result.size() < count)
+        error = "only " + juce::String ((int) result.size()) + " unique samples are possible with these settings "
+                "(widen the style's ranges, add chord types, or use key=random)";
+
+    if (fixedRoot)
+    {
+        // Interleave chords and single notes so every 16-pad bank gets a mix.
+        std::vector<SampleSpec> keys (result.begin() + (std::ptrdiff_t) std::min ((size_t) numChords, result.size()), result.end());
+        result.resize (std::min ((size_t) numChords, result.size()));
+        std::vector<SampleSpec> mixed;
+        size_t ci = 0, ki = 0;
+        while (ci < result.size() || ki < keys.size())
+        {
+            auto chordTurn = ki >= keys.size()
+                             || (ci < result.size() && (double) ci / (double) result.size() <= (double) ki / (double) keys.size());
+            mixed.push_back (chordTurn ? result[ci++] : keys[ki++]);
+        }
+        result = std::move (mixed);
+    }
+
+    for (auto& sp : result)
+    {
+        sp.processing = style.processing;
+        sp.styleId = style.id;
+        sp.tag = style.tag;
+        sp.shortTag = style.shortTag;
+    }
+
+    nameSamples (result, prefix, false, opt.builtIn && mixedEngine, opt.shortNames, style.shortTag);
+    return result;
+}
+
+
+
+//==============================================================================
+std::vector<int> invertChord (int rootMidi, const std::vector<int>& intervals, int inversion)
+{
+    std::vector<int> notes;
+    for (auto i : intervals) notes.push_back (rootMidi + i);
+    std::sort (notes.begin(), notes.end());
+    notes.erase (std::unique (notes.begin(), notes.end()), notes.end());
+    for (int k = 0; k < inversion && notes.size() > 1; ++k)
+    {
+        notes.front() += 12;
+        std::sort (notes.begin(), notes.end());
+    }
+    return notes;
+}
+
+static const char* romanFor (int degree, bool minorChord)
+{
+    static const char* upper[] = { "I", "II", "III", "IV", "V", "VI", "VII" };
+    static const char* lower[] = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+    return minorChord ? lower[degree % 7] : upper[degree % 7];
+}
+
+std::vector<DiatonicChord> diatonicChords (const Style& style, int tonic, const std::vector<int>& scale, juce::int64 variety)
+{
+    std::vector<DiatonicChord> out;
+    juce::Random rng (variety);
+    for (int d = 0; d < (int) scale.size(); ++d)
+    {
+        auto rootPc = (tonic + scale[(size_t) d]) % 12;
+        std::vector<Weighted<juce::String>> fitting;
+        for (auto& w : style.chords)
+            if (auto* q = findQuality (w.value); q != nullptr && chordFitsScale (rootPc, q->intervals, tonic, scale))
+                fitting.push_back (w);
+        if (fitting.empty())
+            for (auto id : { "m7", "maj7", "7", "m7b5", "min", "maj", "dim", "sus2", "5" })
+                if (auto* q = findQuality (id); chordFitsScale (rootPc, q->intervals, tonic, scale)) { fitting.push_back ({ id, 1.0f }); break; }
+        if (fitting.empty()) fitting.push_back ({ "5", 1.0f });
+
+        juce::String id;
+        if (variety != 0) id = pickWeighted (fitting, rng);
+        else
+        {
+            auto best = fitting.front();
+            for (auto& w : fitting) if (w.weight > best.weight) best = w;
+            id = best.value;
+        }
+        auto* q = findQuality (id);
+        DiatonicChord c;
+        c.degree = d;
+        c.rootPc = rootPc;
+        c.intervals = q->intervals;
+        c.roman = romanFor (d, q->intervals.size() > 1 && q->intervals[1] == 3);
+        c.name = pitchClassName (rootPc) + q->suffix;
+        out.push_back (c);
+    }
+    return out;
+}
+
+std::vector<std::pair<juce::String, std::vector<int>>> progressionsFor (const std::vector<int>& scale)
+{
+    std::vector<std::pair<juce::String, std::vector<int>>> p;
+    if (scale.size() < 7) // pentatonic & co: simple shapes over the available degrees
+        return { { "1-4-5-1", { 0, 3, 4, 0 } }, { "1-3-4-1", { 0, 2, 3, 0 } }, { "1-5-4-3", { 0, 4, 3, 2 } }, { "1-2-4-5", { 0, 1, 3, 4 } } };
+
+    const bool major = scale[2] == 4;
+    const bool phrygian = scale[1] == 1;
+    const bool dorian = ! major && scale[5] == 9;
+    if (major)
+        p = { { "ii-V-I-vi", { 1, 4, 0, 5 } }, { "I-vi-IV-V", { 0, 5, 3, 4 } }, { "IV-iii-ii-I", { 3, 2, 1, 0 } },
+              { "I-V-vi-IV", { 0, 4, 5, 3 } }, { "vi-IV-I-V", { 5, 3, 0, 4 } }, { "IV-V-iii-vi", { 3, 4, 2, 5 } },
+              { "I-IV-ii-V", { 0, 3, 1, 4 } }, { "iii-vi-ii-V", { 2, 5, 1, 4 } } };
+    else
+        p = { { "i-VI-III-VII", { 0, 5, 2, 6 } }, { "i-iv-VII-III", { 0, 3, 6, 2 } }, { "i-VII-VI-VII", { 0, 6, 5, 6 } },
+              { "i-iv-v-i", { 0, 3, 4, 0 } }, { "VI-VII-i-i", { 5, 6, 0, 0 } }, { "i-III-VII-VI", { 0, 2, 6, 5 } },
+              { "ii-v-i-i", { 1, 4, 0, 0 } }, { "iv-i-v-VI", { 3, 0, 4, 5 } } };
+    if (dorian)   p.insert (p.begin(), { { "i-IV-i-IV", { 0, 3, 0, 3 } }, { "i-ii-IV-i", { 0, 1, 3, 0 } } });
+    if (phrygian) p.insert (p.begin(), { { "i-II-i-VII", { 0, 1, 0, 6 } }, { "i-II-VII-i", { 0, 1, 6, 0 } } });
+    return p;
+}
+
+/** Picks the inversion / octave of `intervals` on `rootPc` that moves least from `previous`. */
+static std::vector<int> voiceLead (const std::vector<int>& previous, int rootPc, const std::vector<int>& intervals,
+                                   int low, int high, int& inversionOut)
+{
+    std::vector<int> best;
+    double bestCost = 1e9;
+    for (int base = low - 12; base <= high + 12; ++base)
+    {
+        if (((base % 12) + 12) % 12 != rootPc) continue;
+        for (int inv = 0; inv < (int) intervals.size(); ++inv)
+        {
+            auto notes = invertChord (base, intervals, inv);
+            if (notes.front() < low - 5 || notes.back() > high + 24) continue;
+            double cost = 0;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                // distance to the nearest note of the previous chord: smooth voice leading
+                int d = 99;
+                for (auto p : previous) d = std::min (d, std::abs (notes[i] - p));
+                cost += d;
+            }
+            cost += 6.0 * lowIntervalViolations (notes); // never muddy
+            cost += 0.15 * std::abs ((notes.front() + notes.back()) / 2 - (low + high) / 2 + 6); // stay near the register
+            if (cost < bestCost) { bestCost = cost; best = notes; inversionOut = inv; }
+        }
+    }
+    return best;
+}
+
+//==============================================================================
+// Scale banks: each bank of 16 pads is ONE sound, climbing the scale from pad 1
+// (single notes) or playing the diatonic chord of each degree (chords), so the
+// pads are in tune without 16 Levels > Tune.
+static const char* romanNumeral (int degree, bool minorish)
+{
+    static const char* upper[] = { "I", "II", "III", "IV", "V", "VI", "VII" };
+    static const char* lower[] = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+    return minorish ? lower[degree % 7] : upper[degree % 7];
+}
+
+static std::vector<SampleSpec> planScaleBanks (const Style& kitOrStyle, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    juce::Random rng (opt.seed);
+
+    // members: a kit spreads its banks over its recipes
+    std::vector<const Style*> members;
+    std::deque<Style> memberStyles;     // with the chosen octave range
+    if (kitOrStyle.isKit())
+    {
+        for (auto& m : kitOrStyle.kit)
+            if (auto* st = findBuiltInStyle (m.value); st != nullptr && ! st->isKit())
+            {
+                memberStyles.push_back (withOctaveRange (*st, opt));
+                members.push_back (&memberStyles.back());
+            }
+    }
+    else members.push_back (&kitOrStyle);
+    if (members.empty()) { error = "no styles to build banks from"; return result; }
+
+    int tonic = parsePitchClass (opt.key);
+    if (opt.key.isEmpty() || opt.key.equalsIgnoreCase ("random") || tonic < 0)
+        tonic = rng.nextInt (12); // one key for every bank, so they all play together
+
+    const int banks = juce::jlimit (1, 26 * 4, (juce::jlimit (1, 2000, opt.count) + 15) / 16);
+    auto engineList = engineIds();
+
+    for (int b = 0; b < banks; ++b)
+    {
+        const Style& style = *members[(size_t) b % members.size()];
+        auto scaleName = opt.scale.isNotEmpty() ? opt.scale : style.scale;
+        std::vector<int> scale;
+        if (! getScale (scaleName, scale)) { error = "unknown scale '" + scaleName + "'"; return {}; }
+
+        const int ps = style.processing.pitchShift;
+        const int playedTonic = ((tonic - ps) % 12 + 12) % 12; // so the varispeeded result lands in the key
+        const auto type = opt.bankType.isNotEmpty() ? opt.bankType : style.bankType();
+        const auto info = pitchClassName (tonic) + " " + scaleName + " - " + type;
+
+        auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+        if (engineName == "mixed" || engineName.isEmpty()) engineName = engineList[rng.nextInt (engineList.size())];
+        const auto variation = rng.nextInt64();               // one timbre per bank
+        const auto velocity = (style.velocityLow + style.velocityHigh) / 2 + rng.nextInt (5) - 2;
+        const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+        auto makeSpec = [&] (int pad, const std::vector<int>& notes, int root)
+        {
+            SampleSpec s;
+            s.pad = pad;
+            s.rootNote = juce::jlimit (0, 127, root + ps);
+            s.engine = engineName;
+            s.variation = variation;
+            s.processing = style.processing;
+            s.styleId = style.id;
+            s.tag = style.tag;
+            s.shortTag = style.shortTag;
+            s.bankInfo = info;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                NoteEvent e;
+                e.note = notes[i];
+                e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() ? 4 : 0));
+                e.startSec = 0;
+                e.lengthSec = hold;
+                s.notes.push_back (e);
+            }
+            return s;
+        };
+
+        if (type == "notes")
+        {
+            // 16 consecutive scale notes, centred in the style's register
+            auto noteAt = [&] (int base, int i) { return base + scale[(size_t) i % scale.size()] + 12 * (i / (int) scale.size()); };
+            auto base = placePitchClass (playedTonic, juce::jmax (24, style.keyLow - 12));
+            auto centre = (style.keyLow + style.keyHigh) / 2;
+            auto best = base;
+            for (int cand = base; cand <= 96; cand += 12)
+            {
+                if (noteAt (cand, 15) > 108) break;
+                if (std::abs ((cand + noteAt (cand, 15)) / 2 - centre) < std::abs ((best + noteAt (best, 15)) / 2 - centre)) best = cand;
+            }
+            for (int pad = 1; pad <= 16; ++pad)
+            {
+                auto note = noteAt (best, pad - 1);
+                auto s = makeSpec (pad, { note }, note);
+                s.kind = "Key";
+                s.label = midiNoteName (note + ps);
+                s.voicing = "-";
+                result.push_back (s);
+            }
+        }
+        else if (type == "progressions")
+        {
+            // 4 progressions x 4 chords, one per row of pads, voice-led for smooth movement
+            auto chords = diatonicChords (style, playedTonic, scale, variation | 1);
+            auto all = progressionsFor (scale);
+            std::vector<size_t> order (all.size());
+            std::iota (order.begin(), order.end(), 0);
+            for (size_t i = order.size(); i > 1; --i) std::swap (order[i - 1], order[(size_t) rng.nextInt ((int) i)]);
+
+            for (int row = 0; row < 4; ++row)
+            {
+                auto& prog = all[order[(size_t) row % order.size()]];
+                std::vector<int> previous;
+                for (int step = 0; step < 4; ++step)
+                {
+                    auto& c = chords[(size_t) prog.second[(size_t) step] % chords.size()];
+                    int inversion = 0;
+                    std::vector<int> notes;
+                    if (previous.empty())
+                    {
+                        auto root = placePitchClass (c.rootPc, style.chordRootLow);
+                        notes = invertChord (root, c.intervals, 0);
+                        if (lowIntervalViolations (notes) > 0) { notes = invertChord (root + 12, c.intervals, 0); }
+                    }
+                    else
+                        notes = voiceLead (previous, c.rootPc, c.intervals, style.chordRootLow, style.chordRootHigh, inversion);
+                    previous = notes;
+
+                    auto pad = row * 4 + step + 1;
+                    auto rootMidi = notes.front();
+                    for (auto n : notes) if (((n - c.rootPc) % 12 + 12) % 12 == 0) { rootMidi = n; break; }
+                    auto s = makeSpec (pad, notes, rootMidi);
+                    s.kind = "Chord";
+                    s.label = c.roman + "-" + pitchClassName (c.rootPc + ps) + c.name.substring (pitchClassName (c.rootPc).length());
+                    s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
+                    s.group = prog.first;
+                    result.push_back (s);
+                }
+            }
+        }
+        else
+        {
+            // the diatonic chord on each degree; each pass up the scale uses another voicing
+            std::vector<Voicing> passVoicings;
+            std::vector<Weighted<Voicing>> pool = style.voicings;
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                if (pool.empty()) pool = style.voicings;
+                auto v = pickWeighted (pool, rng);
+                passVoicings.push_back (v);
+                pool.erase (std::remove_if (pool.begin(), pool.end(), [v] (auto& w) { return w.value == v; }), pool.end());
+            }
+
+            const int degrees = (int) scale.size();
+            std::vector<const ChordQuality*> qualities ((size_t) degrees, nullptr);
+            for (int d = 0; d < degrees; ++d)
+            {
+                auto rootPc = (playedTonic + scale[(size_t) d]) % 12;
+                std::vector<Weighted<juce::String>> fitting;
+                for (auto& w : style.chords)
+                    if (auto* q = findQuality (w.value); q != nullptr && chordFitsScale (rootPc, q->intervals, playedTonic, scale))
+                        fitting.push_back (w);
+                if (fitting.empty()) // stack the scale's own thirds: 7th chord, else triad
+                    for (auto id : { "m7", "maj7", "7", "m7b5", "min", "maj", "dim", "sus2", "5" })
+                        if (auto* q = findQuality (id); chordFitsScale (rootPc, q->intervals, playedTonic, scale)) { fitting.push_back ({ id, 1.0f }); break; }
+                if (! fitting.empty()) qualities[(size_t) d] = findQuality (pickWeighted (fitting, rng));
+            }
+
+            for (int pad = 1; pad <= 16; ++pad)
+            {
+                auto d = (pad - 1) % degrees;
+                auto pass = juce::jmin (2, (pad - 1) / degrees);
+                auto* q = qualities[(size_t) d];
+                if (q == nullptr) q = findQuality ("5");
+                auto rootPc = (playedTonic + scale[(size_t) d]) % 12;
+                auto root = placePitchClass (rootPc, style.chordRootLow);
+                if (root > style.chordRootHigh) root -= 12;
+                if (pass >= 2) root += 12; // pads past the second pass: the same chords an octave up, not repeats
+
+                auto voicing = passVoicings[(size_t) juce::jmin (pass, 1)];
+                auto notes = buildVoicing (root, q->intervals, voicing);
+                for (auto alt : { Voicing::Close, Voicing::Inversion1, Voicing::Open })
+                    if (lowIntervalViolations (notes) > 0) { voicing = alt; notes = buildVoicing (root, q->intervals, alt); }
+
+                auto s = makeSpec (pad, notes, root);
+                s.kind = "Chord";
+                // roman numeral of the degree (lower case = minor-ish chord) so progressions read off the pads
+                auto minorChord = q->intervals.size() > 1 && q->intervals[1] == 3;
+                s.label = juce::String (romanNumeral (d, minorChord)) + "-" + pitchClassName (rootPc + ps) + q->suffix;
+                s.voicing = voicingId (voicing);
+                result.push_back (s);
+            }
+        }
+    }
+
+    // names: <style>_<key>_<pad>_... or, short, <pad>_<tag>_<label>
+    for (auto& s : result)
+    {
+        auto* st = findBuiltInStyle (s.styleId);
+        auto shortTag = s.shortTag.isNotEmpty() ? s.shortTag : (st != nullptr ? st->shortTag : juce::String());
+        if (opt.shortNames)
+        {
+            s.stemHead = {};
+            s.stemTail = (shortTag.isNotEmpty() ? shortTag + "_" : juce::String()) + s.label
+                         + (s.kind == "Chord" ? "_" + shortVoicing (s.voicing) : juce::String());
+        }
+        else
+        {
+            s.stemHead = safeFileName ((opt.prefix.isNotEmpty() ? opt.prefix : kitOrStyle.name)) + "_" + pitchClassName (tonic)
+                         + "_" + s.bankInfo.fromFirstOccurrenceOf (" ", false, false).upToFirstOccurrenceOf (" ", false, false);
+            s.stemTail = (kitOrStyle.isKit() ? s.tag + "_" : juce::String()) + s.kind + "_" + s.label
+                         + (s.kind == "Chord" ? "_" + s.voicing : juce::String());
+        }
+    }
+    renumberSamples (result);
+    return result;
+}
+
+//==============================================================================
+// Progression-library banks (e.g. Trap Progressions): one bank per set - the main
+// progression, then alternate 1 and alternate 2, each starting on a new row of 4 pads
+// when they fit (else one after another), voice-led; spare pads get 808 roots.
+static std::vector<SampleSpec> planLibraryBanks (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    const auto& library = progressionLibrary (style.progressionLibrary);
+    if (library.empty()) { error = "unknown progression library '" + style.progressionLibrary + "'"; return result; }
+    juce::Random rng (opt.seed);
+
+    // which sets: one chosen set, or a seed-shuffled mix (one per bank)
+    std::vector<int> order;
+    if (opt.progressionNumber > 0)
+    {
+        if (opt.progressionNumber > (int) library.size())
+        {
+            error = "progression " + juce::String (opt.progressionNumber) + " does not exist (1-" + juce::String ((int) library.size()) + ")";
+            return result;
+        }
+        order.push_back (opt.progressionNumber - 1);
+    }
+    else
+    {
+        const int banks = juce::jlimit (1, (int) library.size(), (juce::jlimit (1, 2000, opt.count) + 15) / 16);
+        std::vector<int> all ((size_t) library.size());
+        std::iota (all.begin(), all.end(), 0);
+        for (size_t i = all.size(); i > 1; --i) std::swap (all[i - 1], all[(size_t) rng.nextInt ((int) i)]);
+        order.assign (all.begin(), all.begin() + banks);
+        std::sort (order.begin(), order.end()); // banks in the article's order
+    }
+
+    // a fixed key moves every set there; "random" keeps each set's original key
+    const int chosenTonic = (opt.key.isEmpty() || opt.key.equalsIgnoreCase ("random")) ? -1 : parsePitchClass (opt.key);
+    auto engineList = engineIds();
+    const int ps = style.processing.pitchShift;
+    const auto velocity = (style.velocityLow + style.velocityHigh) / 2;
+    const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+    for (auto setIndex : order)
+    {
+        const auto& set = library[(size_t) setIndex];
+        const int tonic = chosenTonic >= 0 ? chosenTonic : set.tonicPc;
+        const int shift = ((tonic - set.tonicPc) % 12 + 12) % 12;
+        const auto keyName = pitchClassName (tonic) + (set.minor ? " minor" : " major");
+        const auto info = "#" + juce::String (set.number) + " " + set.main.text + " in " + set.keyName
+                          + (shift != 0 ? " - moved to " + keyName : juce::String());
+
+        auto engineName = (opt.engine.isNotEmpty() ? opt.engine : style.engine).toLowerCase();
+        if (engineName == "mixed" || engineName.isEmpty()) engineName = engineList[rng.nextInt (engineList.size())];
+        const auto variation = rng.nextInt64();
+
+        auto moved = [&] (const NamedChord& c) { NamedChord m = c; m.rootPc = (c.rootPc + shift) % 12; return m; };
+        auto chordName = [&] (const NamedChord& c)
+        {
+            return pitchClassName (c.rootPc + ps) + (c.quality == "min" ? "m" : c.quality == "5" ? "5" : "");
+        };
+        auto progText = [&] (const NamedProgression& p)
+        {
+            juce::StringArray names, numerals;
+            for (auto& c : p.chords) { auto m = moved (c); names.add (chordName (m)); numerals.add (romanNumeralFor (m, tonic)); }
+            return names.joinIntoString ("-") + " (" + numerals.joinIntoString ("-") + ")";
+        };
+
+        auto makeSpec = [&] (int pad, const std::vector<int>& notes, int root, const juce::String& engine, juce::int64 var)
+        {
+            SampleSpec s;
+            s.pad = pad;
+            s.rootNote = juce::jlimit (0, 127, root + ps);
+            s.engine = engine;
+            s.variation = var;
+            s.processing = style.processing;
+            s.styleId = style.id;
+            s.tag = style.tag;
+            s.shortTag = style.shortTag;
+            s.bankInfo = info;
+            s.progressionSet = set.number;
+            for (size_t i = 0; i < notes.size(); ++i)
+            {
+                NoteEvent e;
+                e.note = notes[i];
+                e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() ? 4 : 0));
+                e.lengthSec = hold;
+                s.notes.push_back (e);
+            }
+            return s;
+        };
+
+        // layout: each progression on its own row(s) when everything fits, else back to back
+        const NamedProgression* progs[] = { &set.main, &set.alt1, &set.alt2 };
+        const char* sections[] = { "Main", "Alt 1", "Alt 2" };
+        int rows = 0;
+        for (auto* p : progs) rows += ((int) p->chords.size() + 3) / 4;
+        const bool rowAligned = rows <= 4;
+
+        int pad = 1;
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& p = *progs[k];
+            if (rowAligned && pad > 1) pad = ((pad - 2) / 4 + 1) * 4 + 1; // start of the next row
+            const auto group = juce::String (sections[k]) + ": " + progText (p);
+            std::vector<int> previous;
+            for (auto& named : p.chords)
+            {
+                if (pad > 16) break;
+                auto c = moved (named);
+                auto* q = findQuality (c.quality);
+                if (q == nullptr) { error = "unknown chord quality " + c.quality; return {}; }
+                int inversion = 0;
+                std::vector<int> notes;
+                if (previous.empty())
+                {
+                    auto root = placePitchClass (c.rootPc, style.chordRootLow);
+                    if (root > style.chordRootHigh) root -= 12;
+                    notes = invertChord (root, q->intervals, 0);
+                    if (lowIntervalViolations (notes) > 0) notes = invertChord (root + 12, q->intervals, 0);
+                }
+                else
+                    notes = voiceLead (previous, c.rootPc, q->intervals, style.chordRootLow, style.chordRootHigh, inversion);
+                previous = notes;
+
+                auto rootMidi = notes.front();
+                for (auto n : notes) if (((n - c.rootPc) % 12 + 12) % 12 == 0) { rootMidi = n; break; }
+                auto s = makeSpec (pad, notes, rootMidi, engineName, variation);
+                s.kind = "Chord";
+                s.label = romanNumeralFor (c, tonic) + "-" + chordName (c);
+                s.voicing = inversion == 0 ? "root" : "inv" + juce::String (inversion);
+                s.group = group;
+                result.push_back (s);
+                ++pad;
+            }
+        }
+
+        // spare pads: the main progression's roots as 808s (C0-B0 in MPC naming), so the bank is a full beat kit
+        std::vector<int> roots;
+        for (auto& named : set.main.chords)
+        {
+            auto pc = moved (named).rootPc;
+            if (std::find (roots.begin(), roots.end(), pc) == roots.end()) roots.push_back (pc);
+        }
+        Processing bassProcessing;
+        bassProcessing.maxLength = 1.6;
+        bassProcessing.ampDecayMs = 1400;
+        std::vector<int> freePads;
+        for (int fp = 1; fp <= 16; ++fp)
+            if (std::none_of (result.begin(), result.end(), [&] (const SampleSpec& x) { return x.progressionSet == set.number && x.pad == fp; }))
+                freePads.push_back (fp);
+        for (size_t r = 0; r < freePads.size() && ! roots.empty(); ++r)
+        {
+            pad = freePads[r];
+            auto note = placePitchClass (roots[r % roots.size()], 24) + (r >= roots.size() ? 12 : 0);
+            NamedChord rc { roots[r % roots.size()], "maj" };
+            auto s = makeSpec (pad, { note }, note, "808", variation ^ 0x808);
+            s.processing = bassProcessing;
+            s.rootNote = note;
+            s.notes.front().velocity = 118;
+            s.notes.front().lengthSec = 1.4;
+            s.kind = "Key";
+            s.label = "808-" + romanNumeralFor (rc, tonic) + "-" + midiNoteName (note);
+            s.voicing = "-";
+            s.group = "808 roots of the main progression";
+            result.push_back (s);
+        }
+    }
+
+    std::stable_sort (result.begin(), result.end(), [] (const SampleSpec& a, const SampleSpec& b)
+                      { return a.progressionSet != b.progressionSet ? a.progressionSet < b.progressionSet : a.pad < b.pad; });
+    for (auto& s : result)
+    {
+        auto setTag = "P" + juce::String (s.progressionSet).paddedLeft ('0', 2);
+        if (opt.shortNames)
+        {
+            s.stemHead = {};
+            s.stemTail = setTag + "_" + s.label + (s.kind == "Chord" ? "_" + shortVoicing (s.voicing) : juce::String());
+        }
+        else
+        {
+            auto tonicName = s.bankInfo.contains ("moved to ") ? s.bankInfo.fromLastOccurrenceOf ("moved to ", false, false)
+                                                               : s.bankInfo.fromFirstOccurrenceOf (" in ", false, false);
+            s.stemHead = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.tag) + "_" + setTag + "_"
+                         + tonicName.replace (" minor", "m").replace (" major", "");
+            s.stemTail = s.kind + "_" + s.label + (s.kind == "Chord" ? "_" + s.voicing : juce::String());
+        }
+    }
+    renumberSamples (result);
+    return result;
+}
+
+//==============================================================================
+// Hand-picked chords (the chord grid's palette) and octave ranges
+
+std::vector<int> PaletteChord::notes() const
+{
+    const auto root = rootMidi();
+    if (isNote()) return { root };
+    auto* q = findQuality (quality);
+    if (q == nullptr) return { root };
+    Voicing v = Voicing::Close;
+    parseVoicing (voicing, v);
+    auto n = buildVoicing (root, q->intervals, v);
+    std::sort (n.begin(), n.end());
+    for (int k = 0; k < inversion && n.size() > 1; ++k)
+    {
+        n.front() += 12;                       // lowest note up an octave
+        std::sort (n.begin(), n.end());
+    }
+    // the chosen octave is where the lowest note sounds (spread / drop voicings can reach below the root)
+    const int low = 12 * (octave + 2);
+    while (! n.empty() && n.front() < low) for (auto& x : n) x += 12;
+    while (! n.empty() && n.front() >= low + 12) for (auto& x : n) x -= 12;
+    for (auto& x : n) x = juce::jlimit (0, 127, x);
+    return n;
+}
+
+juce::String PaletteChord::name() const
+{
+    if (isNote()) return midiNoteName (rootMidi());
+    auto* q = findQuality (quality);
+    auto suffix = q != nullptr ? q->suffix : quality;
+    if (suffix == "power") suffix = "5";
+    return pitchClassName (rootPc) + suffix;
+}
+
+juce::String PaletteChord::describe() const
+{
+    if (isNote()) return name();
+    juce::String d = name();
+    if (voicing != "close") d << " " << voicing;
+    if (inversion > 0) d << " inv" << inversion;
+    return d + " (" + midiNoteName (notes().front()) + ")";
+}
+
+juce::String PaletteChord::toString() const
+{
+    return pitchClassName (rootPc) + ":" + quality + ":" + juce::String (octave) + ":" + voicing + ":" + juce::String (inversion);
+}
+
+bool PaletteChord::fromString (const juce::String& textIn, PaletteChord& out)
+{
+    auto text = textIn.trim();
+    if (text.isEmpty()) return false;
+    PaletteChord c;
+    auto parts = juce::StringArray::fromTokens (text, ":", "");
+    if (parts.size() == 5 && parts[2].containsOnly ("-0123456789"))   // "Eb:m9:2:drop2:1"
+    {
+        c.rootPc = parsePitchClass (parts[0]);
+        c.quality = parts[1];
+        c.octave = parts[2].getIntValue();
+        c.voicing = parts[3];
+        c.inversion = parts[4].getIntValue();
+    }
+    else
+    {
+        // chord symbol [@octave] [:voicing] [/inversion]
+        auto inv = text.contains ("/") ? text.fromLastOccurrenceOf ("/", false, false).getIntValue() : 0;
+        text = text.upToLastOccurrenceOf ("/", false, false).isNotEmpty() && text.contains ("/") ? text.upToLastOccurrenceOf ("/", false, false) : text;
+        bool note = text.startsWithIgnoreCase ("note:");
+        if (note) text = text.substring (5);
+        juce::String voicing = "close";
+        if (! note && text.contains (":")) { voicing = text.fromLastOccurrenceOf (":", false, false); text = text.upToLastOccurrenceOf (":", false, false); }
+        int octave = 2;
+        if (text.contains ("@")) { octave = text.fromLastOccurrenceOf ("@", false, false).getIntValue(); text = text.upToLastOccurrenceOf ("@", false, false); }
+        auto rootLen = (text.length() > 1 && (text[1] == '#' || text[1] == 'b')) ? 2 : 1;
+        c.rootPc = parsePitchClass (text.substring (0, rootLen));
+        auto suffix = text.substring (rootLen);
+        if (note) c.quality = "note";
+        else if (suffix.isEmpty()) c.quality = "maj";
+        else if (suffix == "5" || suffix.equalsIgnoreCase ("power")) c.quality = "5";
+        else
+        {
+            c.quality = {};
+            for (auto& q : allQualities())
+                if (q.suffix == suffix || q.id == suffix) { c.quality = q.id; break; }
+            if (c.quality.isEmpty()) return false;
+        }
+        c.octave = octave;
+        c.voicing = voicing;
+        c.inversion = inv;
+    }
+    if (c.rootPc < 0) return false;
+    Voicing v;
+    if (! c.isNote() && (findQuality (c.quality) == nullptr || ! parseVoicing (c.voicing, v))) return false;
+    c.octave = juce::jlimit (-1, 8, c.octave);
+    c.inversion = juce::jlimit (0, 3, c.inversion);
+    out = c;
+    return true;
+}
+
+Style withOctaveRange (const Style& style, const PlanOptions& opt)
+{
+    if (opt.octaveLow < 0) return style;
+    Style s = style;
+    const int lo = juce::jlimit (0, 8, opt.octaveLow), hi = juce::jlimit (lo, 8, opt.octaveHigh < 0 ? opt.octaveLow : opt.octaveHigh);
+    const int low = juce::jlimit (12, 120, 12 * (lo + 2)), high = juce::jlimit (low + 11, 127, 12 * (hi + 2) + 11);
+    s.chordRootLow = low;  s.chordRootHigh = high;   // chord roots inside the octaves
+    s.keyLow = low;        s.keyHigh = high;         // single notes too
+    return s;
+}
+
+static std::vector<SampleSpec> planPalette (const Style& style, const PlanOptions& opt, juce::String& error)
+{
+    std::vector<SampleSpec> result;
+    if (opt.palette.empty()) { error = "the chord palette is empty - pick chords in the chord grid and click + Palette"; return result; }
+    juce::Random rng (opt.seed);
+    auto engine = (opt.engine.isNotEmpty() && opt.engine != "mixed") ? opt.engine : (style.engine == "mixed" ? juce::String ("epiano") : style.engine);
+    const auto variation = rng.nextInt64();                 // one timbre for the whole palette
+    const int ps = style.processing.pitchShift;
+    const auto velocity = (style.velocityLow + style.velocityHigh) / 2;
+    const auto hold = (style.holdLow + style.holdHigh) * 0.5;
+
+    for (auto& pc : opt.palette)
+    {
+        SampleSpec s;
+        auto notes = pc.notes();
+        const auto rollPerNote = notes.size() > 1 ? style.strumMs * 0.0004 : 0.0; // a gentle, fixed roll (40% of the recipe's)
+        for (size_t i = 0; i < notes.size(); ++i)
+        {
+            NoteEvent e;
+            e.note = juce::jlimit (0, 127, notes[i] - ps);  // played so it sounds right after the recipe's varispeed
+            e.velocity = juce::jlimit (1, 127, velocity + (i + 1 == notes.size() && notes.size() > 1 ? 6 : 0));
+            e.startSec = rollPerNote * (double) i;
+            e.lengthSec = juce::jmax (0.05, hold - e.startSec);
+            s.notes.push_back (e);
+        }
+        s.kind = pc.isNote() ? "Key" : "Chord";
+        s.label = pc.isNote() ? pc.name() : pc.name() + "-" + midiNoteName (notes.front());
+        s.voicing = pc.isNote() ? juce::String ("-")
+                                : pc.inversion > 0 ? (pc.voicing == "close" ? "inv" + juce::String (pc.inversion) : pc.voicing + "-inv" + juce::String (pc.inversion))
+                                                   : pc.voicing;
+        s.rootNote = pc.rootMidi();
+        s.engine = engine;
+        s.variation = variation;
+        s.processing = style.processing;
+        s.styleId = style.id; s.tag = style.tag; s.shortTag = style.shortTag;
+        result.push_back (s);
+    }
+    auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.name);
+    nameSamples (result, prefix, false, false, opt.shortNames, style.shortTag);
+    return result;
+}
+
+static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const PlanOptions& opt, juce::String& error);
+
+/** Octaves chosen: move each sample by whole octaves so its lowest note sounds inside them.
+    A scale bank moves as one, so it still climbs pad by pad. */
+static void fitToOctaves (std::vector<SampleSpec>& specs, const PlanOptions& opt)
+{
+    if (opt.octaveLow < 0 || opt.fixedRoot != -1 || opt.usePalette || opt.useCard) return;
+    const int lo = juce::jlimit (0, 8, opt.octaveLow), hi = juce::jlimit (lo, 8, opt.octaveHigh < 0 ? lo : opt.octaveHigh);
+    const int low = 12 * (lo + 2), high = 12 * (hi + 2) + 11;
+    auto lowest = [] (const SampleSpec& s) { int m = 127; for (auto& n : s.notes) m = std::min (m, n.note); return m; };
+    auto shiftFor = [&] (int note)
+    {
+        int shift = 0;
+        while (note + shift < low) shift += 12;
+        while (note + shift > high && note + shift - 12 >= 0) shift -= 12;
+        return shift;
+    };
+    auto move = [] (SampleSpec& s, int shift)
+    {
+        SampleSpec moved;
+        if (shift != 0 && transposeSpec (s, shift, moved, false)) s = moved;
+    };
+    for (size_t i = 0; i < specs.size();)
+    {
+        if (specs[i].pad > 0)
+        {
+            // a bank: the same move for all 16 pads, based on pad 1
+            size_t end = i;
+            int bankLow = 127;
+            while (end < specs.size() && specs[end].pad > 0 && (end == i || specs[end].pad > specs[end - 1].pad))
+                bankLow = std::min (bankLow, lowest (specs[end++]));
+            const int shift = shiftFor (bankLow);
+            for (size_t k = i; k < end; ++k) move (specs[k], shift);
+            i = end;
+        }
+        else
+        {
+            auto& sp = specs[i];
+            const auto shift = shiftFor (lowest (sp));
+            SampleSpec moved;
+            if (shift == 0 || transposeSpec (sp, shift, moved, false)) { if (shift != 0) sp = moved; }
+            else if (sp.notes.size() > 1)
+            {
+                // too wide to move whole (it would run off the top): keep the bass in the octave and
+                // fold the upper notes down to within two octaves of it
+                std::vector<int> pitches;
+                for (auto& n : sp.notes) pitches.push_back (n.note);
+                const auto bass = *std::min_element (pitches.begin(), pitches.end());
+                const auto newBass = bass + shift;
+                for (auto& n : sp.notes)
+                {
+                    if (n.note == bass) { n.note = newBass; continue; }
+                    n.note += shift;
+                    while (n.note > newBass + 24) n.note -= 12;
+                    while (n.note <= newBass) n.note += 12;
+                }
+                sp.rootNote = juce::jlimit (0, 127, sp.rootNote + shift);
+                for (auto& n : sp.notes) n.note = juce::jlimit (0, 127, n.note);
+            }
+            ++i;
+        }
+    }
+}
+
+std::vector<SampleSpec> planSamples (const Style& styleIn, const PlanOptions& opt, juce::String& error)
+{
+    auto specs = planSamplesInner (styleIn, opt, error);
+    fitToOctaves (specs, opt);
+    return specs;
+}
+
+static std::vector<SampleSpec> planSamplesInner (const Style& styleIn, const PlanOptions& opt, juce::String& error)
+{
+    if (opt.useCard)
+    {
+        auto cards = parseRecipeCards (opt.cardText, opt.cardMpcNotation);
+        if (! juce::isPositiveAndBelow (opt.cardIndex, (int) cards.size())) { error = "no recipe card " + juce::String (opt.cardIndex + 1) + " in the text"; return {}; }
+        return planCard (cards[(size_t) opt.cardIndex], styleIn, opt, error);
+    }
+    if (opt.usePalette)
+        return planPalette (styleIn, opt, error);
+    const Style style = withOctaveRange (styleIn, opt);
+    if (style.progressionLibrary.isNotEmpty())
+        return planLibraryBanks (style, opt, error);
+    if (opt.scaleBank || style.scaleBankOnly)
+        return planScaleBanks (style, opt, error);
+
+    if (! style.isKit())
+        return planSingle (style, opt, error);
+
+    // ---- a kit: split the count between member styles by weight
+    std::vector<const Style*> members;
+    std::deque<Style> memberStyles;     // with the chosen octave range
+    std::vector<float> weights;
+    for (auto& m : style.kit)
+    {
+        auto* member = findBuiltInStyle (m.value);
+        if (member == nullptr || member->isKit())
+        {
+            error = "kit '" + style.id + "' refers to unknown style '" + m.value + "'";
+            return {};
+        }
+        memberStyles.push_back (withOctaveRange (*member, opt));
+        members.push_back (&memberStyles.back());
+        weights.push_back (m.weight);
+    }
+
+    auto count = juce::jlimit (1, 2000, opt.count);
+    float total = 0;
+    for (auto w : weights) total += w;
+
+    std::vector<int> counts;
+    int assigned = 0;
+    for (auto w : weights) { counts.push_back ((int) std::floor (count * w / total)); assigned += counts.back(); }
+    for (size_t i = 0; assigned < count; i = (i + 1) % counts.size()) { ++counts[i]; ++assigned; }
+
+    std::vector<std::vector<SampleSpec>> parts;
+    juce::StringArray warnings;
+    for (size_t i = 0; i < members.size(); ++i)
+    {
+        if (counts[i] <= 0) continue;
+        auto o = opt;
+        o.count = counts[i];
+        o.seed = opt.seed + (juce::int64) (i + 1) * 7919;
+        o.prefix = {};
+        juce::String err;
+        parts.push_back (planSingle (*members[i], o, err));
+        if (err.isNotEmpty()) warnings.add (members[i]->name + ": " + err);
+    }
+
+    // round-robin so every 16-pad bank holds a bit of each recipe
+    std::vector<SampleSpec> result;
+    for (size_t k = 0;; ++k)
+    {
+        bool any = false;
+        for (auto& p : parts)
+            if (k < p.size()) { result.push_back (p[k]); any = true; }
+        if (! any) break;
+    }
+
+    auto prefix = safeFileName (opt.prefix.isNotEmpty() ? opt.prefix : style.tag);
+    nameSamples (result, prefix, true, false, opt.shortNames);
+    error = warnings.joinIntoString ("; ");
+    return result;
+}
+}

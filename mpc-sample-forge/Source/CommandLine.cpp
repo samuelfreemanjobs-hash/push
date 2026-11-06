@@ -1,0 +1,668 @@
+#include "CommandLine.h"
+#include "ProgressionLibrary.h"
+#include "RecipeCard.h"
+#include "BuiltInSynth.h"
+#include "Diagnostics.h"
+#include "Analysis.h"
+#include <iostream>
+
+namespace forge
+{
+juce::String cliHelpText()
+{
+    juce::String s;
+    s << "MPC Sample Forge - render one-shot keys & chords from a VST3 instrument\n\n"
+      << "Usage:\n"
+      << "  mpcforge [options]                     render a batch from the command line\n"
+      << "  \"MPC Sample Forge\" --cli [options]   same, via the app (macOS / Linux)\n\n"
+      << "Example:\n"
+      << "  mpcforge --plugin \"C:/Program Files/Common Files/VST3/Keyscape.vst3\" --sound rhodes.forgesound \\\n"
+      << "           --style neo-soul --key Eb --count 100 --out D:/MPC/NeoSoulKeys\n\n"
+      << "Instrument (one of):\n"
+      << "  --plugin <file.vst3>      VST3 instrument to load\n"
+      << "  --sound <file.forgesound> sound saved from the app (plugin + its settings)\n"
+      << "  --builtin                 use the built-in synth (default if nothing given)\n"
+      << "  --engine <name>           override the built-in synth engine: epiano, bell, organ,\n"
+      << "                            pluck, choir, supersaw, epbell, triangle, cowbell,\n"
+      << "                            comboorgan, harp, brass or mixed (default: the style's)\n\n"
+      << "Recipe guide (one-shot recipes with trim, envelope and FX baked in):\n"
+      << "  --recipe <id>             same as --style; recipes: jetlife-ep-bell, polyester-pluck,\n"
+      << "                            memphis-organ, phonk-cowbell, zaytoven-organ, luxury-harp,\n"
+      << "                            screwed-choir, trap-brass, rhodes-bass\n"
+      << "                            kits: westcoast-kit, memphis-kit, atlanta-kit, guide-palette\n"
+      << "  --tempo <bpm>             tempo for synced delays (default 90)\n\n"
+      << "16 Levels (MPC drum-program one-shots):\n"
+      << "  --16levels                same as --root recipe --banks\n"
+      << "  --root <C3|Eb2|60|recipe> build every sample on this note, so 16 Levels > Tune\n"
+      << "                            spreads it chromatically from a known pitch ('recipe' =\n"
+      << "                            each recipe's own root, C3 for styles without one)\n"
+      << "  --banks                   write files in folders of 16 (Bank_A, Bank_B ...)\n"
+      << "  --max-length <seconds>    cut each one-shot to this length with a fade\n"
+      << "                            (default: the style's end point; 0 = no cap)\n\n"
+      << "Batch:\n"
+      << "  --style <id>              built-in style (see --list-styles), default neo-soul\n"
+      << "  --style-file <file.json>  your own style (see --dump-style for the format)\n"
+      << "  --count <n>               number of samples, default 100\n"
+      << "  --key <C|F#|Bb|random>    lock every chord to one key, default random\n"
+      << "  --scale <name>            major, minor, dorian, ... (default: the style's)\n"
+      << "  --seed <n>                same seed = same batch, default random\n"
+      << "  --prefix <text>           file name prefix, default the style name\n"
+      << "  --out <folder>            output folder, default ~/MPC Sample Forge/<style>\n\n"
+      << "Smart Pick (better selections):\n"
+      << "  --smart-pick              render 1.5x the samples, score them (pitch clarity, mud,\n"
+      << "                            harshness, clicks) and keep only the best, skipping\n"
+      << "                            near-duplicates. Writes _smart_pick.csv with every decision.\n"
+      << "  --pick-factor <1.2-6>     candidates per kept sample (default 1.5)\n"
+      << "  --variety <off|normal|strict>  drop samples that sound nearly the same (default normal;\n"
+      << "                            strict drops more, even if the batch ends up smaller)\n\n"
+      << "Scale banks (play in key without 16 Levels > Tune):\n"
+      << "  --scale-bank              each bank of 16 pads is one sound climbing the scale\n"
+      << "                            (uses --key / --scale; random key = one key for all banks).\n"
+      << "                            --count 64 = 4 banks\n"
+      << "  --bank-type <notes|chords|progressions>\n"
+      << "                            single notes per degree, the diatonic chord of each degree,\n"
+      << "                            or 4 voice-led progressions per bank (one per row of pads)\n"
+      << "  --progression <1-20>      Trap Progressions recipe: render only this set (main + 2\n"
+      << "                            alternates + 808 roots in one bank). Default: --count / 16\n"
+      << "                            sets picked by the seed. --key random = each set's own key\n"
+      << "  --list-progressions       print the 20 trap progression sets with numerals and tips\n\n"
+      << "Preset sweep (try every preset, keep the best, render a bank of each):\n"
+      << "  --sweep <presets|files|variations>\n"
+      << "                            presets = the plugin's own list; files = .vstpreset / .forgesound\n"
+      << "                            files (standard VST3 preset folders, or --sweep-folder); variations =\n"
+      << "                            small random tweaks of the current sound (--sound). Built-in synth:\n"
+      << "                            presets = every engine x 3 timbres\n"
+      << "  --sweep-folder <dir>      preset files to try (implies --sweep files)\n"
+      << "  --sweep-keep <n>          presets to keep, default 12\n"
+      << "  --sweep-per <n>           samples per kept preset, default 16 (one pad bank)\n"
+      << "  --sweep-max <n>           try at most n presets, spread over the list (default: all)\n"
+      << "  --sweep-min-score <0-100> only keep presets scoring at least this (default 70)\n"
+      << "  --sweep-include <words>   only presets whose name / category has one of these, e.g. \"piano,keys,ep\"\n"
+      << "  --sweep-variations <n>    variations to try (default 48); --sweep-strength <0.02-1> (default 0.25)\n"
+      << "  --sweep-all-names         don't skip arps / drums / FX / init patches by name\n"
+      << "  --sweep-keep-arps         don't skip presets that pulse while held\n"
+      << "  --sweep-no-probes         don't save each preset's test sound to _Preset_Probes\n"
+      << "  --export-presets <dir>    save every preset the plugin lists as a .vstpreset file\n\n"
+      << "Render queue (set it up in the app with \"Add to Queue\"):\n"
+      << "  --queue [file.json]       render every waiting batch of the queue, one after another\n"
+      << "                            (default: the app's own queue, " << defaultQueueFile().getFullPathName() << ")\n\n"
+      << "MPC Sample friendly output:\n"
+      << "  --registers <list>        also render every kept sample in other registers, in\n"
+      << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
+      << "                            'octaves' (same as -12,12). Folders: Octave_Down, Octave_Up\n"
+      << "  --loudness                level all files to the same perceived loudness (LUFS)\n"
+      << "                            instead of the same peak, so pads play evenly\n"
+      << "  --short-names             014_EPBell_C3 instead of JetLifeEPBell_C3_014_Key_C3\n"
+      << "  --octaves <n | lo-hi>     keep every chord root and note in these MPC octaves, e.g. 2 or 2-3\n"
+      << "                            (C3 = middle C)\n"
+      << "  --palette \"<chords>\"      render exactly these, nothing random: chord symbols with optional\n"
+      << "                            @octave :voicing /inversion, e.g. \"Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3\"\n"
+      << "  --card <file.txt>         render a recipe card (FORGE CARD block, or a recipe book's text) with\n"
+      << "                            its exact notes and file names; --card-index <n> picks the card\n"
+      << "                            (default 1); --card-info lists what each card will make;\n"
+      << "                            --card-mpc-notes = the card's notes use MPC names (C3 = middle C);\n"
+      << "                            --card-recipe-fx = use the --style recipe's FX, not the card's\n"
+      << "  --round-robins <2-4>      also render 2-4 slightly different takes of every sample\n"
+      << "                            (velocity, timing, length) into Round_Robin/Take_2 ...\n\n"
+      << "Audio:\n"
+      << "  --rate <44100|48000>      sample rate, default 44100\n"
+      << "  --bits <16|24>            bit depth, default 24\n"
+      << "  --no-normalize            keep the plugin's level (default: normalise to -1 dBFS)\n"
+      << "  --tail <seconds>          max release tail after note-off, default 3\n"
+      << "  --instances <1-4>         VST3 only: load this many copies and render in parallel (needs RAM;\n"
+      << "                            the built-in synth always uses all CPU cores)\n"
+      << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
+      << "Info:\n"
+      << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --version  --help\n"
+      << "  --analyse <file.wav>      print loudness (LUFS), peak and the Smart Pick measurements\n"
+      << "  --diagnose [--plugin X.vst3]  system report + self-test (renders every engine and\n"
+      << "                            recipe, checks WAV writing, test-renders the plugin).\n"
+      << "                            Exit code 3 if anything failed. Log: " << Log::file().getFullPathName() << "\n\n"
+      << "Example (16 Levels kit with the built-in synth):\n"
+      << "  mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette\n"
+      << "Example (a recipe from the guide):\n"
+      << "  mpcforge --recipe jetlife-ep-bell --16levels --count 32 --out ~/MPC/JetLifeBell\n";
+    return s;
+}
+
+static void out (const juce::String& s) { std::cout << s << std::endl; }
+
+bool CliRunner::wantsCli (const juce::StringArray& args)
+{
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue" })
+        if (args.contains (a))
+            return true;
+    return false;
+}
+
+static juce::String option (const juce::StringArray& args, const juce::String& name, const juce::String& def = {})
+{
+    auto i = args.indexOf (name);
+    return (i >= 0 && i + 1 < args.size()) ? args[i + 1] : def;
+}
+
+void CliRunner::fail (const juce::String& msg)
+{
+    Log::write ("error: " + msg);
+    std::cerr << "error: " << msg << std::endl;
+    onDone (1);
+}
+
+void CliRunner::start (const juce::StringArray& args, std::function<void (int)> done)
+{
+    onDone = std::move (done);
+
+    if (args.contains ("--help") || args.contains ("-h"))
+    {
+        out (cliHelpText());
+        return onDone (0);
+    }
+
+    if (args.contains ("--queue"))
+    {
+        auto name = option (args, "--queue");
+        queueFile = name.isEmpty() || name.startsWith ("--") ? defaultQueueFile()
+                                                            : juce::File::getCurrentWorkingDirectory().getChildFile (name);
+        juce::String error;
+        queueItems = loadQueue (queueFile, error);
+        if (! error.isEmpty()) return fail (error);
+        int waiting = 0;
+        for (auto& q : queueItems) waiting += q.status == "waiting";
+        if (waiting == 0) { out ("Nothing waiting in " + queueFile.getFullPathName()); return onDone (0); }
+        out ("Render queue " + queueFile.getFullPathName() + ": " + juce::String (waiting) + " batches waiting");
+        runQueueNext();
+        return;
+    }
+
+    if (args.contains ("--version"))
+    {
+        out ("mpcforge " FORGE_VERSION_STRING " (JUCE " + juce::SystemStats::getJUCEVersion() + ")");
+        return onDone (0);
+    }
+
+    if (args.contains ("--diagnose"))
+        return runDiagnose (args);
+
+    if (args.contains ("--analyse"))
+    {
+        auto f = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--analyse"));
+        juce::AudioFormatManager fm;
+        fm.registerBasicFormats();
+        std::unique_ptr<juce::AudioFormatReader> reader (fm.createReaderFor (f));
+        if (reader == nullptr) return fail ("cannot read " + f.getFullPathName());
+        juce::AudioBuffer<float> audio ((int) reader->numChannels, (int) reader->lengthInSamples);
+        reader->read (&audio, 0, audio.getNumSamples(), 0, true, true);
+        auto root = reader->metadataValues.getValue ("MidiUnityNote", "60").getIntValue();
+        auto feat = analyseSample (audio, reader->sampleRate, root, true);
+        out (f.getFileName());
+        out ("  loudness   " + juce::String (momentaryLoudness (audio, reader->sampleRate), 2) + " LUFS (loudest 400 ms)");
+        out ("  peak       " + juce::String (juce::Decibels::gainToDecibels (feat.peak), 2) + " dBFS");
+        out ("  length     " + juce::String (feat.lengthSec, 3) + " s, " + juce::String (reader->sampleRate, 0) + " Hz, "
+             + juce::String (reader->bitsPerSample) + "-bit, root " + midiNoteName (root));
+        out ("  centroid   " + juce::String (juce::roundToInt (feat.centroidHz)) + " Hz, mud " + juce::String (feat.mudShare, 2)
+             + ", harsh " + juce::String (feat.harshShare, 2) + ", pitch clarity " + juce::String (feat.harmonicity, 2));
+        return onDone (0);
+    }
+
+    if (args.contains ("--list-progressions"))
+    {
+        for (auto& set : progressionLibrary ("trap"))
+        {
+            auto line = [&] (const char* what, const NamedProgression& p)
+            {
+                juce::StringArray numerals;
+                for (auto& c : p.chords) numerals.add (romanNumeralFor (c, set.tonicPc));
+                out (juce::String ("     ") + what + p.text.paddedRight (' ', 24) + numerals.joinIntoString ("-"));
+            };
+            out ("#" + juce::String (set.number).paddedLeft (' ', 2) + "  " + set.keyName);
+            line ("main   ", set.main);
+            line ("alt 1  ", set.alt1);
+            line ("alt 2  ", set.alt2);
+            out ("     tip: " + set.tip + "\n");
+        }
+        return onDone (0);
+    }
+
+    if (args.contains ("--list-styles"))
+    {
+        for (auto& s : builtInStyles())
+            out (s.id.paddedRight (' ', 18) + s.name.paddedRight (' ', 30) + s.description);
+        return onDone (0);
+    }
+
+    if (args.contains ("--dump-style"))
+    {
+        auto* s = findBuiltInStyle (option (args, "--dump-style", "neo-soul"));
+        if (s == nullptr) return fail ("unknown style (see --list-styles)");
+        out (juce::JSON::toString (s->toVar()));
+        return onDone (0);
+    }
+
+    if (args.contains ("--list-plugins"))
+    {
+        auto found = host.findInstalledVST3();
+        for (auto& p : found) out (p);
+        if (found.isEmpty()) out ("(no VST3 plugins found in the standard folders)");
+        return onDone (0);
+    }
+
+    // ------------------------------------------------------------ the style
+    BatchRequest req;
+    juce::String error;
+
+    if (args.contains ("--style-file"))
+    {
+        if (! loadStyleFile (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--style-file")), req.style, error))
+            return fail (error);
+    }
+    else
+    {
+        auto name = option (args, "--style", option (args, "--recipe", "neo-soul"));
+        auto* s = findBuiltInStyle (name);
+        if (s == nullptr) return fail ("unknown style '" + name + "' (see --list-styles)");
+        req.style = *s;
+    }
+
+    req.plan.count  = option (args, "--count", "100").getIntValue();
+    req.plan.key    = option (args, "--key", "random");
+    req.plan.scale  = option (args, "--scale");
+    req.plan.prefix = option (args, "--prefix");
+    req.plan.engine = option (args, "--engine").toLowerCase();
+    if (req.plan.engine.isNotEmpty() && req.plan.engine != "mixed")
+    {
+        Engine r;
+        if (! parseEngine (req.plan.engine, r))
+            return fail ("unknown --engine (use " + engineIds().joinIntoString (", ") + " or mixed)");
+    }
+
+    auto rootText = option (args, "--root", args.contains ("--16levels") ? "recipe" : "");
+    if (rootText.equalsIgnoreCase ("recipe") || rootText.equalsIgnoreCase ("style"))
+    {
+        req.plan.fixedRoot = PlanOptions::styleRoot;
+    }
+    else if (rootText.isNotEmpty() && ! rootText.equalsIgnoreCase ("free"))
+    {
+        req.plan.fixedRoot = parseMidiNote (rootText);
+        if (req.plan.fixedRoot < 0) return fail ("bad --root '" + rootText + "' (use e.g. C3, Eb2 or 60)");
+    }
+    req.splitBanks = args.contains ("--banks") || args.contains ("--16levels");
+
+    req.plan.seed   = args.contains ("--seed") ? option (args, "--seed").getLargeIntValue()
+                                               : juce::Random::getSystemRandom().nextInt64() & 0xffffffff;
+
+    req.render.sampleRate = option (args, "--rate", "44100").getDoubleValue();
+    req.render.bitDepth   = option (args, "--bits", "24").getIntValue();
+    req.render.normalise  = ! args.contains ("--no-normalize");
+    req.render.maxTailSec = option (args, "--tail", "3").getDoubleValue();
+    req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
+    req.plan.scaleBank = args.contains ("--scale-bank") || args.contains ("--bank-type");
+    req.plan.bankType = option (args, "--bank-type").toLowerCase();
+    if (req.plan.bankType.isNotEmpty() && req.plan.bankType != "notes" && req.plan.bankType != "chords" && req.plan.bankType != "progressions")
+        return fail ("--bank-type must be notes, chords or progressions");
+    req.render.loudnessMatch = args.contains ("--loudness");
+    {
+        auto v = option (args, "--variety", "normal").toLowerCase();
+        req.variety = v == "off" ? 0 : v == "strict" ? 2 : 1;
+    }
+    req.plan.shortNames = args.contains ("--short-names");
+    req.roundRobins = juce::jlimit (1, 4, option (args, "--round-robins", "1").getIntValue());
+    if (args.contains ("--octaves"))
+    {
+        auto o = option (args, "--octaves");                       // "2" or "2-3"
+        req.plan.octaveLow = o.upToFirstOccurrenceOf ("-", false, false).getIntValue();
+        req.plan.octaveHigh = o.contains ("-") ? o.fromFirstOccurrenceOf ("-", false, false).getIntValue() : req.plan.octaveLow;
+        if (req.plan.octaveLow < 0 || req.plan.octaveLow > 7 || req.plan.octaveHigh < req.plan.octaveLow || req.plan.octaveHigh > 7)
+            return fail ("--octaves wants e.g. 2 or 2-3 (MPC octaves: C3 = middle C)");
+    }
+    if (args.contains ("--card"))
+    {
+        auto f = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--card"));
+        if (! f.existsAsFile()) return fail ("--card: file not found " + f.getFullPathName());
+        req.plan.cardText = f.loadFileAsString();
+        req.plan.useCard = true;
+        req.plan.cardIndex = juce::jmax (1, option (args, "--card-index", "1").getIntValue()) - 1;
+        req.plan.cardMpcNotation = args.contains ("--card-mpc-notes");
+        req.plan.cardUseRecipeFx = args.contains ("--card-recipe-fx");
+        auto cards = parseRecipeCards (req.plan.cardText, req.plan.cardMpcNotation);
+        if (cards.empty()) return fail ("--card: no recipe cards found in " + f.getFileName());
+        if (args.contains ("--plan-only") || args.contains ("--card-info"))
+            for (auto& c : cards) out (c.describe());
+        if (args.contains ("--card-info")) return onDone (0);
+    }
+    if (args.contains ("--palette"))
+    {
+        for (auto& token : juce::StringArray::fromTokens (option (args, "--palette"), " ,;", "\""))
+        {
+            if (token.trim().isEmpty()) continue;
+            PaletteChord c;
+            if (! PaletteChord::fromString (token, c)) return fail ("--palette: can't read '" + token + "' (e.g. Cm9  Fm9@3:drop2/1  note:Eb@3)");
+            req.plan.palette.push_back (c);
+        }
+        req.plan.usePalette = ! req.plan.palette.empty();
+    }
+    if (args.contains ("--progression"))
+    {
+        req.plan.progressionNumber = option (args, "--progression").getIntValue();
+        if (req.plan.progressionNumber < 1 || req.plan.progressionNumber > (int) progressionLibrary ("trap").size())
+            return fail ("--progression must be 1-" + juce::String ((int) progressionLibrary ("trap").size()));
+    }
+    if (args.contains ("--registers"))
+    {
+        auto list = option (args, "--registers");
+        if (list.equalsIgnoreCase ("octaves")) list = "-12,12";
+        for (auto& t : juce::StringArray::fromTokens (list, ",", ""))
+        {
+            auto v = t.trim().getIntValue();
+            if (t.trim().isEmpty() || std::abs (v) > 36 || (v == 0 && t.trim() != "0"))
+                return fail ("bad --registers value '" + t + "' (use semitones like -12,12)");
+            if (v != 0) req.registers.push_back (v);
+        }
+    }
+    req.render.trimToSec  = args.contains ("--max-length") ? option (args, "--max-length").getDoubleValue() : -1.0;
+
+    juce::String pluginPath = option (args, "--plugin");
+    SoundState sound;
+    bool haveSound = false;
+
+    if (args.contains ("--sound"))
+    {
+        if (! sound.load (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--sound")), error))
+            return fail (error);
+        haveSound = true;
+        if (pluginPath.isEmpty()) pluginPath = sound.pluginPath;
+    }
+
+    const bool useBuiltIn = pluginPath.isEmpty() || args.contains ("--builtin");
+    req.plan.builtIn = useBuiltIn;
+
+    if (req.render.sampleRate < 8000 || req.render.sampleRate > 192000) return fail ("bad --rate");
+    if (req.render.bitDepth != 16 && req.render.bitDepth != 24) return fail ("--bits must be 16 or 24");
+
+    // Scale banks are complete 16-pad sets: picking or re-registering would break them up
+    const bool banks = req.plan.scaleBank || req.style.scaleBankOnly;
+    if (banks)
+    {
+        req.splitBanks = true;
+        if (args.contains ("--smart-pick") || ! req.registers.empty())
+            std::cerr << "note: Smart Pick and --registers are off for scale banks (each bank already spans the scale)" << std::endl;
+        req.registers.clear();
+    }
+
+    // Smart Pick: plan more candidates than needed, keep the best after rendering
+    const int wanted = juce::jlimit (1, 2000, req.plan.count);
+    if (! banks && (args.contains ("--smart-pick") || args.contains ("--pick-factor")))
+    {
+        auto factor = juce::jlimit (1.2, 6.0, option (args, "--pick-factor", "1.5").getDoubleValue());
+        req.plan.count = juce::jmin (2000, (int) std::ceil (wanted * factor));
+        req.smartPickTarget = wanted;
+    }
+
+    auto specs = planSamples (req.style, req.plan, error);
+    if (specs.empty()) return fail (error);
+    if (req.smartPickTarget > 0)
+    {
+        if ((int) specs.size() <= wanted)
+        {
+            std::cerr << "warning: only " << specs.size() << " distinct candidates possible - Smart Pick has nothing to choose from" << std::endl;
+            req.smartPickTarget = 0;
+        }
+        error = {}; // fewer candidates than asked is fine when picking
+    }
+    req.plan.count = wanted;
+    if (error.isNotEmpty()) std::cerr << "warning: " << error << std::endl;
+
+    if (args.contains ("--tempo"))
+        for (auto& sp : specs)
+            sp.processing.tempo = juce::jlimit (30.0, 300.0, option (args, "--tempo").getDoubleValue());
+
+    if (args.contains ("--plan-only"))
+    {
+        for (auto& s : specs) out (describeSpec (s));
+        return onDone (0);
+    }
+
+    req.outputFolder = args.contains ("--out")
+        ? juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--out"))
+        : juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+              .getChildFile ("MPC Sample Forge").getChildFile (safeFileName (req.style.name));
+    if (req.plan.useCard)
+    {
+        auto cards = parseRecipeCards (req.plan.cardText, req.plan.cardMpcNotation);
+        if (! args.contains ("--out"))
+            req.outputFolder = juce::File::getSpecialLocation (juce::File::userHomeDirectory).getChildFile ("MPC Sample Forge")
+                                   .getChildFile ("Recipe Cards").getChildFile (safeFileName (cards[(size_t) req.plan.cardIndex].code));
+        req.outputFolder.createDirectory();
+        auto midi = writeCardMidi (cards[(size_t) req.plan.cardIndex], req.outputFolder);
+        if (! midi.isEmpty()) out ("MIDI: " + midi.joinIntoString (", "));
+    }
+
+    // -------------------------------------------------------- the instrument
+    if (! useBuiltIn)
+    {
+        out ("Loading " + pluginPath + " ...");
+        auto plugin = host.load (pluginPath, req.render.sampleRate, req.render.blockSize, error);
+        if (plugin == nullptr) return fail (error);
+        if (haveSound && sound.state.getSize() > 0)
+            plugin->setStateInformation (sound.state.getData(), (int) sound.state.getSize());
+        instrument = std::move (plugin);
+
+        auto copies = juce::jlimit (1, 4, option (args, "--instances", "1").getIntValue());
+        if (copies > 1)
+        {
+            juce::MemoryBlock state;
+            instrument->getStateInformation (state);
+            for (int k = 1; k < copies; ++k)
+            {
+                auto extra = host.load (pluginPath, req.render.sampleRate, req.render.blockSize, error);
+                if (extra == nullptr) { std::cerr << "warning: extra instance " << k + 1 << " failed: " << error << std::endl; break; }
+                extra->setStateInformation (state.getData(), (int) state.getSize());
+                extraInstances.push_back (std::move (extra));
+            }
+            out ("Rendering with " + juce::String ((int) extraInstances.size() + 1) + " instances in parallel");
+        }
+    }
+    else
+    {
+        instrument = std::make_unique<BuiltInSynth>();
+    }
+    for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
+
+    req.instrumentName = instrument->getName();
+    out ("Instrument: " + req.instrumentName);
+    out ("Style:      " + req.style.name + "   key: " + req.plan.key + "   seed: " + juce::String (req.plan.seed)
+         + (req.plan.fixedRoot >= 0 ? "   16 Levels root: " + midiNoteName (req.plan.fixedRoot)
+            : req.plan.fixedRoot == PlanOptions::styleRoot ? juce::String ("   16 Levels root: per recipe") : juce::String())
+         + (useBuiltIn ? "   engine: " + (req.plan.engine.isNotEmpty() ? req.plan.engine : req.style.engine) : juce::String()));
+    out ("Output:     " + req.outputFolder.getFullPathName());
+    if (req.smartPickTarget > 0)
+        out ("Smart Pick: rendering " + juce::String ((int) specs.size()) + " candidates, keeping the best " + juce::String (req.smartPickTarget));
+
+    if (args.contains ("--export-presets"))
+    {
+        auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--export-presets"));
+        juce::String exportError;
+        auto n = exportPresets (*instrument, pluginPath, req.render, dir, exportError);
+        if (n == 0) return fail (exportError.isNotEmpty() ? exportError : "no presets written");
+        out ("Wrote " + juce::String (n) + " presets to " + dir.getFullPathName());
+        instrument.reset();
+        return onDone (0);
+    }
+
+    if (args.contains ("--sweep") || args.contains ("--sweep-folder"))
+    {
+        SweepOptions so;
+        auto src = option (args, "--sweep", "presets").toLowerCase();
+        so.source = src.startsWith ("var") ? SweepSource::Variations : src.startsWith ("file") ? SweepSource::PresetFolder : SweepSource::Programs;
+        if (args.contains ("--sweep-folder"))
+        {
+            so.source = SweepSource::PresetFolder;
+            so.folder = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--sweep-folder"));
+        }
+        so.keep       = juce::jlimit (1, 64, option (args, "--sweep-keep", "12").getIntValue());
+        so.perPreset  = juce::jlimit (1, 128, option (args, "--sweep-per", "16").getIntValue());
+        so.maxPresets = juce::jmax (0, option (args, "--sweep-max", "0").getIntValue());
+        so.minScore   = (float) juce::jlimit (0.0, 100.0, option (args, "--sweep-min-score", "70").getDoubleValue());
+        so.include    = option (args, "--sweep-include");
+        so.variations = juce::jlimit (1, 500, option (args, "--sweep-variations", "48").getIntValue());
+        so.strength   = (float) juce::jlimit (0.02, 1.0, option (args, "--sweep-strength", "0.25").getDoubleValue());
+        so.skipByName = ! args.contains ("--sweep-all-names");
+        so.skipRhythmic = ! args.contains ("--sweep-keep-arps");
+        so.keepProbes = ! args.contains ("--sweep-no-probes");
+
+        out ("Preset sweep with " + req.instrumentName + ", recipe " + req.style.name + " -> " + req.outputFolder.getFullPathName());
+        sweep = std::make_unique<PresetSweep> (*instrument, req.extraInstances, req, so);
+        sweep->onLog = [] (const juce::String& m) { out (m); Log::write (m); };
+        sweep->onFinished = [this] (bool ok, const juce::String& summary, const juce::File&)
+        {
+            out (summary);
+            Log::write (summary);
+            juce::MessageManager::callAsync ([this, ok]
+            {
+                sweep.reset();
+                extraInstances.clear();
+                instrument.reset();
+                onDone (ok ? 0 : 2);
+            });
+        };
+        juce::String sweepError;
+        if (! sweep->start (sweepError)) { sweep.reset(); return fail (sweepError); }
+        return;
+    }
+
+    Log::write ("batch: " + req.instrumentName + " / " + req.style.id + " / " + juce::String ((int) specs.size())
+                + " samples -> " + req.outputFolder.getFullPathName());
+    job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
+    job->onProgress = [] (int doneCount, int total, const juce::String& msg)
+    {
+        out ("[" + juce::String (doneCount).paddedLeft (' ', 3) + "/" + juce::String (total) + "] " + msg);
+    };
+    job->onFinished = [this] (bool ok, const juce::String& summary)
+    {
+        out (summary);
+        Log::write (summary);
+        job.reset();
+        extraInstances.clear();
+        instrument.reset();
+        onDone (ok ? 0 : 2);
+    };
+    job->startThread();
+}
+
+void CliRunner::runQueueNext()
+{
+    queueIndex = -1;
+    for (size_t i = 0; i < queueItems.size(); ++i)
+        if (queueItems[i].status == "waiting") { queueIndex = (int) i; break; }
+    if (queueIndex < 0)
+    {
+        out ("Queue finished: " + juce::String (queueDone) + " done" + (queueFailed > 0 ? ", " + juce::String (queueFailed) + " failed" : juce::String()));
+        saveQueue (queueFile, queueItems);
+        extraInstances.clear();
+        instrument.reset();
+        return onDone (queueFailed > 0 ? 2 : 0);
+    }
+
+    auto& item = queueItems[(size_t) queueIndex];
+    auto next = [this] { juce::MessageManager::callAsync ([this] { runQueueNext(); }); };
+    auto failItem = [this, next] (const juce::String& why)
+    {
+        auto& it = queueItems[(size_t) queueIndex];
+        it.status = "failed";
+        it.result = why;
+        ++queueFailed;
+        std::cerr << "queue item " << queueIndex + 1 << ": " << why << std::endl;
+        saveQueue (queueFile, queueItems);
+        next();
+    };
+    out ("==== Queue item " + juce::String (queueIndex + 1) + "/" + juce::String ((int) queueItems.size()) + ": " + item.describe());
+
+    // instrument + sound
+    extraInstances.clear();
+    instrument.reset();
+    juce::String error;
+    BatchRequest req = item.request;
+    if (item.pluginPath.isEmpty()) instrument = std::make_unique<BuiltInSynth>();
+    else
+    {
+        auto plugin = host.load (item.pluginPath, req.render.sampleRate, req.render.blockSize, error);
+        if (plugin == nullptr) return failItem (error);
+        if (item.pluginState.getSize() > 0) plugin->setStateInformation (item.pluginState.getData(), (int) item.pluginState.getSize());
+        for (int k = 1; k < item.instances; ++k)
+        {
+            juce::String e;
+            auto copy = host.load (item.pluginPath, req.render.sampleRate, req.render.blockSize, e);
+            if (copy == nullptr) break;
+            if (item.pluginState.getSize() > 0) copy->setStateInformation (item.pluginState.getData(), (int) item.pluginState.getSize());
+            extraInstances.push_back (std::move (copy));
+        }
+        instrument = std::move (plugin);
+    }
+    req.extraInstances.clear();
+    for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
+    req.instrumentName = instrument->getName();
+    req.plan.builtIn = item.pluginPath.isEmpty();
+    req.outputFolder = req.outputFolder.getNonexistentSibling (false);
+
+    std::vector<SampleSpec> specs;
+    juce::StringArray notes;
+    if (! planBatch (req, item.smartPick, specs, notes)) return failItem ("nothing planned: " + notes.joinIntoString ("; "));
+    for (auto& n : notes) out (n);
+    item.status = "running";
+    item.doneFolder = req.outputFolder;
+    if (req.plan.useCard) writeCardMidiForPlan (req.plan, req.outputFolder);
+    saveQueue (queueFile, queueItems);
+
+    job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
+    job->onProgress = [] (int doneCount, int total, const juce::String& msg)
+    {
+        if (doneCount % 8 == 0 || doneCount == total) out ("[" + juce::String (doneCount).paddedLeft (' ', 3) + "/" + juce::String (total) + "] " + msg);
+    };
+    job->onFinished = [this, next] (bool ok, const juce::String& summary)
+    {
+        out (summary);
+        auto& it = queueItems[(size_t) queueIndex];
+        it.status = ok ? "done" : "failed";
+        it.result = summary.upToFirstOccurrenceOf ("\n", false, false);
+        (ok ? queueDone : queueFailed)++;
+        saveQueue (queueFile, queueItems);
+        juce::MessageManager::callAsync ([this, next] { job.reset(); next(); });
+    };
+    job->startThread();
+}
+
+void CliRunner::runDiagnose (const juce::StringArray& args)
+{
+    juce::String error;
+    auto pluginPath = option (args, "--plugin");
+    if (pluginPath.isNotEmpty())
+    {
+        out ("Loading " + pluginPath + " ...");
+        auto plugin = host.load (pluginPath, 44100.0, 256, error);
+        if (plugin == nullptr) out ("[FAIL] Plugin load           " + error);
+        else instrument = std::move (plugin);
+    }
+
+    out (systemReport (host, nullptr, instrument.get(), pluginPath));
+    out ("SELF-TEST");
+
+    struct DiagThread final : juce::Thread
+    {
+        DiagThread (CliRunner& o) : juce::Thread ("diagnose"), owner (o) {}
+        void run() override
+        {
+            DiagSummary summary;
+            runSelfTest ([&summary] (const DiagResult& r) { summary.add (r); std::cout << r.toString() << std::endl; },
+                         owner.instrument.get(), owner.diagCancel);
+            std::cout << "\nRESULT: " << summary.toString() << std::endl;
+            Log::write ("self-test: " + summary.toString());
+            auto code = summary.fail > 0 ? 3 : 0;
+            auto* o = &owner;
+            juce::MessageManager::callAsync ([o, code] { o->instrument.reset(); o->onDone (code); });
+        }
+        CliRunner& owner;
+    };
+
+    diagThread = std::make_unique<DiagThread> (*this);
+    diagThread->startThread();
+}
+}
