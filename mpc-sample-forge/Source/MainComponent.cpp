@@ -173,13 +173,13 @@ MainComponent::MainComponent()
                          "Peak: every file peaks at -1 dB. As played: the instrument's own level.");
     levelBox.onChange = [this] { props.getUserSettings()->setValue ("level", levelBox.getSelectedId()); };
 
-    registersBox.addItem ("Registers: just this one", 1);
+    registersBox.addItem ("Registers: off", 1);
     registersBox.addItem ("+ octave down", 2);
     registersBox.addItem ("+ octave up", 3);
     registersBox.addItem ("+ octave down & up", 4);
     registersBox.addItem ("+ 2 octaves down & up", 5);
     registersBox.setSelectedId (settings->getIntValue ("registers", 1), juce::dontSendNotification);
-    registersBox.setTooltip ("Also render every kept sample in other registers (folders Octave_Down / Octave_Up). "
+    registersBox.setTooltip ("Faster: leave this off and use \"Octave copies of keepers\" in Review. This renders every sample in other registers (Octave_Down / Octave_Up). "
                              "With 16 Levels > Tune, load the register nearest the notes you play: big re-pitches sound grainy or dull.");
     registersBox.onChange = [this] { props.getUserSettings()->setValue ("registers", registersBox.getSelectedId()); };
 
@@ -188,9 +188,53 @@ MainComponent::MainComponent()
     shortNamesToggle.onClick = [this] { props.getUserSettings()->setValue ("shortNames", shortNamesToggle.getToggleState()); };
     for (auto* c : std::initializer_list<juce::Component*> { &levelBox, &registersBox, &shortNamesToggle })
         addAndMakeVisible (c);
+
+    varietyBox.addItem ("Variety: normal", 2);
+    varietyBox.addItem ("Variety: strict", 3);
+    varietyBox.addItem ("Variety: off", 1);
+    varietyBox.setSelectedId (settings->getIntValue ("variety", 2), juce::dontSendNotification);
+    varietyBox.setTooltip ("Normal: drop samples that sound nearly identical. Strict: drop anything too similar, even if the "
+                           "batch ends up smaller. Scale banks are never thinned.");
+    varietyBox.onChange = [this] { props.getUserSettings()->setValue ("variety", varietyBox.getSelectedId()); };
+
+    instancesBox.addItem ("VST copies: 1", 1);
+    instancesBox.addItem ("VST copies: 2", 2);
+    instancesBox.addItem ("VST copies: 4", 4);
+    instancesBox.setSelectedId (settings->getIntValue ("instances", 1), juce::dontSendNotification);
+    instancesBox.setTooltip ("Load this many copies of your VST3 and render in parallel (uses more RAM - sample-heavy plugins "
+                             "may not like it). The built-in synth always uses all CPU cores.");
+    instancesBox.onChange = [this] { props.getUserSettings()->setValue ("instances", instancesBox.getSelectedId()); updateEstimate(); };
+
+    sizeLabel.setText ("Batch", juce::dontSendNotification);
+    sizeLabel.setColour (juce::Label::textColourId, dim);
+    for (auto* b : { &size16, &size32, &size64 })
+        b->onClick = [this, b] { countSlider.setValue (b->getButtonText().getIntValue()); };
+    moreButton.setTooltip ("Render 16 more with a new seed and the same settings - quick rounds of fresh material");
+    moreButton.onClick = [this]
+    {
+        if (job != nullptr) return;
+        countSlider.setValue (16);
+        seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999)));
+        generateOrCancel();
+    };
+    estimateLabel.setColour (juce::Label::textColourId, dim);
+    estimateLabel.setJustificationType (juce::Justification::centred);
+    estimateLabel.setTooltip ("Estimated render time, learned from your previous batches with this instrument");
+    for (auto* c : std::initializer_list<juce::Component*> { &varietyBox, &instancesBox, &sizeLabel, &size16, &size32, &size64,
+                                                             &moreButton, &estimateLabel })
+        addAndMakeVisible (c);
+
+    // keep the estimate current
+    for (auto* cb : { &styleBox, &registersBox, &bankBox, &pluginBox })
+    {
+        auto previous = cb->onChange;
+        cb->onChange = [this, previous] { if (previous) previous(); updateEstimate(); };
+    }
+    countSlider.onValueChange = [this] { updateEstimate(); };
+    smartPickToggle.onStateChange = [this] { updateEstimate(); };
     smartPickToggle.setToggleState (settings->getBoolValue ("smartPick", true), juce::dontSendNotification);
-    smartPickToggle.setTooltip ("Renders 3x as many samples, scores them (pitch clarity, muddy voicings, harshness, clicks) "
-                                "and keeps only the best, most varied ones. Takes about 3x longer.");
+    smartPickToggle.setTooltip ("Renders 1.5x as many samples, scores them (pitch clarity, muddy voicings, harshness, clicks) "
+                                "and keeps only the best, most varied ones.");
     smartPickToggle.onClick = [this] { props.getUserSettings()->setValue ("smartPick", smartPickToggle.getToggleState()); };
     for (auto* c : std::initializer_list<juce::Component*> { &rateBox, &bitsBox, &smartPickToggle })
         addAndMakeVisible (c);
@@ -295,6 +339,8 @@ MainComponent::MainComponent()
     log ("Atlanta, Recipe Guide Palette), set '16 Levels root' to \"Recipe's own root\" and tick '16-pad banks'.");
     log ("Each batch includes _MPC_Setup.txt with the pad settings (mute group, tune, phrasing) for every recipe.");
     log ("Scale banks: pick a key + 'Scale banks' and every bank of 16 pads is one sound across the scale, in tune on every pad.");
+    log ("Quick rounds: Batch 16, Generate, keep what you like in Review, then '+16 More'. Octave copies: make them for keepers in Review.");
+    updateEstimate();
     setSize (980, 760);
 }
 
@@ -361,14 +407,20 @@ void MainComponent::resized()
     seedEditor.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
     diceButton.setBounds (r.removeFromLeft (60)); r.removeFromLeft (20);
     prefixLabel.setBounds (r.removeFromLeft (60));
-    prefixEditor.setBounds (r.removeFromLeft (200));
+    prefixEditor.setBounds (r.removeFromLeft (200)); r.removeFromLeft (20);
+    sizeLabel.setBounds (r.removeFromLeft (44));
+    size16.setBounds (r.removeFromLeft (40)); r.removeFromLeft (4);
+    size32.setBounds (r.removeFromLeft (40)); r.removeFromLeft (4);
+    size64.setBounds (r.removeFromLeft (40));
 
     r = row();
     audioLabel.setBounds (r.removeFromLeft (labelW));
-    rateBox.setBounds (r.removeFromLeft (110)); r.removeFromLeft (6);
-    bitsBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (12);
-    levelBox.setBounds (r.removeFromLeft (210)); r.removeFromLeft (12);
-    smartPickToggle.setBounds (r.removeFromLeft (220));
+    rateBox.setBounds (r.removeFromLeft (100)); r.removeFromLeft (6);
+    bitsBox.setBounds (r.removeFromLeft (90)); r.removeFromLeft (8);
+    levelBox.setBounds (r.removeFromLeft (200)); r.removeFromLeft (8);
+    smartPickToggle.setBounds (r.removeFromLeft (110)); r.removeFromLeft (4);
+    varietyBox.setBounds (r.removeFromLeft (150)); r.removeFromLeft (8);
+    instancesBox.setBounds (r.removeFromLeft (140));
 
     r = row();
     engineLabel.setBounds (r.removeFromLeft (labelW));
@@ -387,10 +439,12 @@ void MainComponent::resized()
 
     area.removeFromTop (14);
     r = row (34);
-    generateButton.setBounds (r.removeFromRight (150)); r.removeFromRight (8);
-    reviewButton.setBounds (r.removeFromRight (90)); r.removeFromRight (8);
-    auditionButton.setBounds (r.removeFromRight (130)); r.removeFromRight (8);
-    planButton.setBounds (r.removeFromRight (110)); r.removeFromRight (12);
+    generateButton.setBounds (r.removeFromRight (130)); r.removeFromRight (6);
+    moreButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
+    reviewButton.setBounds (r.removeFromRight (84)); r.removeFromRight (6);
+    auditionButton.setBounds (r.removeFromRight (124)); r.removeFromRight (6);
+    planButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
+    estimateLabel.setBounds (r.removeFromRight (90)); r.removeFromRight (6);
     progressBar.setBounds (r);
 
     keyboard.setBounds (area.removeFromBottom (80));
@@ -588,6 +642,7 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     req.render.normalise = levelBox.getSelectedId() != 3;
     req.render.loudnessMatch = levelBox.getSelectedId() == 1;
     req.plan.shortNames = shortNamesToggle.getToggleState();
+    req.variety = varietyBox.getSelectedId() - 1;
     req.plan.scaleBank = bankBox.getSelectedId() > 1;
     req.plan.bankType = bankBox.getSelectedId() == 3 ? "notes" : bankBox.getSelectedId() == 4 ? "chords" : "";
     switch (registersBox.getSelectedId())
@@ -625,7 +680,7 @@ bool MainComponent::buildRequest (BatchRequest& req, std::vector<SampleSpec>& sp
     }
     if (! banks && smartPickToggle.getToggleState())
     {
-        req.plan.count = juce::jmin (2000, wanted * 3);
+        req.plan.count = juce::jmin (2000, (int) std::ceil (wanted * 1.5));
         req.smartPickTarget = wanted;
     }
     specs = planSamples (req.style, req.plan, error);
@@ -691,6 +746,7 @@ void MainComponent::setBusy (bool busy)
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
                                                              &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
+                                                             &varietyBox, &instancesBox, &size16, &size32, &size64, &moreButton,
                                                              &outButton, &planButton, &auditionButton, &keyboard })
         c->setEnabled (! busy);
     generateButton.setButtonText (busy ? "Cancel" : "Generate");
@@ -709,11 +765,36 @@ void MainComponent::generateOrCancel()
     std::vector<SampleSpec> specs;
     if (! buildRequest (req, specs)) return;
 
+    startJob (std::move (req), std::move (specs), true);
+}
+
+void MainComponent::startJob (BatchRequest req, std::vector<SampleSpec> specs, bool openReviewAfter)
+{
     keyboardState.allNotesOff (0);
     player.setProcessor (nullptr); // the job owns the instrument while it renders
+
+    // parallel VST3 copies (the built-in synth makes its own)
+    extraInstances.clear();
+    if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr && instrumentPath.isNotEmpty() && instancesBox.getSelectedId() > 1)
+    {
+        juce::MemoryBlock state;
+        instrument->getStateInformation (state);
+        for (int k = 1; k < instancesBox.getSelectedId(); ++k)
+        {
+            juce::String err;
+            auto copy = host.load (instrumentPath, req.render.sampleRate, req.render.blockSize, err);
+            if (copy == nullptr) { log ("Parallel copy " + juce::String (k + 1) + " failed (" + err + ") - continuing with fewer."); break; }
+            copy->setStateInformation (state.getData(), (int) state.getSize());
+            extraInstances.push_back (std::move (copy));
+        }
+        for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
+        if (! extraInstances.empty()) log ("Rendering with " + juce::String ((int) extraInstances.size() + 1) + " copies of " + instrument->getName());
+    }
+
     setBusy (true);
     progress = 0;
-    log ("==== Generating " + juce::String ((int) specs.size()) + " samples into " + req.outputFolder.getFullPathName());
+    log ("==== " + juce::String (req.registersOnly ? "Octave copies of " : "Generating ") + juce::String ((int) specs.size())
+         + " samples into " + req.outputFolder.getFullPathName());
 
     auto safe = juce::Component::SafePointer<MainComponent> (this);
     job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
@@ -723,17 +804,110 @@ void MainComponent::generateOrCancel()
         safe->progress = total > 0 ? (double) done / total : 0.0;
         safe->log (msg);
     };
-    job->onFinished = [safe, folder = req.outputFolder] (bool ok, const juce::String& summary)
+    job->onFinished = [safe, folder = req.outputFolder, openReviewAfter, name = req.instrumentName] (bool ok, const juce::String& summary)
     {
         if (safe == nullptr) return;
+        // learn this instrument's speed for the next estimate
+        if (safe->job != nullptr && safe->job->elapsedSeconds() > 0.3 && safe->job->renderedAudioSeconds() > 1.0)
+            safe->props.getUserSettings()->setValue ("speed_" + name, safe->job->renderedAudioSeconds() / safe->job->elapsedSeconds());
+        safe->extraInstances.clear();
         safe->jobFinished (ok, summary);
         if (folder.isDirectory())
         {
             safe->lastBatchFolder = folder;
-            safe->openReview (folder); // straight into auditioning and picking keepers
+            if (openReviewAfter) safe->openReview (folder); // straight into auditioning and picking keepers
+            else if (safe->reviewWindow != nullptr)
+                if (auto* panel = dynamic_cast<ReviewPanel*> (safe->reviewWindow->getContentComponent())) panel->reload();
         }
+        safe->updateEstimate();
     };
     job->startThread();
+}
+
+double MainComponent::expectedSpeed() const
+{
+    // x real time, measured on earlier batches; first guesses until then
+    auto builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
+    auto name = instrument != nullptr ? instrument->getName() : juce::String();
+    auto fallback = builtIn ? 60.0 * juce::jmin (8, juce::SystemStats::getNumCpus()) : 8.0 * instancesBox.getSelectedId();
+    return juce::jmax (0.5, (double) const_cast<juce::ApplicationProperties&> (props).getUserSettings()->getDoubleValue ("speed_" + name, fallback));
+}
+
+void MainComponent::updateEstimate()
+{
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size()) || instrument == nullptr) { estimateLabel.setText ({}, juce::dontSendNotification); return; }
+    const auto st = styles[i];
+    auto banks = bankBox.getSelectedId() > 1 || st.scaleBankOnly;
+    auto count = (double) countSlider.getValue();
+    if (banks) count = std::ceil (count / 16.0) * 16.0;
+
+    // seconds of audio per sample: the recipe's end point, else the hold plus a short tail
+    auto perSample = st.processing.maxLength > 0 ? st.processing.maxLength + st.processing.fxTailMs / 1000.0
+                                                 : (st.holdLow + st.holdHigh) * 0.5 + 0.8;
+    perSample += 0.1; // silence between samples
+    auto factor = (! banks && smartPickToggle.getToggleState()) ? 1.5 : 1.0;
+    auto regs = banks ? 0 : (registersBox.getSelectedId() == 1 ? 0 : registersBox.getSelectedId() == 5 ? 4 : registersBox.getSelectedId() == 4 ? 2 : 1);
+    auto seconds = count * perSample * (factor + regs) / expectedSpeed();
+    if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr) seconds += 1.5; // plugin warm-up
+
+    estimateLabel.setText (seconds < 60 ? "~" + juce::String (juce::jmax (1, juce::roundToInt (seconds))) + " s"
+                                        : "~" + juce::String (seconds / 60.0, 1) + " min", juce::dontSendNotification);
+}
+
+void MainComponent::makeRegistersForKeepers (const juce::File& batchFolder, const juce::Array<juce::File>& keepers)
+{
+    if (job != nullptr) { log ("Busy - wait for the current job to finish."); return; }
+
+    auto batch = juce::JSON::parse (batchFolder.getChildFile ("_batch.json"));
+    auto specsJson = juce::JSON::parse (batchFolder.getChildFile ("_specs.json"));
+    if (! specsJson.isArray())
+    {
+        juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Can't make octave copies",
+            "This batch was made by an older version (no _specs.json). Generate it again to use this.");
+        return;
+    }
+    auto madeWith = batch["instrument"].toString();
+    if (instrument == nullptr || (madeWith.isNotEmpty() && madeWith != instrument->getName()))
+    {
+        juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Load the same instrument first",
+            "These samples were made with \"" + madeWith + "\". Load it (and its sound) so the octave copies match, then try again.");
+        return;
+    }
+
+    BatchRequest req;
+    req.registersOnly = true;
+    req.outputFolder = batchFolder;
+    req.instrumentName = instrument->getName();
+    req.render.sampleRate = (double) batch.getProperty ("sampleRate", 44100.0);
+    req.render.bitDepth = (int) batch.getProperty ("bitDepth", 24);
+    req.render.loudnessMatch = (bool) batch.getProperty ("loudnessMatch", false);
+    req.registers = { -12, 12 };
+    switch (registersBox.getSelectedId())
+    {
+        case 2: req.registers = { -12 }; break;
+        case 3: req.registers = { 12 }; break;
+        case 5: req.registers = { -24, -12, 12, 24 }; break;
+        default: break;
+    }
+
+    std::vector<SampleSpec> specs;
+    for (auto& keeper : keepers)
+    {
+        auto rel = keeper.getRelativePathFrom (batchFolder).replaceCharacter ('\\', '/');
+        for (auto& v : *specsJson.getArray())
+        {
+            SampleSpec sp;
+            if ((int) v.getProperty ("register", 0) == 0 && v["file"].toString() == rel && specFromVar (v, sp))
+            {
+                specs.push_back (sp);
+                req.existingFiles.push_back (keeper);
+                break;
+            }
+        }
+    }
+    if (specs.empty()) { log ("None of the keepers were found in _specs.json."); return; }
+    startJob (std::move (req), std::move (specs), false);
 }
 
 void MainComponent::jobFinished (bool ok, const juce::String& summary)
@@ -785,8 +959,12 @@ void MainComponent::openReview (const juce::File& batchFolder)
     if (! batchFolder.isDirectory()) return;
     reviewWindow.reset(); // one review at a time
     auto safe = juce::Component::SafePointer<MainComponent> (this);
-    reviewWindow = std::make_unique<ToolWindow> ("Review & Keep - " + batchFolder.getFileName(),
-                                                 new ReviewPanel (batchFolder, deviceManager),
+    auto* panel = new ReviewPanel (batchFolder, deviceManager);
+    panel->onMakeRegisters = [safe] (const juce::File& f, const juce::Array<juce::File>& keepers)
+    {
+        if (safe != nullptr) safe->makeRegistersForKeepers (f, keepers);
+    };
+    reviewWindow = std::make_unique<ToolWindow> ("Review & Keep - " + batchFolder.getFileName(), panel,
                                                  [safe] { if (safe != nullptr) safe->reviewWindow.reset(); });
     reviewWindow->toFront (true);
 }

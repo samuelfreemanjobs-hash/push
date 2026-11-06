@@ -47,10 +47,12 @@ juce::String cliHelpText()
       << "  --prefix <text>           file name prefix, default the style name\n"
       << "  --out <folder>            output folder, default ~/MPC Sample Forge/<style>\n\n"
       << "Smart Pick (better selections):\n"
-      << "  --smart-pick              render 3x the samples, score them (pitch clarity, mud,\n"
+      << "  --smart-pick              render 1.5x the samples, score them (pitch clarity, mud,\n"
       << "                            harshness, clicks) and keep only the best, skipping\n"
       << "                            near-duplicates. Writes _smart_pick.csv with every decision.\n"
-      << "  --pick-factor <2-6>       candidates per kept sample (default 3)\n\n"
+      << "  --pick-factor <1.2-6>     candidates per kept sample (default 1.5)\n"
+      << "  --variety <off|normal|strict>  drop samples that sound nearly the same (default normal;\n"
+      << "                            strict drops more, even if the batch ends up smaller)\n\n"
       << "Scale banks (play in key without 16 Levels > Tune):\n"
       << "  --scale-bank              each bank of 16 pads is one sound climbing the scale\n"
       << "                            (uses --key / --scale; random key = one key for all banks).\n"
@@ -68,7 +70,9 @@ juce::String cliHelpText()
       << "  --rate <44100|48000>      sample rate, default 44100\n"
       << "  --bits <16|24>            bit depth, default 24\n"
       << "  --no-normalize            keep the plugin's level (default: normalise to -1 dBFS)\n"
-      << "  --tail <seconds>          max release tail after note-off, default 6\n"
+      << "  --tail <seconds>          max release tail after note-off, default 3\n"
+      << "  --instances <1-8>         VST3 only: load this many copies and render in parallel (needs RAM;\n"
+      << "                            the built-in synth always uses all CPU cores)\n"
       << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
       << "Info:\n"
       << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --version  --help\n"
@@ -216,13 +220,17 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     req.render.sampleRate = option (args, "--rate", "44100").getDoubleValue();
     req.render.bitDepth   = option (args, "--bits", "24").getIntValue();
     req.render.normalise  = ! args.contains ("--no-normalize");
-    req.render.maxTailSec = option (args, "--tail", "6").getDoubleValue();
+    req.render.maxTailSec = option (args, "--tail", "3").getDoubleValue();
     req.render.warmUpSec  = option (args, "--warmup", "1.5").getDoubleValue();
     req.plan.scaleBank = args.contains ("--scale-bank") || args.contains ("--bank-type");
     req.plan.bankType = option (args, "--bank-type").toLowerCase();
     if (req.plan.bankType.isNotEmpty() && req.plan.bankType != "notes" && req.plan.bankType != "chords")
         return fail ("--bank-type must be notes or chords");
     req.render.loudnessMatch = args.contains ("--loudness");
+    {
+        auto v = option (args, "--variety", "normal").toLowerCase();
+        req.variety = v == "off" ? 0 : v == "strict" ? 2 : 1;
+    }
     req.plan.shortNames = args.contains ("--short-names");
     if (args.contains ("--registers"))
     {
@@ -270,8 +278,8 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     const int wanted = juce::jlimit (1, 2000, req.plan.count);
     if (! banks && (args.contains ("--smart-pick") || args.contains ("--pick-factor")))
     {
-        auto factor = juce::jlimit (2, 6, option (args, "--pick-factor", "3").getIntValue());
-        req.plan.count = juce::jmin (2000, wanted * factor);
+        auto factor = juce::jlimit (1.2, 6.0, option (args, "--pick-factor", "1.5").getDoubleValue());
+        req.plan.count = juce::jmin (2000, (int) std::ceil (wanted * factor));
         req.smartPickTarget = wanted;
     }
 
@@ -313,11 +321,27 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         if (haveSound && sound.state.getSize() > 0)
             plugin->setStateInformation (sound.state.getData(), (int) sound.state.getSize());
         instrument = std::move (plugin);
+
+        auto copies = juce::jlimit (1, 8, option (args, "--instances", "1").getIntValue());
+        if (copies > 1)
+        {
+            juce::MemoryBlock state;
+            instrument->getStateInformation (state);
+            for (int k = 1; k < copies; ++k)
+            {
+                auto extra = host.load (pluginPath, req.render.sampleRate, req.render.blockSize, error);
+                if (extra == nullptr) { std::cerr << "warning: extra instance " << k + 1 << " failed: " << error << std::endl; break; }
+                extra->setStateInformation (state.getData(), (int) state.getSize());
+                extraInstances.push_back (std::move (extra));
+            }
+            out ("Rendering with " + juce::String ((int) extraInstances.size() + 1) + " instances in parallel");
+        }
     }
     else
     {
         instrument = std::make_unique<BuiltInSynth>();
     }
+    for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
 
     req.instrumentName = instrument->getName();
     out ("Instrument: " + req.instrumentName);
@@ -341,6 +365,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         out (summary);
         Log::write (summary);
         job.reset();
+        extraInstances.clear();
         instrument.reset();
         onDone (ok ? 0 : 2);
     };

@@ -8,7 +8,7 @@ namespace
     const juce::Colour bg (0xff16181d), panel (0xff20232a), accent (0xffe8483b), keepCol (0xff3fb950), rejectCol (0xff8b949e),
                        text (0xffe6e6e6), dim (0xff9aa0a6);
 
-    enum Columns { colIndex = 1, colName, colType, colRoot, colScore, colMark };
+    enum Columns { colIndex = 1, colName, colType, colRoot, colScore, colLike, colMark };
 
     /** Splits one CSV line, honouring "quoted, fields". */
     juce::StringArray splitCsv (const juce::String& line)
@@ -45,10 +45,11 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
 
     auto& h = table.getHeader();
     h.addColumn ("#", colIndex, 44);
-    h.addColumn ("File", colName, 420);
+    h.addColumn ("File", colName, 360);
     h.addColumn ("Type", colType, 70);
     h.addColumn ("Root", colRoot, 54);
     h.addColumn ("Score", colScore, 56);
+    h.addColumn ("Like", colLike, 80);
     h.addColumn ("Mark", colMark, 70);
     table.setColour (juce::ListBox::backgroundColourId, panel);
     table.setRowHeight (24);
@@ -61,11 +62,20 @@ ReviewPanel::ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManage
     rejectButton.onClick = [this] { setMark (Mark::Reject, true); };
     clearButton.onClick  = [this] { setMark (Mark::None, false); };
     exportButton.onClick = [this] { exportKeepers(); };
+    registersButton.setTooltip ("Render octave-down and octave-up copies of just your keepers (same sound, same settings) - "
+                                "much faster than making registers for the whole batch. Load the same instrument first.");
+    registersButton.onClick = [this]
+    {
+        juce::Array<juce::File> keep;
+        for (auto& e : entries) if (e.mark == Mark::Keep) keep.add (e.file);
+        if (keep.isEmpty()) { status.setText ("Mark some keepers (K) first.", juce::dontSendNotification); return; }
+        if (onMakeRegisters) onMakeRegisters (folder, keep);
+    };
     trashButton.onClick  = [this] { trashRejects(); };
     folderButton.onClick = [this] { folder.revealToUser(); };
     keepButton.setColour (juce::TextButton::buttonColourId, keepCol.darker (0.4f));
     exportButton.setColour (juce::TextButton::buttonColourId, accent);
-    for (auto* b : { &playButton, &keepButton, &rejectButton, &clearButton, &exportButton, &trashButton, &folderButton })
+    for (auto* b : { &playButton, &keepButton, &rejectButton, &clearButton, &exportButton, &trashButton, &folderButton, &registersButton })
     {
         b->setWantsKeyboardFocus (false); // keep the keys going to the list
         addAndMakeVisible (b);
@@ -127,13 +137,23 @@ void ReviewPanel::load()
         lines.addLines (manifest.loadFileAsString());
         auto header = splitCsv (lines[0]);
         auto col = [&header] (const char* name) { return header.indexOf (name); };
+        std::vector<std::pair<juce::String, juce::File>> copies; // source -> copy
         for (int i = 1; i < lines.size(); ++i)
         {
             if (lines[i].trim().isEmpty()) continue;
             auto f = splitCsv (lines[i]);
+            auto file = folder.getChildFile (f[col ("file")]);
+            if (col ("register_semitones") >= 0 && f[col ("register_semitones")].getIntValue() != 0)
+            {
+                // octave copies are not reviewed on their own: they follow their original
+                if (col ("source") >= 0 && file.existsAsFile()) copies.push_back ({ f[col ("source")], file });
+                continue;
+            }
             Entry e;
-            e.file = folder.getChildFile (f[col ("file")]);
+            e.file = file;
             if (! e.file.existsAsFile()) continue; // already moved / deleted
+            if (col ("sounds_like") >= 0 && f[col ("sounds_like")].isNotEmpty())
+                e.like = f[col ("sounds_like")] + " (" + juce::String (f[col ("sounds_like_db")].getFloatValue(), 1) + ")";
             e.recipe = col ("recipe") >= 0 ? f[col ("recipe")] : juce::String();
             e.type = f[col ("type")];
             e.name = f[col ("name")];
@@ -141,12 +161,16 @@ void ReviewPanel::load()
             e.score = col ("score") >= 0 && f[col ("score")].isNotEmpty() ? f[col ("score")].getIntValue() : -1;
             entries.push_back (e);
         }
+        for (auto& [src, copy] : copies)
+            for (auto& e : entries)
+                if (e.file == folder.getChildFile (src)) { e.copies.add (copy); break; }
     }
     else // any folder of WAVs works too
     {
         for (auto& f : folder.findChildFiles (juce::File::findFiles, true, "*.wav"))
         {
-            if (f.getFullPathName().contains ("_Keepers") || f.getFullPathName().contains (".candidates")) continue;
+            if (f.getFullPathName().contains ("_Keepers") || f.getFullPathName().contains (".candidates")
+                || f.getFullPathName().contains ("Octave")) continue;
             Entry e;
             e.file = f;
             entries.push_back (e);
@@ -184,6 +208,7 @@ void ReviewPanel::updateStatus()
                     + " rejected   |   " + juce::String ((int) entries.size() - keep - reject) + " to go   ("
                     + folder.getFileName() + ")", juce::dontSendNotification);
     exportButton.setEnabled (keep > 0);
+    registersButton.setEnabled (keep > 0);
     trashButton.setEnabled (reject > 0);
 }
 
@@ -237,8 +262,9 @@ void ReviewPanel::resized()
     help.setBounds (helpRow);
 
     auto bottom = r.removeFromBottom (32);
-    exportButton.setBounds (bottom.removeFromRight (160)); bottom.removeFromRight (8);
-    trashButton.setBounds (bottom.removeFromRight (180)); bottom.removeFromRight (8);
+    exportButton.setBounds (bottom.removeFromRight (150)); bottom.removeFromRight (8);
+    registersButton.setBounds (bottom.removeFromRight (190)); bottom.removeFromRight (8);
+    trashButton.setBounds (bottom.removeFromRight (170)); bottom.removeFromRight (8);
     status.setBounds (bottom);
     r.removeFromBottom (6);
     table.setBounds (r);
@@ -270,6 +296,7 @@ void ReviewPanel::paintCell (juce::Graphics& g, int row, int col, int w, int h, 
         case colType:  t = e.type; break;
         case colRoot:  t = e.root; break;
         case colScore: t = e.score >= 0 ? juce::String (e.score) : juce::String ("-"); break;
+        case colLike:  t = e.like; break;
         case colMark:
             t = e.mark == Mark::Keep ? "KEEP" : e.mark == Mark::Reject ? "reject" : "";
             if (e.mark == Mark::Keep) g.setColour (keepCol);
@@ -442,8 +469,28 @@ void ReviewPanel::exportKeepers()
         bankDir.createDirectory();
         // the number keeps your pad order when the MPC sorts by name
         auto target = bankDir.getChildFile ("K" + juce::String ((int) i + 1).paddedLeft ('0', 3) + "_" + keep[i]->file.getFileName());
+        auto prefix = "K" + juce::String ((int) i + 1).paddedLeft ('0', 3) + "_";
+        auto baseName = keep[i]->file.getFileName();
+        // short names already start with a number: keep only the K-number for pad order
+        if (baseName.length() > 4 && juce::CharacterFunctions::isDigit (baseName[0]) && baseName.containsChar ('_')
+            && baseName.upToFirstOccurrenceOf ("_", false, false).containsOnly ("0123456789"))
+            baseName = baseName.fromFirstOccurrenceOf ("_", false, false);
+        target = bankDir.getChildFile (prefix + baseName);
         if (keep[i]->file.copyFileTo (target)) list.add (target.getRelativePathFrom (dest).replaceCharacter ('\\', '/') + "   <-  " + keep[i]->file.getFileName());
         else problems.add (keep[i]->file.getFileName());
+
+        // its octave copies go along, into matching register folders
+        for (auto& copy : keep[i]->copies)
+        {
+            auto registerName = copy.getRelativePathFrom (folder).upToFirstOccurrenceOf ("/", false, false)
+                                    .upToFirstOccurrenceOf ("\\", false, false);
+            auto copyName = copy.getFileName();
+            if (copyName.upToFirstOccurrenceOf ("_", false, false).containsOnly ("0123456789"))
+                copyName = copyName.fromFirstOccurrenceOf ("_", false, false);
+            auto copyTarget = dest.getChildFile (registerName).getChildFile (bankDir.getFileName()).getChildFile (prefix + copyName);
+            copyTarget.getParentDirectory().createDirectory();
+            if (! copy.copyFileTo (copyTarget)) problems.add (copy.getFileName());
+        }
     }
 
     auto setup = folder.getChildFile ("_MPC_Setup.txt");

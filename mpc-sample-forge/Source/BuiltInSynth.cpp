@@ -21,6 +21,15 @@ static const std::vector<std::tuple<Engine, const char*, const char*>>& engineTa
         { Engine::Whistle,    "whistle",    "Whistle" },
         { Engine::Bass,       "bass",       "Bass" },
         { Engine::MoogBass,   "moogbass",   "MoogBass" },
+        { Engine::Bass808,    "808",        "808" },
+        { Engine::Clav,       "clav",       "Clav" },
+        { Engine::Talkbox,    "talkbox",    "Talkbox" },
+        { Engine::Wurli,      "wurli",      "Wurli" },
+        { Engine::MusicBox,   "musicbox",   "MusicBox" },
+        { Engine::Pizz,       "pizz",       "Pizz" },
+        { Engine::Flute,      "flute",      "Flute" },
+        { Engine::LogDrum,    "logdrum",    "LogDrum" },
+        { Engine::Sax,        "sax",        "Sax" },
     };
     return t;
 }
@@ -162,6 +171,7 @@ public:
         juce::Random v (owner.getVariation());
         bright = v.nextFloat(); decayAmt = v.nextFloat(); detune = v.nextFloat(); colour = v.nextFloat(); extra = v.nextFloat();
         juce::Random perNote (owner.getVariation() * 31 + note);
+        clickRng.setSeed (owner.getVariation() * 7 + note); // noise (clicks, breath) repeats exactly for the same seed
 
         auto noteScale = juce::jmap ((float) juce::jlimit (24, 108, note), 24.0f, 108.0f, 1.4f, 0.5f); // low notes ring longer
         level = 0.2f * (0.3f + 0.7f * vel);
@@ -241,10 +251,53 @@ public:
                 decayTau = (0.5 + 1.0 * decayAmt) * noteScale;
                 break;
 
+            case Engine::Bass808:
+                decayTau = (0.35 + 0.9 * decayAmt) * juce::jmax (0.8f, noteScale);
+                break;
+
+            case Engine::Clav:
+                filter.clear(); filter2.clear();
+                decayTau = (0.18 + 0.4 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Talkbox:
+            case Engine::Sax:
+                for (auto& f : formant) f.clear();
+                filter.clear();
+                attackSec = engine == Engine::Sax ? 0.03 + 0.03 * (1.0 - bright) : 0.01 + 0.02 * (1.0 - bright);
+                break;
+
+            case Engine::Wurli:
+                decayTau = (0.8 + 1.6 * decayAmt) * noteScale;
+                break;
+
+            case Engine::MusicBox:
+                decayTau = (0.5 + 1.0 * decayAmt) * noteScale;
+                break;
+
+            case Engine::Flute:
+                filter.clear();
+                attackSec = 0.035 + 0.03 * (1.0 - bright);
+                break;
+
+            case Engine::LogDrum:
+                decayTau = (0.18 + 0.4 * decayAmt) * juce::jmax (0.8f, noteScale);
+                break;
+
+            case Engine::Pizz:
+                // pizzicato: a short, dark plucked string
+                bright = 0.12f + 0.25f * bright;
+                decayAmt = 0.03f + 0.12f * decayAmt;
+                period = juce::jlimit (2.0, (double) delay.size() - 6, sr / freq - 1.0);
+                [[fallthrough]];
+
             case Engine::Harp:
                 // a concert harp is a bright, long-ringing plucked string
-                bright = 0.3f + 0.3f * bright;      // gut / nylon strings: warm, not buzzy
-                decayAmt = 0.55f + 0.45f * decayAmt;
+                if (engine == Engine::Harp)
+                {
+                    bright = 0.3f + 0.3f * bright;      // gut / nylon strings: warm, not buzzy
+                    decayAmt = 0.55f + 0.45f * decayAmt;
+                }
                 [[fallthrough]];
 
             case Engine::Pluck:
@@ -321,7 +374,8 @@ public:
             float rel = 1.0f;
             if (releasing)
             {
-                auto relTime = (engine == Engine::Organ || engine == Engine::ComboOrgan) ? 0.05 : engine == Engine::Choir ? 0.3 : 0.25;
+                auto relTime = (engine == Engine::Organ || engine == Engine::ComboOrgan || engine == Engine::Clav) ? 0.05
+                             : (engine == Engine::Choir || engine == Engine::Sax || engine == Engine::Flute) ? 0.3 : 0.25;
                 rel = (float) std::exp (-releaseTime / (relTime / 4.0));
                 releaseTime += dt;
             }
@@ -523,6 +577,121 @@ private:
                 return x * amp * 1.1f;
             }
 
+            case Engine::Bass808:
+            {
+                // tuned 808: sine with a short pitch "punch" from above, gentle drive, long boom
+                auto punch = (3.0 + 9.0 * colour) / 12.0 * std::exp (-t / 0.008);
+                phase += inc * std::pow (2.0, punch); if (phase >= 1.0) phase -= 1.0;
+                auto x = std::sin (twoPi * phase) + 0.08 * std::sin (2.0 * twoPi * phase);
+                auto drive = 1.0 + 3.0 * extra;
+                auto y = (float) (std::tanh (drive * x) / std::tanh (drive));
+                if (t < 0.002) y += 0.3f * bright * (clickRng.nextFloat() * 2.0f - 1.0f) * (float) (1.0 - t / 0.002);
+                amp = (float) (juce::jmin (1.0, t / 0.001) * std::exp (-t / decayTau));
+                if (amp < 0.0003f && t > 0.05) done = true;
+                return y * amp;
+            }
+
+            case Engine::Clav:
+            {
+                // clavinet: narrow pulse, bright "pluck" filter snap, quick decay
+                auto x = blepPulse (phases[0], inc, 0.12 + 0.15 * colour);
+                auto fenv = std::exp (-t / (0.03 + 0.08 * extra));
+                filter.set (freq * (2.0 + 14.0 * bright * fenv) + 300.0, 1.4, sr);
+                filter2.set (freq * 0.7, 0.7, sr);                  // high-pass: thin, no boom
+                auto lp = filter.process (x).first;
+                auto hp = filter2.process (lp);
+                auto y = lp - 0.6f * hp.first;
+                amp = (float) (juce::jmin (1.0, t / 0.0008) * std::exp (-t / decayTau));
+                if (amp < 0.0003f && t > 0.03) done = true;
+                return y * amp * 1.6f;
+            }
+
+            case Engine::Talkbox:
+            case Engine::Sax:
+            {
+                const bool sax = engine == Engine::Sax;
+                // vowel / horn formants that move during the note (talkbox "wah", sax body)
+                auto morph = (float) juce::jlimit (0.0, 1.0, t / (sax ? 0.25 : 0.18));
+                const float vA[3] = { 400.0f, 800.0f, 2600.0f }, vB[3] = { 750.0f, 1200.0f, 2700.0f };   // "oh" -> "ah"
+                const float sxA[3] = { 500.0f, 1300.0f, 2500.0f }, sxB[3] = { 600.0f, 1600.0f, 2900.0f }; // alto sax body
+                auto scoop = sax ? std::pow (2.0, -0.35 / 12.0 * std::exp (-t / 0.02)) : 1.0;
+                auto vibDepth = (sax ? 0.006 : 0.003) * juce::jlimit (0.0, 1.0, (t - 0.28) / 0.35) * (0.4 + 0.6 * extra);
+                auto f = inc * scoop * (1.0 + vibDepth * std::sin (twoPi * 5.3 * t));
+                auto src = 0.5f * (blepSaw (phases[0], f) + blepSaw (phases[1], f * (1.0 + 0.001 * detune)));
+                float out = 0;
+                for (int k = 0; k < 3; ++k)
+                {
+                    auto fc = sax ? sxA[k] + morph * (sxB[k] - sxA[k]) : vA[k] + morph * (vB[k] - vA[k]);
+                    formant[k].set (fc * (0.95 + 0.1 * colour), fc / (50.0 + 30.0 * k), sr);
+                    out += (k == 0 ? 1.0f : k == 1 ? 0.7f : 0.3f) * formant[k].process (src).second;
+                }
+                out += 0.25f * src; // keep the fundamental present so the pitch reads
+                if (sax)
+                {
+                    // breath noise and a little growl
+                    filter.set (2200.0, 1.0, sr);
+                    out += (0.03f + 0.05f * bright) * filter.process (clickRng.nextFloat() * 2.0f - 1.0f).second;
+                    out *= 1.0f + 0.08f * colour * (float) std::sin (twoPi * 31.0 * t);
+                }
+                amp = (float) juce::jmin (1.0, t / attackSec);
+                return out * amp * 1.8f;
+            }
+
+            case Engine::Wurli:
+            {
+                // Wurlitzer: FM reed with an asymmetric "bark" when played hard, optional tremolo
+                auto env = (float) std::exp (-t / decayTau);
+                auto index = (0.6 + 1.6 * bright) * (0.4 + 0.6 * velocity) * std::exp (-t / (0.25 * decayTau));
+                auto x = std::sin (twoPi * phase + index * std::sin (twoPi * phase));
+                phase += inc; if (phase >= 1.0) phase -= 1.0;
+                auto barkAmt = 0.5 + 2.5 * velocity * bright;
+                auto y = (float) (std::tanh (barkAmt * (x + 0.2 * x * x)) / std::tanh (barkAmt));
+                auto trem = colour > 0.5f ? (float) (1.0 - 0.25 * (colour - 0.5) * 2.0 * (0.5 + 0.5 * std::sin (twoPi * 5.6 * t))) : 1.0f;
+                auto attack = (float) juce::jmin (1.0, t / 0.002);
+                if (env < 0.0003f) done = true;
+                return y * env * attack * trem;
+            }
+
+            case Engine::MusicBox:
+            {
+                // music box / celesta: strong fundamental + quickly fading metallic partials
+                auto p1 = std::sin (twoPi * phase);
+                auto p2 = std::sin (twoPi * phase * 3.0) * std::exp (-t / 0.15);
+                auto p3 = std::sin (twoPi * phase * 5.4) * std::exp (-t / 0.05);
+                phase += inc; if (phase >= 8.0) phase -= 8.0;
+                auto env = std::exp (-t / decayTau);
+                auto attack = juce::jmin (1.0, t / 0.0008);
+                if (env < 0.0003) done = true;
+                return (float) ((p1 + (0.2 + 0.3 * bright) * p2 + 0.15 * bright * p3) * env * attack);
+            }
+
+            case Engine::Flute:
+            {
+                // Mellotron-style flute: soft tone + breath, a breathy "chiff" at the start, tape wow
+                auto wow = 1.0 + 0.0015 * std::sin (twoPi * 0.8 * t) + 0.003 * juce::jlimit (0.0, 1.0, (t - 0.15) / 0.3) * std::sin (twoPi * 5.0 * t);
+                phase += inc * wow; if (phase >= 1.0) phase -= 1.0;
+                auto tone = std::sin (twoPi * phase) + 0.12 * std::sin (2.0 * twoPi * phase) + 0.05 * std::sin (3.0 * twoPi * phase);
+                filter.set (freq * 2.0, 2.0, sr);
+                auto breath = filter.process (clickRng.nextFloat() * 2.0f - 1.0f).second;
+                auto chiff = (float) std::exp (-t / 0.03);
+                amp = (float) juce::jmin (1.0, t / attackSec);
+                return (float) tone * amp * 0.9f + breath * (0.08f + 0.1f * bright + 0.4f * chiff);
+            }
+
+            case Engine::LogDrum:
+            {
+                // amapiano log drum: pitched thump that drops into the note, woody overtone, saturation
+                auto drop = (7.0 / 12.0) * std::exp (-t / 0.010);
+                phase += inc * std::pow (2.0, drop); if (phase >= 1.0) phase -= 1.0;
+                auto x = std::sin (twoPi * phase) + (0.15 + 0.2 * colour) * std::sin (2.0 * twoPi * phase) * std::exp (-t / 0.08);
+                auto y = (float) std::tanh ((1.5 + 2.0 * bright) * x);
+                if (t < 0.003) y += 0.25f * (clickRng.nextFloat() * 2.0f - 1.0f) * (float) (1.0 - t / 0.003);
+                amp = (float) (juce::jmin (1.0, t / 0.001) * std::exp (-t / decayTau));
+                if (amp < 0.0003f && t > 0.03) done = true;
+                return y * amp;
+            }
+
+            case Engine::Pizz:
             case Engine::Harp:
             case Engine::Pluck:
             {

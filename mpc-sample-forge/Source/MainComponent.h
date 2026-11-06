@@ -39,6 +39,10 @@ namespace forge
         void setBusy (bool busy);
         void openDiagnostics();
         void openReview (const juce::File& batchFolder);
+        void makeRegistersForKeepers (const juce::File& batchFolder, const juce::Array<juce::File>& keepers);
+        void startJob (BatchRequest req, std::vector<SampleSpec> specs, bool openReviewAfter);
+        void updateEstimate();
+        double expectedSpeed() const;
         void chooseFolderToReview();
         void applyLiveEngine();
         juce::String selectedEngine() const;
@@ -56,6 +60,7 @@ namespace forge
         juce::StringArray installedPlugins;
         std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow, reviewWindow;
         juce::File lastBatchFolder;
+        std::vector<std::unique_ptr<juce::AudioPluginInstance>> extraInstances; // parallel VST3 copies during a job
         std::unique_ptr<BatchJob> job;
         std::unique_ptr<juce::FileChooser> chooser;
 
@@ -66,14 +71,16 @@ namespace forge
 
         juce::Label title, pluginLabel, styleLabel, styleDesc, keyLabel, countLabel, seedLabel,
                     prefixLabel, audioLabel, outLabel, outPath, engineLabel, rootLabel;
-        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox;
+        juce::ComboBox pluginBox, styleBox, keyBox, scaleBox, rateBox, bitsBox, engineBox, rootBox, lengthBox, levelBox, registersBox, bankBox, varietyBox, instancesBox;
         juce::ToggleButton banksToggle { "16-pad banks" };
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
                          auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
-                         reviewButton { "Review..." };
-        juce::ToggleButton smartPickToggle { "Smart Pick (best of 3x)" }, shortNamesToggle { "Short names" };
+                         reviewButton { "Review..." }, moreButton { "+16 More" },
+                         size16 { "16" }, size32 { "32" }, size64 { "64" };
+        juce::Label estimateLabel, sizeLabel;
+        juce::ToggleButton smartPickToggle { "Smart Pick" }, shortNamesToggle { "Short names" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;
         juce::ProgressBar progressBar { progress };

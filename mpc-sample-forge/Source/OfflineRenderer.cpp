@@ -76,8 +76,9 @@ void OfflineRenderer::flush()
     processBlock (off);
 
     auto threshold = juce::Decibels::decibelsToGain ((float) settings.silenceDb - 10.0f);
-    auto quietNeeded = (int) (0.2 * settings.sampleRate);
-    auto maxSamples = (int) (5.0 * settings.sampleRate);
+    // Short and capped: this silence is pure waiting time between samples.
+    auto quietNeeded = (int) (0.05 * settings.sampleRate);
+    auto maxSamples = (int) (1.0 * settings.sampleRate);
     int quiet = 0;
     juce::MidiBuffer none;
 

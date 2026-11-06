@@ -273,7 +273,9 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
 
             auto f0 = estimatePitch (audio, sr, 261.6256);
             auto cents = f0 > 0 ? 1200.0 * std::log2 (f0 / 261.6256) : 9999.0;
-            auto tolerance = (e == Engine::Supersaw || e == Engine::Choir || e == Engine::Organ || e == Engine::Lead || e == Engine::Whistle) ? 25.0 : 10.0;
+            auto tolerance = (e == Engine::Supersaw || e == Engine::Choir || e == Engine::Organ || e == Engine::Lead || e == Engine::Whistle
+                              || e == Engine::Talkbox || e == Engine::Sax || e == Engine::Flute || e == Engine::Bass808
+                              || e == Engine::LogDrum || e == Engine::MusicBox) ? 25.0 : 10.0;
             say (std::abs (cents) <= tolerance ? L::Pass : L::Warn, "Engine " + id,
                  info + ", tuning " + (f0 > 0 ? juce::String (cents, 1) + " cents" : juce::String ("not measurable")));
         }

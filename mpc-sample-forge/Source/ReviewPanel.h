@@ -15,6 +15,11 @@ namespace forge
     {
     public:
         ReviewPanel (const juce::File& batchFolder, juce::AudioDeviceManager& devices);
+
+        /** Called with the kept files when "Octave copies of keepers" is clicked. */
+        std::function<void (const juce::File& batchFolder, const juce::Array<juce::File>& keepers)> onMakeRegisters;
+        /** Re-read the batch (e.g. after octave copies were added). */
+        void reload() { load(); }
         ~ReviewPanel() override;
 
         void paint (juce::Graphics&) override;
@@ -26,7 +31,8 @@ namespace forge
         struct Entry
         {
             juce::File file;
-            juce::String recipe, type, name, root;
+            juce::String recipe, type, name, root, like;
+            juce::Array<juce::File> copies;   // octave copies of this sample (other registers)
             int score = -1;
             Mark mark = Mark::None;
         };
@@ -73,7 +79,7 @@ namespace forge
         juce::TextButton playButton { "Play (Space)" }, keepButton { "Keep (K)" }, rejectButton { "Reject (X)" },
                          clearButton { "Clear (U)" }, exportButton { "Export Keepers..." }, trashButton { "Move Rejects to Trash" },
                          folderButton { "Open Folder" }, downButton { "<" }, upButton { ">" },
-                         resetPitchButton { "0" }, rangeButton { "Range check (R)" };
+                         resetPitchButton { "0" }, rangeButton { "Range check (R)" }, registersButton { "Octave copies of keepers" };
         juce::ToggleButton autoPlay { "Play when selected" };
         juce::Label status, help, pitchLabel;
         juce::Rectangle<int> waveArea;

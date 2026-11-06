@@ -20,6 +20,7 @@ namespace forge
         std::function<void (int)> onDone;
         PluginHost host;
         std::unique_ptr<juce::AudioProcessor> instrument;
+        std::vector<std::unique_ptr<juce::AudioProcessor>> extraInstances; // parallel VST3 copies
         std::unique_ptr<BatchJob> job;
         std::unique_ptr<juce::Thread> diagThread;
         std::atomic<bool> diagCancel { false };

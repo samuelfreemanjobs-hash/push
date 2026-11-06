@@ -7,7 +7,7 @@ Written in C++ with [JUCE](https://juce.com). It runs on Windows, macOS and Linu
 
 * **Hosts VST3 instruments** (pianos, Rhodes, synths, pads, organs and so on). Open the plugin's
   own window to pick or tweak a patch, then render with it.
-* **46 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
+* **57 built-in styles.** There are 14 genre styles: Neo-Soul, Lo-Fi Hip Hop, Dark Trap,
   Drill, Modern R&B, Gospel, Deep House, Jazz, Boom Bap, Afrobeats, Pop, Cinematic, Ambient
   and Synthwave. There are also 6 **one-shot recipe styles** for 16 Levels: Bell Tines,
   Organ Stabs, Plucks, Choir Notes, Detuned Synth and One-Shot Palette. You can also
@@ -74,6 +74,37 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 
 ---
 
+## Fast rounds instead of one long render
+
+* **Parallel rendering.** The built-in synth uses all your CPU cores. For a VST3, choose
+  **VST copies: 2/4** (or `--instances 4`) to load copies and render in parallel. This uses more
+  RAM, and some sample-heavy plugins don't like it. Same seed still gives byte-identical files.
+* **Less dead time:** silence between samples is capped at 1 s, and release tails at 3 s
+  (`--tail`). One-shots rarely need more.
+* **Smart Pick renders 1.5×**, not 3×. Muddy voicings are already ruled out before rendering.
+* **Octave copies for keepers only:** in Review, mark keepers and click **Octave copies of
+  keepers**. It re-renders just those, with the same sound and settings, into
+  `Octave_Down`/`Octave_Up`, and **Export Keepers** brings them along. Load the same
+  instrument first; the app checks.
+* **Batch 16 / 32 / 64**, a **time estimate** before you render (learned from your previous
+  batches with that instrument), and **+16 More** for another round with a new seed.
+
+Timings on a 4-core machine, 100 Neo-Soul samples with the built-in synth: 0.9 s (was 4.7 s);
+with Smart Pick, 1.3 s (was 10.5 s); plus loudness matching and octave registers for everything,
+3.0 s (was 18.3 s).
+
+## No more near-duplicates
+
+* **Variety** (app menu or `--variety`):
+  * **normal** (the default) drops samples that sound nearly identical, on every batch,
+    with or without Smart Pick;
+  * **strict** drops anything too similar, even if the batch ends up smaller;
+  * **off** keeps everything.
+* Survivors are renumbered and the pad banks refilled, so there are no gaps.
+* Review's **Like** column shows a sample's closest match in the batch (e.g. `#12 (0.8)`)
+  when it's within 2 dB, so you can audition the pair and keep one.
+* Scale banks are never thinned, since the same sound on every pad is the point of a bank.
+
 ## Better selections: Smart Pick + Review & Keep
 
 **Smart Pick** is the "Smart Pick (best of 3x)" checkbox in the app, or `--smart-pick` in
@@ -118,7 +149,26 @@ folder is one sound laid out across 16 pads.** Load file 01 on Pad 1 … file 16
 * Smart Pick and register sets are skipped for banks, since each bank is already a complete set
   across the scale.
 
-### More recipes
+### More recipes (and engines)
+
+| Recipe | Bank | Sound |
+|---|---|---|
+| `808-bass` | notes | Tuned 808: sine boom, short pitch punch, drive |
+| `clav-funk` | chords | Clavinet: narrow-pulse pluck with a filter snap |
+| `talkbox-lead` | notes | Talkbox: synth "saying" oh-ah through moving vowels |
+| `wurli-keys` | chords | Wurlitzer: reedy, barks when hit hard, optional tremolo |
+| `horror-musicbox` | notes | Music box / celesta, harmonic minor, wobble, dark hall |
+| `pizz-strings` | notes | Pizzicato strings for luxury-trap runs |
+| `mellotron-flute` | notes | Tape-replay flute with breath, chiff and wow |
+| `log-drum` | notes | Amapiano log drum, pitched and punchy |
+| `smooth-jazz-chords` | chords | maj9 / m11 / 13 / 9sus4 / maj7#11 on chorused Rhodes |
+| `rnb-80s-chords` | chords | Quiet storm: maj9 / m9 / 9sus4 on DX-style EP, chorus, plate |
+| `smooth-jazz-sax` | notes | Breathy alto sax that scoops into the note, vibrato |
+
+New engines: `808`, `clav`, `talkbox`, `wurli`, `musicbox`, `pizz`, `flute`, `logdrum` and `sax`.
+Each is checked in the self-test, and each note bank measures in tune.
+
+### Earlier recipes
 
 | Recipe (`--recipe`) | Bank | Sound |
 |---|---|---|
@@ -372,8 +422,10 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--tempo <bpm>` | Tempo for synced delays (default 90) |
 | `--banks` | Write files in folders of 16 (`Bank_A`, `Bank_B` …) |
 | `--max-length <sec>` | Override every recipe's end point (default: the recipe's; 0 = no cap) |
-| `--smart-pick` | Render 3× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
-| `--pick-factor <2-6>` | Candidates per kept sample for Smart Pick (default 3) |
+| `--smart-pick` | Render 1.5× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
+| `--pick-factor <1.2-6>` | Candidates per kept sample for Smart Pick (default 1.5) |
+| `--variety <off\|normal\|strict>` | Drop near-duplicates (default normal) |
+| `--instances <1-8>` | VST3: render with this many plugin copies in parallel |
 | `--scale-bank` | 16 pads per sound climbing the key's scale (use with `--key`, `--scale`) |
 | `--bank-type <notes\|chords>` | Note or chord banks (default: the style's) |
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
@@ -389,7 +441,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--out <folder>` | Output folder |
 | `--rate 44100\|48000`, `--bits 16\|24` | File format |
 | `--no-normalize` | Keep the plugin's own level |
-| `--tail <sec>` | Longest release tail kept after note-off (default 6) |
+| `--tail <sec>` | Longest release tail kept after note-off (default 3) |
 | `--warmup <sec>` | Time for sample-based plugins (Kontakt and similar) to load before rendering (default 1.5) |
 
 A loop like this renders several genres overnight:

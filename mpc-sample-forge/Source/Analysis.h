@@ -48,6 +48,7 @@ namespace forge
         float duplicateDb = 1.0f;     // closer than this to a kept sample = reported as a near-duplicate
         float varietyPerDb = 3.0f;    // score points a sample earns per dB of difference to the picks so far ...
         float varietyCapDb = 4.0f;    // ... up to this many dB (so variety can't outweigh a real problem)
+        bool strictVariety = false;   // never keep a near-duplicate, even if that leaves the batch short
     };
 
     /** Scores every candidate and chooses `target` of them. Within each group (keeping the

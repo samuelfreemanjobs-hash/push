@@ -6,7 +6,8 @@ namespace forge
 {
     /** The built-in sound engines ("recipes") for one-shot melodic material. */
     enum class Engine { EPiano, Bell, Organ, Pluck, Choir, Supersaw, EPBell, Triangle, Cowbell, ComboOrgan, Harp, Brass,
-                        Lead, Whistle, Bass, MoogBass };
+                        Lead, Whistle, Bass, MoogBass,
+                        Bass808, Clav, Talkbox, Wurli, MusicBox, Pizz, Flute, LogDrum, Sax };
 
     juce::StringArray engineIds();   // epiano, bell, organ, pluck, choir, supersaw, epbell, triangle, cowbell, comboorgan, harp, brass
     juce::String engineId (Engine r);

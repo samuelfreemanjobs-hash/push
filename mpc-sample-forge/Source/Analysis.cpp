@@ -307,6 +307,7 @@ std::vector<PickVerdict> smartPick (const std::vector<PickCandidate>& cands, int
             for (auto i : idx)
             {
                 if (v[(size_t) i].kept) continue;
+                if (settings.strictVariety && nearest[(size_t) i] < settings.duplicateDb) continue;
                 auto variety = juce::jmin (nearest[(size_t) i], settings.varietyCapDb) * settings.varietyPerDb;
                 auto utility = v[(size_t) i].score + variety;
                 if (utility > bestUtility) { bestUtility = utility; best = i; }

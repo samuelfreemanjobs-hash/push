@@ -30,9 +30,11 @@ MAKE YOUR FIRST KIT (about a minute)
   1. Instrument: leave "Built-in Synth", or pick one of your VST3s and click "Edit Sound".
   2. Style: pick a recipe, e.g. "Jet Life EP Bell" or "Memphis / OG Phonk Kit".
   3. 16 Levels root: "Recipe's own root". Tick "16-pad banks".
-  4. Leave "Smart Pick" ticked: it renders 3x as many and keeps only the best, most varied ones.
+  4. Click "Batch 16" for a quick round. Leave "Smart Pick" ticked (keeps the best, most varied)
+     and "Variety: normal" (drops near-identical samples).
      For the MPC: keep "Level: loudness-matched" and "Short names" on, and set "Registers" to
-     "+ octave down & up" if you'll play the sounds far up or down with 16 Levels > Tune.
+     After reviewing, click "Octave copies of keepers" if you'll play them far up or down with
+     16 Levels > Tune. Then "+16 More" for the next round.
   5. Click Generate. When it's done, the Review window opens:
        Up/Down = move + play   Space = play/stop   K = keep   X = reject   U = clear
        Left/Right = hear it re-pitched like 16 Levels (Shift = octave)   R = range check
