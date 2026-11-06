@@ -191,14 +191,41 @@ std::vector<PickVerdict> smartPick (const std::vector<PickCandidate>& cands, int
     for (auto& [g, idx] : groups) valid += (int) idx.size();
     target = juce::jmin (target, valid);
 
-    std::map<juce::String, int> quota;
-    int assigned = 0;
-    for (auto& [g, idx] : groups) { quota[g] = (int) std::floor ((double) target * idx.size() / juce::jmax (1, valid)); assigned += quota[g]; }
-    for (auto it = groups.begin(); assigned < target; ++it)
+    // Two levels of fair shares (largest remainder): first between recipes / styles
+    // (the part before '/'), then between chords and keys inside each one.
+    auto shareOut = [] (const std::map<juce::String, int>& sizes, int total)
     {
-        if (it == groups.end()) it = groups.begin();
-        if (quota[it->first] < (int) it->second.size()) { ++quota[it->first]; ++assigned; }
-    }
+        std::map<juce::String, int> out;
+        int sum = 0, given = 0;
+        for (auto& [k, size] : sizes) sum += size;
+        std::vector<std::pair<double, juce::String>> remainders;
+        for (auto& [k, size] : sizes)
+        {
+            auto exact = sum > 0 ? (double) total * size / sum : 0.0;
+            out[k] = juce::jmin (size, (int) std::floor (exact));
+            given += out[k];
+            remainders.push_back ({ exact - std::floor (exact), k });
+        }
+        std::stable_sort (remainders.begin(), remainders.end(), [] (auto& x, auto& y) { return x.first > y.first; });
+        for (size_t i = 0; given < total && ! remainders.empty(); i = (i + 1) % remainders.size())
+        {
+            auto& k = remainders[i].second;
+            if (out[k] < sizes.at (k)) { ++out[k]; ++given; }
+            else if (std::all_of (sizes.begin(), sizes.end(), [&out] (auto& p) { return out[p.first] >= p.second; })) break;
+        }
+        return out;
+    };
+
+    std::map<juce::String, std::map<juce::String, int>> byStyle; // style -> group -> size
+    for (auto& [g, idx] : groups) byStyle[g.upToFirstOccurrenceOf ("/", false, false)][g] = (int) idx.size();
+
+    std::map<juce::String, int> styleSizes;
+    for (auto& [st, gs] : byStyle) { int size = 0; for (auto& [g, c] : gs) size += c; styleSizes[st] = size; }
+
+    std::map<juce::String, int> quota;
+    for (auto& [st, share] : shareOut (styleSizes, target))
+        for (auto& [g, q] : shareOut (byStyle[st], share))
+            quota[g] = q;
 
     // distances once, up front
     std::vector<float> dist ((size_t) n * (size_t) n, 0.0f);
