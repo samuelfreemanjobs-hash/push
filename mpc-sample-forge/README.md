@@ -74,6 +74,50 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 
 ---
 
+## Preset Sweep: let the app find your best sounds
+
+Load a VST3 instrument, pick a recipe, and click **Preset Sweep...** (next to Load Sound).
+The app works through the instrument's presets for you:
+
+1. **Tries every preset** with one test chord (or note) from the recipe, in the recipe's own
+   register, with its effects. Each test sound is saved in `_Preset_Probes`, so you can listen
+   through all of them.
+2. **Throws out** presets that are silent, pulse while the key is held (arps, gates, sequences),
+   or sound the same as one already kept. It also skips presets whose name says they're arps,
+   drums, FX or init patches.
+3. **Ranks the rest** by quality (clear pitch, not harsh or muddy, no click-only or slow-attack
+   sounds) and by **fit to the recipe**: brightness and decay close to the recipe's own sound,
+   and names that suit it (a Neo-Soul sweep prefers "Rhodes", "EP", "Wurli", "Keys" ...).
+4. **Renders a 16-pad bank** (or 32 / 48 / 64 samples) for each of the best, up to 12 by default,
+   scoring at least 70. Each kept preset gets its own folder, a normal batch you can Review. Review
+   opens on the best one.
+
+`_Preset_Sweep.txt` ranks every preset and says why each was dropped; `_preset_sweep.csv` has
+the same as a table. When it's done, your own sound is put back.
+
+**Where the presets come from:**
+
+| Presets | When to use it |
+|---|---|
+| **The plugin's preset list** | Plugins that list their presets to host apps (the menu shows how many). |
+| **Preset files** | `.vstpreset` / `.forgesound` files. The app looks in the standard VST3 preset folders, or you choose a folder. Category folders count for the name filters (e.g. `Keys/`, `FX/`). |
+| **Variations of the current sound** | Works with **any** plugin, even ones that hide their presets: small random tweaks of the sound you dialled in (tone, filter, envelope; never tuning, volume or routing). **How different** sets how far. |
+| **Built-in synth** | Every engine x 3 timbres, or timbre variations of one engine. |
+
+**Only names with** limits the sweep (e.g. `keys, rhodes, piano`). **Try at most** spreads a
+limit over a long list, so you get every category rather than just the first 100. Key, format,
+Smart Pick, Variety and VST copies come from the main window, so with **VST copies: 4** a sweep
+renders 4 presets' samples at once.
+
+```
+mpcforge --plugin Keys.vst3 --style neo-soul --sweep presets --sweep-keep 8 --out ~/MPC/KeysSweep
+mpcforge --plugin Keys.vst3 --style neo-soul --sweep-folder "~/Presets/Keys" --out ~/MPC/KeysSweep
+mpcforge --plugin Synth.vst3 --sound mypad.forgesound --style trap-scale --sweep variations --sweep-variations 64
+mpcforge --plugin Keys.vst3 --export-presets ~/Presets/Keys    # save the plugin's list as .vstpreset files
+```
+
+---
+
 ## Chord row: hear and export the recipe's chords
 
 Above the keyboard, **seven buttons** show the diatonic chords of the selected recipe in your
@@ -612,7 +656,10 @@ Source/Diagnostics.*     system report, self-test, log file + crash handler
 Source/DiagnosticsPanel.* the Diagnostics window
 Source/Analysis.*        Smart Pick: audio analysis, scoring and variety-aware selection
 Source/ReviewPanel.*     the Review & Keep window
-Source/BuiltInSynth.*    built-in synth (12 engines)
+Source/PresetSweep.*     Preset Sweep: collect presets, test-render, score, render a bank per kept preset
+Source/PresetSweepPanel.* the Preset Sweep window
+Source/BuiltInSynth.*    built-in synth (25 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
+Tests/SweepTestPlugin.cpp a 12-preset VST3 (ForgeTestSynth) that trips each Preset Sweep check
 ```

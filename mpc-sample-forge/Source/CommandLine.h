@@ -1,6 +1,7 @@
 #pragma once
 #include "BatchJob.h"
 #include "PluginHost.h"
+#include "PresetSweep.h"
 #include <atomic>
 
 namespace forge
@@ -22,6 +23,7 @@ namespace forge
         std::unique_ptr<juce::AudioProcessor> instrument;
         std::vector<std::unique_ptr<juce::AudioProcessor>> extraInstances; // parallel VST3 copies
         std::unique_ptr<BatchJob> job;
+        std::unique_ptr<PresetSweep> sweep;
         std::unique_ptr<juce::Thread> diagThread;
         std::atomic<bool> diagCancel { false };
         void runDiagnose (const juce::StringArray& args);

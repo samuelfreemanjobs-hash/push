@@ -4,6 +4,7 @@
 #include "Styles.h"
 #include "Analysis.h"
 #include "ProgressionLibrary.h"
+#include "PresetSweep.h"
 #include <cmath>
 
 namespace forge
@@ -420,6 +421,43 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
         say (inKey && avg < 3.0 ? L::Pass : L::Fail, "Progression banks",
              juce::String (prog.size()) + " pads, rows like " + (prog.empty() ? juce::String() : prog[0].group)
              + ", voices move " + juce::String (avg, 1) + " semitones on average" + (inKey ? "" : ", NOT in key"));
+    }
+
+    // ------------------------------------------------------------ preset sweep detectors
+    {
+        const double sr = 44100;
+        auto make = [sr] (std::function<float (double)> gain)
+        {
+            juce::AudioBuffer<float> b (2, (int) (sr * 2.0));
+            for (int i = 0; i < b.getNumSamples(); ++i)
+            {
+                auto t = i / sr;
+                auto v = gain (t) * std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * t);
+                b.setSample (0, i, (float) v); b.setSample (1, i, (float) v);
+            }
+            return b;
+        };
+        auto arp     = make ([] (double t) { return std::fmod (t * 8.0, 1.0) < 0.45 ? 0.8 : 0.0; });             // gated 8 Hz
+        auto tremolo = make ([] (double t) { return 0.6 * (1.0 + 0.3 * std::sin (2 * juce::MathConstants<double>::pi * 5 * t)); });
+        auto pluck   = make ([] (double t) { return 0.9 * std::exp (-t * 3.0); });
+        auto slow    = make ([] (double t) { return juce::jmin (1.0, t / 0.6) * 0.7; });
+        const int arpOnsets = countRepeatedOnsets (arp, sr, 1.6), tremOnsets = countRepeatedOnsets (tremolo, sr, 1.6),
+                  pluckOnsets = countRepeatedOnsets (pluck, sr, 1.6);
+        const auto slowAttack = attackMs (slow, sr), fastAttack = attackMs (pluck, sr);
+        juce::String why;
+        const bool names = nameLooksUnsuitable ("ARP Trance Pulse", why) && nameLooksUnsuitable ("005_ArpPulse", why)
+                           && nameLooksUnsuitable ("FX/Riser 2", why) && ! nameLooksUnsuitable ("Mark I Rhodes Soft", why)
+                           && ! nameLooksUnsuitable ("Deep Sharp Keys", why);
+        BuiltInSynth probeSynth;
+        SweepOptions so;
+        juce::String err;
+        auto entries = collectPresets (probeSynth, so, 1, err);
+        const bool ok = arpOnsets >= 2 && tremOnsets == 0 && pluckOnsets == 0 && slowAttack > 250 && fastAttack < 20 && names
+                        && entries.size() == (size_t) engineIds().size() * 3;
+        say (ok ? L::Pass : L::Fail, "Preset sweep checks",
+             "arp " + juce::String (arpOnsets) + " pulses, tremolo " + juce::String (tremOnsets) + ", pluck " + juce::String (pluckOnsets)
+             + "; attack slow " + juce::String (juce::roundToInt (slowAttack)) + " ms / fast " + juce::String (juce::roundToInt (fastAttack))
+             + " ms; name filter " + (names ? "OK" : "WRONG") + "; " + juce::String ((int) entries.size()) + " built-in presets");
     }
 
     // ------------------------------------------------------------ trap progression library

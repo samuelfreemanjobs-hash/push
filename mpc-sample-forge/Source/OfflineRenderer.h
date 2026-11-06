@@ -31,6 +31,8 @@ namespace forge
         ~OfflineRenderer();
 
         void warmUp();
+        /** Feeds silent blocks in real time for `seconds` (e.g. after a preset change). */
+        void settle (double seconds);
         bool render (const SampleSpec& spec, juce::AudioBuffer<float>& out, juce::String& error);
 
         static bool writeWav (const juce::File& file, const juce::AudioBuffer<float>& audio,

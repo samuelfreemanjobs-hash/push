@@ -1,6 +1,7 @@
 #pragma once
 #include "ProgressionLibrary.h"
 #include "BatchJob.h"
+#include "PresetSweep.h"
 #include "PluginHost.h"
 #include "Diagnostics.h"
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -41,6 +42,10 @@ namespace forge
         void openDiagnostics();
         void openReview (const juce::File& batchFolder);
         void openStyleEditor();
+        void openPresetSweep();
+        void startSweep (const SweepOptions& options);
+        void sweepFinished (bool ok, const juce::String& summary, const juce::File& folder);
+        void makeExtraInstances (BatchRequest& req);
         void addOrReplaceStyle (const Style& st, bool select);
         void updateChordRow();
         const ProgressionSet* selectedProgressionSet (bool orFirst = false) const;
@@ -73,6 +78,9 @@ namespace forge
         juce::File lastBatchFolder;
         std::vector<std::unique_ptr<juce::AudioPluginInstance>> extraInstances; // parallel VST3 copies during a job
         std::unique_ptr<BatchJob> job;
+        std::unique_ptr<PresetSweep> sweep;
+        std::unique_ptr<juce::DocumentWindow> sweepWindow;
+        juce::MemoryBlock stateBeforeSweep;   // the sound to go back to after a sweep
         std::unique_ptr<juce::FileChooser> chooser;
 
         juce::Array<Style> styles;
@@ -90,7 +98,7 @@ namespace forge
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
                          auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
-                         reviewButton { "Review..." }, moreButton { "+16 More" },
+                         reviewButton { "Review..." }, moreButton { "+16 More" }, sweepButton { "Preset Sweep..." },
                          size16 { "16" }, size32 { "32" }, size64 { "64" };
         juce::Label estimateLabel, sizeLabel;
 

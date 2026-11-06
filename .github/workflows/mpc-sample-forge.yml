@@ -58,6 +58,33 @@ jobs:
       - name: Self-test (renders every engine and recipe)
         run: '"${{ steps.bin.outputs.cli }}" --diagnose'
 
+      - name: Preset sweep against a real VST3 (test plugin)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -B build -DFORGE_BUILD_TEST_PLUGIN=ON
+          cmake --build build --target ForgeTestSynth_VST3 --parallel 4
+          P=build/ForgeTestSynth_artefacts/Release/VST3/ForgeTestSynth.vst3
+          CLI="${{ steps.bin.outputs.cli }}"
+          # the plugin's own preset list: 12 presets built to trip each check
+          "$CLI" --plugin $P --style neo-soul --sweep presets --sweep-keep 12 --short-names --warmup 0.3 --seed 5 --out sweep-out/presets
+          R=sweep-out/presets/_Preset_Sweep.txt
+          cat $R
+          grep -Eq "1\. (EP Soft Keys|Rhodes Classic) " $R
+          grep -q "sounds like Rhodes Classic" $R
+          grep -Eq "Silent Pad +0 +silent" $R
+          grep -Eq "Bubbles +0 +pulses" $R
+          grep -q "name says 'arp'" $R
+          grep -q "slow attack" $R
+          test "$(find sweep-out/presets/01_* -name '*.wav' | wc -l | tr -d ' ')" -eq 16
+          # preset files (.vstpreset), exported from the plugin and swept from a folder
+          "$CLI" --plugin $P --export-presets sweep-out/files/MPCSampleForge/ForgeTestSynth
+          test "$(ls sweep-out/files/MPCSampleForge/ForgeTestSynth/*.vstpreset | wc -l | tr -d ' ')" -eq 12
+          "$CLI" --plugin $P --style neo-soul --sweep-folder sweep-out/files --sweep-keep 3 --short-names --warmup 0.3 --out sweep-out/fromfiles
+          grep -q "sounds like 002_RhodesClassic" sweep-out/fromfiles/_Preset_Sweep.txt
+          # variations of the current sound
+          "$CLI" --plugin $P --style neo-soul --sweep variations --sweep-variations 24 --sweep-strength 0.7 --sweep-keep 4 --short-names --warmup 0.3 --out sweep-out/variations
+          test "$(ls -d sweep-out/variations/0*_Variation* | wc -l | tr -d ' ')" -ge 2
+
       - name: Render demo kit
         run: |
           "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --smart-pick --short-names --registers octaves --loudness --out demo-out/RecipeGuide_Palette

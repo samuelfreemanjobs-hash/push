@@ -37,7 +37,8 @@ set(FORGE_ENGINE_SOURCES
     Source/Effects.cpp
     Source/Diagnostics.cpp
     Source/Analysis.cpp
-    Source/ProgressionLibrary.cpp)
+    Source/ProgressionLibrary.cpp
+    Source/PresetSweep.cpp)
 
 set(FORGE_DEFINITIONS
     FORGE_VERSION_STRING="${PROJECT_VERSION}"
@@ -56,7 +57,7 @@ juce_add_gui_app(MPCSampleForge
     COMPANY_NAME "MPCSampleForge"
     VERSION ${PROJECT_VERSION})
 
-target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp)
+target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp Source/PresetSweepPanel.cpp)
 
 target_compile_definitions(MPCSampleForge PRIVATE ${FORGE_DEFINITIONS}
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:MPCSampleForge,JUCE_PRODUCT_NAME>"
@@ -117,4 +118,18 @@ if(FORGE_BUILD_TEST_PLUGIN)
     target_compile_definitions(ForgeTestKeys PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
     target_include_directories(ForgeTestKeys PRIVATE Source)
     target_link_libraries(ForgeTestKeys PRIVATE juce::juce_audio_utils PUBLIC juce::juce_recommended_config_flags)
+
+    # 12 presets built to exercise the preset sweep's checks (duplicates, silence, arps, FX ...)
+    juce_add_plugin(ForgeTestSynth
+        PRODUCT_NAME "ForgeTestSynth"
+        COMPANY_NAME "MPCSampleForge"
+        IS_SYNTH TRUE
+        NEEDS_MIDI_INPUT TRUE
+        PLUGIN_MANUFACTURER_CODE Mpcf
+        PLUGIN_CODE Fswp
+        FORMATS VST3
+        COPY_PLUGIN_AFTER_BUILD FALSE)
+    target_sources(ForgeTestSynth PRIVATE Tests/SweepTestPlugin.cpp)
+    target_compile_definitions(ForgeTestSynth PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+    target_link_libraries(ForgeTestSynth PRIVATE juce::juce_audio_processors PUBLIC juce::juce_recommended_config_flags)
 endif()

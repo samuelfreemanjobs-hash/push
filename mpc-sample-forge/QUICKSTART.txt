@@ -61,6 +61,14 @@ CHORDS AND PROGRESSIONS
   "Edit Style..." lets you change a recipe with checkboxes and save it as your own.
 
 
+PRESET SWEEP (find the best sounds in a plugin)
+  Load a VST3, pick a recipe, click "Preset Sweep...". It tries every preset with a test chord,
+  drops silent / arp / duplicate / FX presets, ranks the rest by how well they fit the recipe,
+  and renders a 16-pad bank of each of the best (one folder per preset). Plugins that hide their
+  presets: choose "Variations of the current sound". The ranking and reasons are in
+  _Preset_Sweep.txt; every preset's test sound is in _Preset_Probes.
+
+
 SOMETHING WRONG?
   Click "Diagnostics" (top right) > "Run Self-Test" > "Copy Report", and send the report.
   Load your VST3 first so the self-test checks it too.

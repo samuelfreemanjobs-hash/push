@@ -65,6 +65,23 @@ juce::String cliHelpText()
       << "                            alternates + 808 roots in one bank). Default: --count / 16\n"
       << "                            sets picked by the seed. --key random = each set's own key\n"
       << "  --list-progressions       print the 20 trap progression sets with numerals and tips\n\n"
+      << "Preset sweep (try every preset, keep the best, render a bank of each):\n"
+      << "  --sweep <presets|files|variations>\n"
+      << "                            presets = the plugin's own list; files = .vstpreset / .forgesound\n"
+      << "                            files (standard VST3 preset folders, or --sweep-folder); variations =\n"
+      << "                            small random tweaks of the current sound (--sound). Built-in synth:\n"
+      << "                            presets = every engine x 3 timbres\n"
+      << "  --sweep-folder <dir>      preset files to try (implies --sweep files)\n"
+      << "  --sweep-keep <n>          presets to keep, default 12\n"
+      << "  --sweep-per <n>           samples per kept preset, default 16 (one pad bank)\n"
+      << "  --sweep-max <n>           try at most n presets, spread over the list (default: all)\n"
+      << "  --sweep-min-score <0-100> only keep presets scoring at least this (default 70)\n"
+      << "  --sweep-include <words>   only presets whose name / category has one of these, e.g. \"piano,keys,ep\"\n"
+      << "  --sweep-variations <n>    variations to try (default 48); --sweep-strength <0.02-1> (default 0.25)\n"
+      << "  --sweep-all-names         don't skip arps / drums / FX / init patches by name\n"
+      << "  --sweep-keep-arps         don't skip presets that pulse while held\n"
+      << "  --sweep-no-probes         don't save each preset's test sound to _Preset_Probes\n"
+      << "  --export-presets <dir>    save every preset the plugin lists as a .vstpreset file\n\n"
       << "MPC Sample friendly output:\n"
       << "  --registers <list>        also render every kept sample in other registers, in\n"
       << "                            semitones, e.g. -12,12 (= an octave down and up) or\n"
@@ -383,6 +400,58 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     out ("Output:     " + req.outputFolder.getFullPathName());
     if (req.smartPickTarget > 0)
         out ("Smart Pick: rendering " + juce::String ((int) specs.size()) + " candidates, keeping the best " + juce::String (req.smartPickTarget));
+
+    if (args.contains ("--export-presets"))
+    {
+        auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--export-presets"));
+        juce::String exportError;
+        auto n = exportPresets (*instrument, pluginPath, req.render, dir, exportError);
+        if (n == 0) return fail (exportError.isNotEmpty() ? exportError : "no presets written");
+        out ("Wrote " + juce::String (n) + " presets to " + dir.getFullPathName());
+        instrument.reset();
+        return onDone (0);
+    }
+
+    if (args.contains ("--sweep") || args.contains ("--sweep-folder"))
+    {
+        SweepOptions so;
+        auto src = option (args, "--sweep", "presets").toLowerCase();
+        so.source = src.startsWith ("var") ? SweepSource::Variations : src.startsWith ("file") ? SweepSource::PresetFolder : SweepSource::Programs;
+        if (args.contains ("--sweep-folder"))
+        {
+            so.source = SweepSource::PresetFolder;
+            so.folder = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--sweep-folder"));
+        }
+        so.keep       = juce::jlimit (1, 64, option (args, "--sweep-keep", "12").getIntValue());
+        so.perPreset  = juce::jlimit (1, 128, option (args, "--sweep-per", "16").getIntValue());
+        so.maxPresets = juce::jmax (0, option (args, "--sweep-max", "0").getIntValue());
+        so.minScore   = (float) juce::jlimit (0.0, 100.0, option (args, "--sweep-min-score", "70").getDoubleValue());
+        so.include    = option (args, "--sweep-include");
+        so.variations = juce::jlimit (1, 500, option (args, "--sweep-variations", "48").getIntValue());
+        so.strength   = (float) juce::jlimit (0.02, 1.0, option (args, "--sweep-strength", "0.25").getDoubleValue());
+        so.skipByName = ! args.contains ("--sweep-all-names");
+        so.skipRhythmic = ! args.contains ("--sweep-keep-arps");
+        so.keepProbes = ! args.contains ("--sweep-no-probes");
+
+        out ("Preset sweep with " + req.instrumentName + ", recipe " + req.style.name + " -> " + req.outputFolder.getFullPathName());
+        sweep = std::make_unique<PresetSweep> (*instrument, req.extraInstances, req, so);
+        sweep->onLog = [] (const juce::String& m) { out (m); Log::write (m); };
+        sweep->onFinished = [this] (bool ok, const juce::String& summary, const juce::File&)
+        {
+            out (summary);
+            Log::write (summary);
+            juce::MessageManager::callAsync ([this, ok]
+            {
+                sweep.reset();
+                extraInstances.clear();
+                instrument.reset();
+                onDone (ok ? 0 : 2);
+            });
+        };
+        juce::String sweepError;
+        if (! sweep->start (sweepError)) { sweep.reset(); return fail (sweepError); }
+        return;
+    }
 
     Log::write ("batch: " + req.instrumentName + " / " + req.style.id + " / " + juce::String ((int) specs.size())
                 + " samples -> " + req.outputFolder.getFullPathName());

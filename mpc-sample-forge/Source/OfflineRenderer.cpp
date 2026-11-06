@@ -49,11 +49,13 @@ float OfflineRenderer::blockPeak() const
     return peak;
 }
 
-void OfflineRenderer::warmUp()
+void OfflineRenderer::warmUp() { settle (settings.warmUpSec); }
+
+void OfflineRenderer::settle (double seconds)
 {
     // Some plugins (Kontakt-style samplers) stream content in the background:
     // give them time, in real time, and feed them silent blocks meanwhile.
-    auto end = juce::Time::getMillisecondCounterHiRes() + settings.warmUpSec * 1000.0;
+    auto end = juce::Time::getMillisecondCounterHiRes() + seconds * 1000.0;
     juce::MidiBuffer none;
     while (juce::Time::getMillisecondCounterHiRes() < end)
     {

@@ -236,6 +236,7 @@ std::vector<PickVerdict> smartPick (const std::vector<PickCandidate>& cands, int
         if (! bassRegister && f.subShare > 0.3f)          penalise (10, "low rumble");
         if (f.crestDb > 24.0f)                            penalise (15, "mostly a click / transient");
         if (f.peak < 0.05f)                               penalise (30, "almost silent");
+        if (c.extraPenalty > 0)                           penalise (c.extraPenalty, c.extraReason);
 
         r.score = juce::jlimit (0.0f, 100.0f, r.score);
     }

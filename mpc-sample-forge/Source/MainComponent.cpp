@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "PresetSweepPanel.h"
 #include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
 #include "DiagnosticsPanel.h"
@@ -113,6 +114,10 @@ MainComponent::MainComponent()
     editButton.onClick = [this] { openEditor(); };
     saveSoundButton.onClick = [this] { saveSound(); };
     loadSoundButton.onClick = [this] { loadSound(); };
+    sweepButton.setTooltip ("Try every preset of this instrument with the selected recipe, keep the best ones and render a bank of each");
+    sweepButton.onClick = [this] { openPresetSweep(); };
+    sweepButton.setColour (juce::TextButton::buttonColourId, accent.darker (0.5f));
+    addAndMakeVisible (sweepButton);
     for (auto* b : { &browseButton, &editButton, &saveSoundButton, &loadSoundButton })
         addAndMakeVisible (b);
 
@@ -428,6 +433,8 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    sweepWindow.reset();
+    sweep.reset();          // before the instrument it uses
     styleEditorWindow.reset();
     reviewWindow.reset();
     diagnosticsWindow.reset(); // stops a running self-test and hands the instrument back
@@ -462,6 +469,7 @@ void MainComponent::resized()
 
     auto r = row();
     pluginLabel.setBounds (r.removeFromLeft (labelW));
+    sweepButton.setBounds (r.removeFromRight (116)); r.removeFromRight (6);
     loadSoundButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     saveSoundButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
     editButton.setBounds (r.removeFromRight (100)); r.removeFromRight (6);
@@ -861,7 +869,7 @@ void MainComponent::auditionSpec (int index)
 
 void MainComponent::setBusy (bool busy)
 {
-    for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &styleBox,
+    for (auto* c : std::initializer_list<juce::Component*> { &pluginBox, &browseButton, &loadSoundButton, &sweepButton, &styleBox,
                                                              &styleFileButton, &keyBox, &scaleBox, &countSlider, &seedEditor,
                                                              &diceButton, &prefixEditor, &rateBox, &bitsBox, &levelBox, &registersBox, &shortNamesToggle,
                                                              &engineBox, &rootBox, &lengthBox, &banksToggle, &smartPickToggle, &reviewButton, &bankBox,
@@ -880,6 +888,12 @@ void MainComponent::generateOrCancel()
         log ("Cancelling ...");
         return;
     }
+    if (sweep != nullptr)
+    {
+        sweep->cancel();
+        log ("Cancelling the preset sweep ...");
+        return;
+    }
 
     BatchRequest req;
     std::vector<SampleSpec> specs;
@@ -888,11 +902,8 @@ void MainComponent::generateOrCancel()
     startJob (std::move (req), std::move (specs), true);
 }
 
-void MainComponent::startJob (BatchRequest req, std::vector<SampleSpec> specs, bool openReviewAfter)
+void MainComponent::makeExtraInstances (BatchRequest& req)
 {
-    keyboardState.allNotesOff (0);
-    player.setProcessor (nullptr); // the job owns the instrument while it renders
-
     // parallel VST3 copies (the built-in synth makes its own)
     extraInstances.clear();
     if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr && instrumentPath.isNotEmpty() && instancesBox.getSelectedId() > 1)
@@ -910,6 +921,15 @@ void MainComponent::startJob (BatchRequest req, std::vector<SampleSpec> specs, b
         for (auto& e : extraInstances) req.extraInstances.push_back (e.get());
         if (! extraInstances.empty()) log ("Rendering with " + juce::String ((int) extraInstances.size() + 1) + " copies of " + instrument->getName());
     }
+
+}
+
+void MainComponent::startJob (BatchRequest req, std::vector<SampleSpec> specs, bool openReviewAfter)
+{
+    keyboardState.allNotesOff (0);
+    player.setProcessor (nullptr); // the job owns the instrument while it renders
+
+    makeExtraInstances (req);
 
     setBusy (true);
     progress = 0;
@@ -1425,6 +1445,81 @@ void MainComponent::addOrReplaceStyle (const Style& st, bool select)
         styleBox.changeItemText (index + 1, st.name.endsWith ("(mine)") ? st.name : st.name + " (mine)");
     }
     if (select) styleBox.setSelectedId (index + 1, juce::sendNotificationSync);
+}
+
+void MainComponent::openPresetSweep()
+{
+    if (instrument == nullptr || job != nullptr || sweep != nullptr) return;
+    auto i = styleBox.getSelectedItemIndex();
+    if (! juce::isPositiveAndBelow (i, styles.size())) { log ("Pick a recipe first."); return; }
+
+    PresetSweepPanel::Info info;
+    info.instrumentName = instrument->getName();
+    info.recipeName = styles[i].name;
+    info.builtIn = dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr;
+    info.numPrograms = instrument->getNumPrograms();
+    for (auto& folder : standardPresetFolders (info.instrumentName))
+        info.standardFolderPresets += (int) folder.findChildFiles (juce::File::findFiles, true, "*.vstpreset;*.forgesound").size();
+
+    auto* panel = new PresetSweepPanel (info, props.getUserSettings());
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    panel->onStart = [safe] (const SweepOptions& o)
+    {
+        if (safe == nullptr) return;
+        juce::MessageManager::callAsync ([safe, o] { if (safe != nullptr) { safe->sweepWindow.reset(); safe->startSweep (o); } });
+    };
+    sweepWindow = std::make_unique<ToolWindow> ("Preset Sweep", panel, [safe] { if (safe != nullptr) safe->sweepWindow.reset(); });
+}
+
+void MainComponent::startSweep (const SweepOptions& options)
+{
+    BatchRequest req;
+    std::vector<SampleSpec> specs;
+    if (! buildRequest (req, specs)) return;
+    req.outputFolder = outputFolder.getChildFile (safeFileName (req.style.name + "_Sweep_" + instrument->getName()))
+                           .getNonexistentSibling (false);
+
+    keyboardState.allNotesOff (0);
+    player.setProcessor (nullptr); // the sweep owns the instrument while it renders
+    stateBeforeSweep.reset();
+    if (dynamic_cast<BuiltInSynth*> (instrument.get()) == nullptr) instrument->getStateInformation (stateBeforeSweep);
+    makeExtraInstances (req);
+    setBusy (true);
+    progress = 0;
+
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    sweep = std::make_unique<PresetSweep> (*instrument, req.extraInstances, req, options);
+    sweep->onLog = [safe] (const juce::String& m) { if (safe != nullptr) safe->log (m); };
+    sweep->onProgress = [safe] (double p) { if (safe != nullptr) safe->progress = p; };
+    sweep->onFinished = [safe] (bool ok, const juce::String& summary, const juce::File& folder)
+    {
+        // finish outside the sweep's own call stack: it is deleted here
+        juce::MessageManager::callAsync ([safe, ok, summary, folder] { if (safe != nullptr) safe->sweepFinished (ok, summary, folder); });
+    };
+    juce::String error;
+    if (! sweep->start (error))
+    {
+        log ("Preset sweep: " + error);
+        sweepFinished (false, "Nothing to sweep.", {});
+    }
+}
+
+void MainComponent::sweepFinished (bool ok, const juce::String& summary, const juce::File& folder)
+{
+    juce::File best;
+    if (sweep != nullptr)
+        for (auto& r : sweep->results())
+            if (r.kept && r.folderName.startsWith ("01_")) best = folder.getChildFile (r.folderName);
+    sweep.reset();
+    extraInstances.clear();
+    if (stateBeforeSweep.getSize() > 0 && instrument != nullptr)
+        instrument->setStateInformation (stateBeforeSweep.getData(), (int) stateBeforeSweep.getSize()); // back to your sound
+    jobFinished (ok, summary);
+    if (folder.isDirectory())
+    {
+        log ("Every kept preset has its own folder in " + folder.getFullPathName() + " - see _Preset_Sweep.txt for the ranking.");
+        if (best.isDirectory()) { lastBatchFolder = best; openReview (best); }
+    }
 }
 
 void MainComponent::openStyleEditor()

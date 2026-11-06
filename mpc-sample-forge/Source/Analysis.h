@@ -32,6 +32,8 @@ namespace forge
         int lowIntervalViolations = 0;   // from the notes played (see Theory.h)
         juce::String lowIntervalDetail;
         bool valid = true;      // false = render failed
+        float extraPenalty = 0; // points taken off for a reason measured elsewhere (e.g. a preset's slow attack)
+        juce::String extraReason;
     };
 
     struct PickVerdict
