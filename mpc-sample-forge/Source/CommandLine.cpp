@@ -71,7 +71,7 @@ juce::String cliHelpText()
       << "  --bits <16|24>            bit depth, default 24\n"
       << "  --no-normalize            keep the plugin's level (default: normalise to -1 dBFS)\n"
       << "  --tail <seconds>          max release tail after note-off, default 3\n"
-      << "  --instances <1-8>         VST3 only: load this many copies and render in parallel (needs RAM;\n"
+      << "  --instances <1-4>         VST3 only: load this many copies and render in parallel (needs RAM;\n"
       << "                            the built-in synth always uses all CPU cores)\n"
       << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
       << "Info:\n"
@@ -322,7 +322,7 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
             plugin->setStateInformation (sound.state.getData(), (int) sound.state.getSize());
         instrument = std::move (plugin);
 
-        auto copies = juce::jlimit (1, 8, option (args, "--instances", "1").getIntValue());
+        auto copies = juce::jlimit (1, 4, option (args, "--instances", "1").getIntValue());
         if (copies > 1)
         {
             juce::MemoryBlock state;

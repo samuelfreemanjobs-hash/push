@@ -197,10 +197,9 @@ MainComponent::MainComponent()
                            "batch ends up smaller. Scale banks are never thinned.");
     varietyBox.onChange = [this] { props.getUserSettings()->setValue ("variety", varietyBox.getSelectedId()); };
 
-    instancesBox.addItem ("VST copies: 1", 1);
-    instancesBox.addItem ("VST copies: 2", 2);
-    instancesBox.addItem ("VST copies: 4", 4);
-    instancesBox.setSelectedId (settings->getIntValue ("instances", 1), juce::dontSendNotification);
+    for (int copies = 1; copies <= 4; ++copies)
+        instancesBox.addItem ("VST copies: " + juce::String (copies), copies);
+    instancesBox.setSelectedId (juce::jlimit (1, 4, settings->getIntValue ("instances", 1)), juce::dontSendNotification);
     instancesBox.setTooltip ("Load this many copies of your VST3 and render in parallel (uses more RAM - sample-heavy plugins "
                              "may not like it). The built-in synth always uses all CPU cores.");
     instancesBox.onChange = [this] { props.getUserSettings()->setValue ("instances", instancesBox.getSelectedId()); updateEstimate(); };

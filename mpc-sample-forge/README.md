@@ -77,7 +77,7 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 ## Fast rounds instead of one long render
 
 * **Parallel rendering.** The built-in synth uses all your CPU cores. For a VST3, choose
-  **VST copies: 2/4** (or `--instances 4`) to load copies and render in parallel. This uses more
+  **VST copies: 1–4** (or `--instances 1-4`) to load copies and render in parallel. This uses more
   RAM, and some sample-heavy plugins don't like it. Same seed still gives byte-identical files.
 * **Less dead time:** silence between samples is capped at 1 s, and release tails at 3 s
   (`--tail`). One-shots rarely need more.
@@ -425,7 +425,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--smart-pick` | Render 1.5× the samples and keep only the best, most varied ones (writes `_smart_pick.csv`) |
 | `--pick-factor <1.2-6>` | Candidates per kept sample for Smart Pick (default 1.5) |
 | `--variety <off\|normal\|strict>` | Drop near-duplicates (default normal) |
-| `--instances <1-8>` | VST3: render with this many plugin copies in parallel |
+| `--instances <1-4>` | VST3: render with this many plugin copies in parallel |
 | `--scale-bank` | 16 pads per sound climbing the key's scale (use with `--key`, `--scale`) |
 | `--bank-type <notes\|chords>` | Note or chord banks (default: the style's) |
 | `--registers <list>` | Also render every kept sample at these offsets in semitones, e.g. `-12,12` (`octaves` = `-12,12`) |
