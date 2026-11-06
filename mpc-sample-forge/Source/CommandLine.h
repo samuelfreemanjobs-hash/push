@@ -1,6 +1,7 @@
 #pragma once
 #include "BatchJob.h"
 #include "PluginHost.h"
+#include <atomic>
 
 namespace forge
 {
@@ -20,6 +21,9 @@ namespace forge
         PluginHost host;
         std::unique_ptr<juce::AudioProcessor> instrument;
         std::unique_ptr<BatchJob> job;
+        std::unique_ptr<juce::Thread> diagThread;
+        std::atomic<bool> diagCancel { false };
+        void runDiagnose (const juce::StringArray& args);
     };
 
     juce::String cliHelpText();

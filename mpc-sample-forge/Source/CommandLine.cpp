@@ -1,5 +1,6 @@
 #include "CommandLine.h"
 #include "BuiltInSynth.h"
+#include "Diagnostics.h"
 #include <iostream>
 
 namespace forge
@@ -51,7 +52,10 @@ juce::String cliHelpText()
       << "  --tail <seconds>          max release tail after note-off, default 6\n"
       << "  --warmup <seconds>        time for sample-based plugins to load, default 1.5\n\n"
       << "Info:\n"
-      << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --help\n\n"
+      << "  --list-styles  --list-plugins  --dump-style <id>  --plan-only  --version  --help\n"
+      << "  --diagnose [--plugin X.vst3]  system report + self-test (renders every engine and\n"
+      << "                            recipe, checks WAV writing, test-renders the plugin).\n"
+      << "                            Exit code 3 if anything failed. Log: " << Log::file().getFullPathName() << "\n\n"
       << "Example (16 Levels kit with the built-in synth):\n"
       << "  mpcforge --style one-shot-palette --16levels --count 64 --out ~/MPC/Palette\n"
       << "Example (a recipe from the guide):\n"
@@ -63,7 +67,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version" })
         if (args.contains (a))
             return true;
     return false;
@@ -77,6 +81,7 @@ static juce::String option (const juce::StringArray& args, const juce::String& n
 
 void CliRunner::fail (const juce::String& msg)
 {
+    Log::write ("error: " + msg);
     std::cerr << "error: " << msg << std::endl;
     onDone (1);
 }
@@ -90,6 +95,15 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         out (cliHelpText());
         return onDone (0);
     }
+
+    if (args.contains ("--version"))
+    {
+        out ("mpcforge " FORGE_VERSION_STRING " (JUCE " + juce::SystemStats::getJUCEVersion() + ")");
+        return onDone (0);
+    }
+
+    if (args.contains ("--diagnose"))
+        return runDiagnose (args);
 
     if (args.contains ("--list-styles"))
     {
@@ -225,6 +239,8 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
          + (useBuiltIn ? "   engine: " + (req.plan.engine.isNotEmpty() ? req.plan.engine : req.style.engine) : juce::String()));
     out ("Output:     " + req.outputFolder.getFullPathName());
 
+    Log::write ("batch: " + req.instrumentName + " / " + req.style.id + " / " + juce::String ((int) specs.size())
+                + " samples -> " + req.outputFolder.getFullPathName());
     job = std::make_unique<BatchJob> (*instrument, req, std::move (specs));
     job->onProgress = [] (int doneCount, int total, const juce::String& msg)
     {
@@ -233,10 +249,47 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     job->onFinished = [this] (bool ok, const juce::String& summary)
     {
         out (summary);
+        Log::write (summary);
         job.reset();
         instrument.reset();
         onDone (ok ? 0 : 2);
     };
     job->startThread();
+}
+
+void CliRunner::runDiagnose (const juce::StringArray& args)
+{
+    juce::String error;
+    auto pluginPath = option (args, "--plugin");
+    if (pluginPath.isNotEmpty())
+    {
+        out ("Loading " + pluginPath + " ...");
+        auto plugin = host.load (pluginPath, 44100.0, 256, error);
+        if (plugin == nullptr) out ("[FAIL] Plugin load           " + error);
+        else instrument = std::move (plugin);
+    }
+
+    out (systemReport (host, nullptr, instrument.get(), pluginPath));
+    out ("SELF-TEST");
+
+    struct DiagThread final : juce::Thread
+    {
+        DiagThread (CliRunner& o) : juce::Thread ("diagnose"), owner (o) {}
+        void run() override
+        {
+            DiagSummary summary;
+            runSelfTest ([&summary] (const DiagResult& r) { summary.add (r); std::cout << r.toString() << std::endl; },
+                         owner.instrument.get(), owner.diagCancel);
+            std::cout << "\nRESULT: " << summary.toString() << std::endl;
+            Log::write ("self-test: " + summary.toString());
+            auto code = summary.fail > 0 ? 3 : 0;
+            auto* o = &owner;
+            juce::MessageManager::callAsync ([o, code] { o->instrument.reset(); o->onDone (code); });
+        }
+        CliRunner& owner;
+    };
+
+    diagThread = std::make_unique<DiagThread> (*this);
+    diagThread->startThread();
 }
 }

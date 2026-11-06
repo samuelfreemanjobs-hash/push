@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "CommandLine.h"
+#include "Diagnostics.h"
 
 class MPCSampleForgeApp final : public juce::JUCEApplication
 {
@@ -11,6 +12,7 @@ public:
     void initialise (const juce::String&) override
     {
         auto args = getCommandLineParameterArray();
+        forge::Log::init (getApplicationName() + " " + getApplicationVersion());
 
         if (forge::CliRunner::wantsCli (args))
         {
@@ -30,6 +32,7 @@ public:
     {
         window.reset();
         cli.reset();
+        forge::Log::shutdown();
     }
 
     void systemRequestedQuit() override { quit(); }

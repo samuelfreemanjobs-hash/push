@@ -1,11 +1,13 @@
 // mpcforge: the command-line front end. Same engine as the app, but a real
 // console program, so it prints progress on Windows too and can be scripted.
 #include "CommandLine.h"
+#include "Diagnostics.h"
 #include <iostream>
 
 int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI juceInit; // plugins need a message loop
+    forge::Log::init ("mpcforge " FORGE_VERSION_STRING);
 
     juce::StringArray args;
     for (int i = 1; i < argc; ++i)
@@ -30,5 +32,7 @@ int main (int argc, char* argv[])
     if (! finished)
         juce::MessageManager::getInstance()->runDispatchLoop();
 
+    forge::Log::write ("exit code " + juce::String (exitCode));
+    forge::Log::shutdown();
     return exitCode;
 }

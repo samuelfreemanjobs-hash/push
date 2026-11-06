@@ -1,6 +1,7 @@
 #pragma once
 #include "BatchJob.h"
 #include "PluginHost.h"
+#include "Diagnostics.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 
 namespace forge
@@ -36,6 +37,7 @@ namespace forge
         void jobFinished (bool ok, const juce::String& summary);
         void auditionSpec (int index);
         void setBusy (bool busy);
+        void openDiagnostics();
         void applyLiveEngine();
         juce::String selectedEngine() const;
         void log (const juce::String& s);
@@ -50,7 +52,7 @@ namespace forge
         std::unique_ptr<juce::AudioProcessor> instrument;
         juce::String instrumentPath;
         juce::StringArray installedPlugins;
-        std::unique_ptr<juce::DocumentWindow> editorWindow;
+        std::unique_ptr<juce::DocumentWindow> editorWindow, diagnosticsWindow;
         std::unique_ptr<BatchJob> job;
         std::unique_ptr<juce::FileChooser> chooser;
 
@@ -66,7 +68,7 @@ namespace forge
         juce::TextButton browseButton { "Browse..." }, editButton { "Edit Sound" }, saveSoundButton { "Save Sound" },
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
-                         auditionButton { "Audition Random" };
+                         auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" };
         juce::ToggleButton normaliseToggle { "Normalise -1 dB" };
         juce::Slider countSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
         juce::TextEditor seedEditor, prefixEditor, logView;

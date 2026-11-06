@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "BuiltInSynth.h"
+#include "DiagnosticsPanel.h"
 
 namespace forge
 {
@@ -37,7 +38,11 @@ MainComponent::MainComponent()
     juce::PropertiesFile::Options o;
     o.applicationName = "MPCSampleForge";
     o.filenameSuffix = ".settings";
+   #if JUCE_LINUX
+    o.folderName = ".config/MPCSampleForge";  // keep it out of the visible home folder
+   #else
     o.folderName = "MPCSampleForge";
+   #endif
     o.osxLibrarySubFolder = "Application Support";
     props.setStorageParameters (o);
     auto* settings = props.getUserSettings();
@@ -53,6 +58,9 @@ MainComponent::MainComponent()
     title.setFont (juce::FontOptions (22.0f, juce::Font::bold));
     title.setColour (juce::Label::textColourId, accent);
     addAndMakeVisible (title);
+    diagnosticsButton.setTooltip ("System report, self-test and log file - use this when something goes wrong.");
+    diagnosticsButton.onClick = [this] { openDiagnostics(); };
+    addAndMakeVisible (diagnosticsButton);
 
     setupLabel (pluginLabel, "Instrument");
     setupLabel (styleLabel, "Style");
@@ -158,7 +166,7 @@ MainComponent::MainComponent()
 
     lengthBox.addItem ("Recipe's end point", 1);
     for (auto ms : { 250, 500, 1000, 1500, 2000, 4000 })
-        lengthBox.addItem ("Max " + juce::String (ms / 1000.0, ms % 1000 == 0 ? 0 : 2) + " s", ms);
+        lengthBox.addItem ("Max " + (ms % 1000 == 0 ? juce::String (ms / 1000) : juce::String (ms / 1000.0, 2)) + " s", ms);
     lengthBox.addItem ("No limit", 2);
     lengthBox.setSelectedId (1);
 
@@ -235,6 +243,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    diagnosticsWindow.reset(); // stops a running self-test and hands the instrument back
     if (job) job->stopThread (10000);
     job.reset();
     keyboardState.removeListener (this);
@@ -256,7 +265,9 @@ void MainComponent::paint (juce::Graphics& g)
 void MainComponent::resized()
 {
     auto area = getLocalBounds().reduced (20, 12);
-    title.setBounds (area.removeFromTop (34));
+    auto titleRow = area.removeFromTop (34);
+    diagnosticsButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
+    title.setBounds (titleRow);
     area.removeFromTop (12);
 
     auto row = [&area] (int h = 28) { auto r = area.removeFromTop (h); area.removeFromTop (8); return r; };
@@ -328,6 +339,7 @@ void MainComponent::resized()
 
 void MainComponent::log (const juce::String& s)
 {
+    Log::write (s);
     logView.moveCaretToEnd();
     logView.insertTextAtCaret (s + "\n");
 }
@@ -629,6 +641,55 @@ void MainComponent::jobFinished (bool ok, const juce::String& summary)
     if (instrument != nullptr) player.setProcessor (instrument.get());
     applyLiveEngine();
     seedEditor.setText (juce::String (juce::Random::getSystemRandom().nextInt (999999))); // next batch is different
+}
+
+void MainComponent::openDiagnostics()
+{
+    if (diagnosticsWindow != nullptr) { diagnosticsWindow->toFront (true); return; }
+
+    DiagnosticsPanel::Hooks hooks;
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    hooks.report = [safe]
+    {
+        return safe == nullptr ? juce::String()
+                               : systemReport (safe->host, &safe->deviceManager, safe->instrument.get(), safe->instrumentPath);
+    };
+    hooks.acquire = [safe]() -> juce::AudioProcessor*
+    {
+        if (safe == nullptr || safe->job != nullptr) return nullptr; // never test while a batch renders
+        safe->keyboardState.allNotesOff (0);
+        safe->player.setProcessor (nullptr);
+        safe->setBusy (true);
+        safe->generateButton.setEnabled (false);
+        return safe->instrument.get();
+    };
+    hooks.release = [safe]
+    {
+        if (safe == nullptr) return;
+        safe->setBusy (false);
+        safe->generateButton.setEnabled (true);
+        if (safe->instrument != nullptr) safe->player.setProcessor (safe->instrument.get());
+        safe->applyLiveEngine();
+    };
+
+    struct Window final : juce::DocumentWindow
+    {
+        Window (juce::Component* content, std::function<void()> onClose)
+            : DocumentWindow ("MPC Sample Forge - Diagnostics", juce::Colour (0xff16181d), DocumentWindow::closeButton),
+              closed (std::move (onClose))
+        {
+            setUsingNativeTitleBar (true);
+            setContentOwned (content, true);
+            setResizable (true, false);
+            centreWithSize (getWidth(), getHeight());
+            setVisible (true);
+        }
+        void closeButtonPressed() override { if (closed) juce::MessageManager::callAsync (closed); }
+        std::function<void()> closed;
+    };
+
+    diagnosticsWindow = std::make_unique<Window> (new DiagnosticsPanel (hooks),
+                                                  [safe] { if (safe != nullptr) safe->diagnosticsWindow.reset(); });
 }
 
 juce::String MainComponent::selectedEngine() const

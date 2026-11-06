@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
-project(MPCSampleForge VERSION 1.0.0 LANGUAGES C CXX)
+project(MPCSampleForge VERSION 1.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Windows: link the C++ runtime statically so the .exe runs without installing
+# the Visual C++ Redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # ---------------------------------------------------------------------------
 # JUCE: use a local checkout if JUCE_DIR is given, otherwise download it.
@@ -30,9 +34,11 @@ set(FORGE_ENGINE_SOURCES
     Source/BatchJob.cpp
     Source/CommandLine.cpp
     Source/BuiltInSynth.cpp
-    Source/Effects.cpp)
+    Source/Effects.cpp
+    Source/Diagnostics.cpp)
 
 set(FORGE_DEFINITIONS
+    FORGE_VERSION_STRING="${PROJECT_VERSION}"
     JUCE_PLUGINHOST_VST3=1
     JUCE_PLUGINHOST_AU=0
     JUCE_PLUGINHOST_LADSPA=0
@@ -46,9 +52,9 @@ set(FORGE_DEFINITIONS
 juce_add_gui_app(MPCSampleForge
     PRODUCT_NAME "MPC Sample Forge"
     COMPANY_NAME "MPCSampleForge"
-    VERSION 1.0.0)
+    VERSION ${PROJECT_VERSION})
 
-target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp)
+target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp)
 
 target_compile_definitions(MPCSampleForge PRIVATE ${FORGE_DEFINITIONS}
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:MPCSampleForge,JUCE_PRODUCT_NAME>"
@@ -71,7 +77,7 @@ target_link_libraries(MPCSampleForge
 juce_add_console_app(mpcforge
     PRODUCT_NAME "mpcforge"
     COMPANY_NAME "MPCSampleForge"
-    VERSION 1.0.0)
+    VERSION ${PROJECT_VERSION})
 
 target_sources(mpcforge PRIVATE ${FORGE_ENGINE_SOURCES} Source/CliMain.cpp)
 target_compile_definitions(mpcforge PRIVATE ${FORGE_DEFINITIONS})
@@ -80,6 +86,7 @@ target_link_libraries(mpcforge
     PRIVATE
         juce::juce_audio_processors
         juce::juce_audio_formats
+        juce::juce_audio_devices
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)

@@ -74,6 +74,44 @@ Note names follow the MPC / Ableton convention, where MIDI 60 = **C3**.
 
 ---
 
+## Download
+
+Every push builds Windows, macOS (Apple Silicon and Intel) and Linux versions.
+
+1. Open the repository's **Actions** tab.
+2. Open the latest green **MPC Sample Forge build** run.
+3. Under **Artifacts**, download `MPCSampleForge-Windows`, `-macOS` or `-Linux`.
+4. Unzip it. Inside is a second zip (`.tar.gz` on Linux): unzip that too.
+5. Read `QUICKSTART.txt`. The apps aren't code-signed yet, so Windows and macOS ask you to
+   confirm the first launch. QUICKSTART explains how.
+
+Each package also contains `Demo-Samples`, which that exact build rendered during its own
+self-test.
+
+To publish a proper Release with direct download links, push a tag such as
+`git tag forge-v1.2.0 && git push origin forge-v1.2.0`.
+
+## Diagnostics: finding bugs and errors
+
+* **In the app:** click **Diagnostics** (top right). The window shows:
+  * the system report: OS, CPU, audio device, MIDI inputs, VST3 folders and the plugins found;
+  * details of the loaded instrument: maker, version, latency, channels, state size.
+
+  **Run Self-Test** then:
+  * renders every built-in engine and checks it for silence, NaN, level and tuning;
+  * renders every recipe and checks its FX chain and end-point length;
+  * writes a WAV file and reads it back;
+  * test-renders the loaded VST3, measuring speed, pitch and state save/restore.
+
+  **Copy Report** puts all of it on the clipboard.
+* **From the command line:** `mpcforge --diagnose [--plugin X.vst3]` prints the same report.
+  The exit code is 3 if anything failed, so it can be used in scripts and CI.
+* **Log file:** plugin loads, batches, errors and self-test results are written to
+  `forge.log` (Windows `%APPDATA%\MPCSampleForge\Logs`, macOS `~/Library/MPCSampleForge/Logs`,
+  Linux `~/.config/MPCSampleForge/Logs`). If the app crashes, for example inside a plugin, a
+  stack trace is written there too.
+* **CI:** every build runs the full self-test on Windows, macOS and Linux and renders a demo kit.
+
 ## Building
 
 You need **CMake 3.22+** and a C++17 compiler:
@@ -97,8 +135,6 @@ The build produces:
 
 If you already have JUCE checked out, add `-DJUCE_DIR=/path/to/JUCE`.
 
-The GitHub Actions workflow in `.github/workflows/mpc-sample-forge.yml` builds Windows,
-macOS and Linux versions. Download them from the run's **Artifacts** section.
 
 ---
 
@@ -345,6 +381,8 @@ Source/PluginHost.*      VST3 scanning / loading, .forgesound files
 Source/BatchJob.*        background rendering + manifest
 Source/MainComponent.*   the app UI
 Source/CommandLine.*     shared CLI logic; CliMain.cpp = mpcforge
+Source/Diagnostics.*     system report, self-test, log file + crash handler
+Source/DiagnosticsPanel.* the Diagnostics window
 Source/BuiltInSynth.*    built-in synth (12 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)
