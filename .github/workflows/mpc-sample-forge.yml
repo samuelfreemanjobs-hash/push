@@ -59,7 +59,13 @@ jobs:
         run: '"${{ steps.bin.outputs.cli }}" --diagnose'
 
       - name: Render demo kit
-        run: '"${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --out demo-out/RecipeGuide_Palette'
+        run: |
+          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --out demo-out/RecipeGuide_Palette
+          # fail loudly if anything silently went missing
+          n=$(find demo-out -name '*.wav' | wc -l | tr -d ' ')
+          echo "rendered $n WAV files"
+          test "$n" -eq 18
+          test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package
         run: |

@@ -80,7 +80,7 @@ juce_add_console_app(mpcforge
     VERSION ${PROJECT_VERSION})
 
 target_sources(mpcforge PRIVATE ${FORGE_ENGINE_SOURCES} Source/CliMain.cpp)
-target_compile_definitions(mpcforge PRIVATE ${FORGE_DEFINITIONS})
+target_compile_definitions(mpcforge PRIVATE ${FORGE_DEFINITIONS} JUCE_MODAL_LOOPS_PERMITTED=1)
 
 target_link_libraries(mpcforge
     PRIVATE

@@ -26,11 +26,13 @@ int main (int argc, char* argv[])
     {
         exitCode = code;
         finished = true;
-        juce::MessageManager::getInstance()->stopDispatchLoop();
     });
 
-    if (! finished)
-        juce::MessageManager::getInstance()->runDispatchLoop();
+    // Pump the message loop in short slices until the job reports back.
+    // (runDispatchLoop() returns straight away in a macOS console program, which
+    // used to end the process before rendering had even started.)
+    while (! finished)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
 
     forge::Log::write ("exit code " + juce::String (exitCode));
     forge::Log::shutdown();
