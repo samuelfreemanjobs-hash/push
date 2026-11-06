@@ -1641,14 +1641,15 @@ void MainComponent::runNextQueued()
     auto& item = queue[(size_t) queueIndex];
     item.status = "running";
     saveQueueFile();
-    auto failItem = [this] (const juce::String& why)
+    // (the safe pointer is made out here: MSVC reads `this` inside a nested init-capture as the lambda)
+    auto failItem = [this, safe = juce::Component::SafePointer<MainComponent> (this)] (const juce::String& why)
     {
         auto& it = queue[(size_t) queueIndex];
         it.status = "failed";
         it.result = why;
         log ("Queue: " + why);
         saveQueueFile();
-        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe != nullptr) safe->runNextQueued(); });
+        juce::MessageManager::callAsync ([safe] { if (safe != nullptr) safe->runNextQueued(); });
     };
 
     // the instrument and sound it was queued with
