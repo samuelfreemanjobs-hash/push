@@ -15,6 +15,7 @@
 #include "dsp/TapeDropouts.h"
 #include "dsp/MonoBass.h"
 #include "dsp/BrickwallLimiter.h"
+#include "dsp/TextureLayer.h"
 
 class MemphisDustProcessor final : public juce::AudioProcessor
 {
@@ -69,6 +70,10 @@ private:
         std::atomic<float>* dbxTilt {}; std::atomic<float>* compMode {};
         std::atomic<float>* monoOn {}; std::atomic<float>* monoFreq {}; std::atomic<float>* limitOn {};
         std::atomic<float>* limitDrive {}; std::atomic<float>* limitCeiling {};
+        std::atomic<float>* crushPitch {}; std::atomic<float>* crushDac {};
+        std::atomic<float>* texOn {}; std::atomic<float>* texHiss {}; std::atomic<float>* texDust {};
+        std::atomic<float>* texDensity {}; std::atomic<float>* texTone {}; std::atomic<float>* texWidth {};
+        std::atomic<float>* texDuck {};
         std::atomic<float>* crushOn {}; std::atomic<float>* crushRate {}; std::atomic<float>* crushBits {};
         std::atomic<float>* crushAA {};
         std::atomic<float>* eqOn {}; std::atomic<float>* lowCut {}; std::atomic<float>* boxFreq {};
@@ -93,12 +98,13 @@ private:
     md::TapeDropouts dropouts;
     md::MonoBass monoBass;
     md::BrickwallLimiter limiter;
+    md::TextureLayer texture;
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::dsp::DryWetMixer<float> dryWet { 8192 };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> inGain, outGain;
 
-    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true, dbxOn = true, autoOn = false, monoOn = false;
+    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true, dbxOn = true, autoOn = false, monoOn = false, texOn = false;
 
     // Auto level: slow loudness match of wet output to the dry input (pre input-gain)
     double sampleRateHz = 44100.0;

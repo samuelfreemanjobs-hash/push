@@ -10,6 +10,7 @@
 #include "dsp/TapeDropouts.h"
 #include "dsp/MonoBass.h"
 #include "dsp/BrickwallLimiter.h"
+#include "dsp/TextureLayer.h"
 
 #include <cstdio>
 #include <set>
@@ -213,6 +214,49 @@ int main()
         auto a = sine (100, 0.25f, N), b = a, ref = a; run (f, a, b);
         const float gr = gainToDb (rms (a, N / 2) / rms (ref, N / 2));
         CHECK (gr < -2.0f && gr > -7.0f, "VCA 4:1 glue on a -12 dBFS sine: %.1f dB GR (3-5 dB territory)", gr);
+    }
+
+    { // sampler: pitch trick == sampling at R / 2^(st/12)
+        SamplerCrusher c; c.prepare (fs); c.setParams (24000.0f, 16.0f, false, 12.0f);
+        auto a = sine (440, 0.9f, N), b = a; run (c, a, b);
+        int changes = 0; for (int i = 1; i < N; ++i) if (a[(size_t) i] != a[(size_t) i - 1]) ++changes;
+        CHECK (changes <= 12000 * 2 + 2 && changes > 11000 * 2, "pitch trick +12 st on 24 kHz = 12 kHz effective (%d holds/2 s)", changes);
+        // companded DAC: finer than linear on quiet signals, coarser on loud ones
+        auto quantErr = [&] (bool comp, float amp) {
+            SamplerCrusher q; q.prepare (fs); q.setParams (48000.0f, 8.0f, false, 0.0f, comp);
+            auto x = sine (440, amp, N), y = x, ref = x; run (q, x, y);
+            for (size_t i = 0; i < x.size(); ++i) x[i] -= ref[i];
+            return gainToDb (rms (x) / rms (ref)); };
+        const float lq = quantErr (false, 0.02f), cq = quantErr (true, 0.02f), ll = quantErr (false, 0.9f), cl = quantErr (true, 0.9f);
+        CHECK (cq < lq - 10.0f && cl > ll, "companded DAC: quiet err %.1f vs %.1f dB (finer), loud err %.1f vs %.1f dB (grittier)", cq, lq, cl, ll);
+    }
+    { // texture layer
+        auto silenceRun = [&] (float hissDb, float dustDb, float density, float widthAmt, std::vector<float>& L, std::vector<float>& R) {
+            TextureLayer t; t.prepare (fs); t.setParams (hissDb, dustDb, density, 9000.0f, widthAmt, 3.0f);
+            L.assign ((size_t) N, 0.0f); R.assign ((size_t) N, 0.0f); float* c[2] = { L.data(), R.data() }; t.process (c, 2, N); };
+        std::vector<float> L, R;
+        silenceRun (-50, -90, 0, 1.0f, L, R);
+        const float h = gainToDb (rms (L, 4800));
+        CHECK (std::abs (h + 50.0f) < 1.5f, "texture hiss at -50 dB setting measures %.1f dBFS RMS", h);
+        silenceRun (-50, -90, 0, 0.3f, L, R);
+        std::vector<float> mid (L.size()), side (L.size());
+        for (size_t i = 0; i < L.size(); ++i) { mid[i] = 0.5f * (L[i] + R[i]); side[i] = 0.5f * (L[i] - R[i]); }
+        const float ws = gainToDb (rms (side, 4800) / rms (mid, 4800));
+        CHECK (std::abs (ws - gainToDb (0.3f)) < 1.0f, "texture width 30%%: side/mid = %.1f dB (expect %.1f)", ws, gainToDb (0.3f));
+        silenceRun (-90, -30, 0.6f, 1.0f, L, R);
+        float pk = 0; for (float x : L) pk = std::max (pk, std::abs (x));
+        int clicks = 0; for (size_t i = 1; i < L.size(); ++i) if (std::abs (L[i]) > 0.003f && std::abs (L[i - 1]) <= 0.003f) ++clicks;
+        CHECK (finite (L) && gainToDb (pk) < -27.0f && clicks > 10, "dust at -30 dB: peak %.1f dBFS, %d audible crackles in 2 s", gainToDb (pk), clicks);
+        // low end stays clean (350 Hz HPF)
+        Biquad lp; lp.c = BiquadCoeffs::lowpass (fs, 100, 0.707);
+        std::vector<float> low (L.size()); for (size_t i = 0; i < L.size(); ++i) low[i] = lp.process (L[i]);
+        CHECK (gainToDb (rms (low, 4800) / rms (L, 4800)) < -20.0f, "texture keeps out of the sub/kick range (<100 Hz %.1f dB down)", gainToDb (rms (low, 4800) / rms (L, 4800)));
+        // ducking under a loud beat
+        TextureLayer t; t.prepare (fs); t.setParams (-50, -90, 0, 9000, 1, 3);
+        auto a = sine (60, 0.8f, N), b = a, ref = a; float* c[2] = { a.data(), b.data() }; t.process (c, 2, N);
+        for (size_t i = 0; i < a.size(); ++i) a[i] -= ref[i];
+        const float ducked = gainToDb (rms (a, 4800));
+        CHECK (std::abs (ducked - (h - 3.0f)) < 1.0f, "texture ducks 3 dB under the beat (%.1f vs %.1f dBFS)", ducked, h);
     }
 
     std::printf ("\n%s (%d failure%s)\n", failures ? "FAILED" : "ALL PASSED", failures, failures == 1 ? "" : "s");

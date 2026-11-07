@@ -4,6 +4,14 @@
 // mid-tread quantisation with hard clipping at full scale, like a budget sampler's ADC.
 // No reconstruction filter on purpose: the imaging/aliasing IS the sound.
 // Optional anti-alias pre-filter gives the smoother S900/S950 flavour instead of SP-style fizz.
+//
+// Pitch Trick: the classic "speed the record up, sample it, pitch it back down" memory saver.
+// Speeding up by r, sampling at R and slowing down by r is mathematically identical to sampling
+// the original at R / r -- with the anti-alias filter ALSO scaled down by r. So the trick is
+// modelled exactly by an effective rate of R / 2^(st/12) and a matching filter.
+//
+// DAC: Linear = plain 12-bit ladder (SP-style). Companded = mu-law style converter: finer steps
+// on quiet detail and ghost notes, coarser, crunchier steps on the loud peaks.
 
 #include "DspUtils.h"
 
@@ -31,8 +39,10 @@ public:
         }
     }
 
-    void setParams (float targetRateHz, float bits, bool antiAlias)
+    void setParams (float targetRateHz, float bits, bool antiAlias, float pitchTrickSt = 0.0f, bool companded = false)
     {
+        targetRateHz /= std::pow (2.0f, std::max (0.0f, pitchTrickSt) / 12.0f);
+        compand = companded;
         increment = std::min ((double) targetRateHz / sampleRate, 1.0);
         levels = std::pow (2.0f, std::clamp (bits, 1.0f, 24.0f) - 1.0f);
         useAA = antiAlias;
@@ -64,7 +74,16 @@ public:
                 {
                     phase[c] -= 1.0;
                     const float clipped = std::clamp (x, -1.0f, top);
-                    held[c] = std::round (clipped * levels) / levels;
+                    if (compand)
+                    {
+                        constexpr float mu = 255.0f, invLn = 1.0f / 5.5451774f; // 1/ln(1+mu)
+                        const float a = std::abs (clipped);
+                        const float enc = std::log1p (mu * a) * invLn;
+                        const float q = std::round (enc * levels) / levels;
+                        held[c] = std::copysign (std::expm1 (q / invLn) / mu, clipped);
+                    }
+                    else
+                        held[c] = std::round (clipped * levels) / levels;
                 }
                 d[i] = held[c];
             }
@@ -74,7 +93,7 @@ public:
 private:
     double sampleRate = 44100.0, increment = 1.0;
     float levels = 2048.0f, lastRate = -1.0f;
-    bool useAA = false;
+    bool useAA = false, compand = false;
     double phase[kMaxCh] {};
     float held[kMaxCh] {};
     Biquad aa1[kMaxCh], aa2[kMaxCh];

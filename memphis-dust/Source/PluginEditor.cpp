@@ -105,7 +105,7 @@ void Section::paint (juce::Graphics& g)
 
     g.setColour (colours::cream);
     g.setFont (juce::FontOptions (13.5f, juce::Font::bold));
-    g.drawText (title, 50, 9, getWidth() - 104, 18, juce::Justification::centredLeft);
+    g.drawFittedText (title, 50, 9, getWidth() - (power ? 104 : 60), 18, juce::Justification::centredLeft, 1, 0.75f);
     g.setColour (colours::textDim);
     g.setFont (juce::FontOptions (10.5f));
     g.drawText (subtitle, 50, 27, getWidth() - 60, 14, juce::Justification::centredLeft);
@@ -260,7 +260,8 @@ MemphisDustPanel::MemphisDustPanel (MemphisDustProcessor& proc)
       dbxSec     (proc.apvts, "04", "dbx II NR",   "2:1 / 1:2 compander pump",  pid::dbxOn),
       sub        (proc.apvts, "05", "808 CLIP",    "mono sub, clipped + LPF",   pid::subOn),
       comp       (proc.apvts, "06", "BUS COMP",    "FET slam / VCA glue",       pid::compOn),
-      master     (proc.apvts, "07", "MASTER",      "mono lows + brickwall",     {}),
+      texture    (proc.apvts, "07", "TEXTURE",     "hiss + dust, ducked, narrow", pid::texOn),
+      master     (proc.apvts, "08", "MASTER",      "mono lows + brickwall",     {}),
       inputKnob  (proc.apvts, pid::inputGain, "Input"),
       mixKnob    (proc.apvts, pid::mix, "Dry/Wet"),
       outputKnob (proc.apvts, pid::outputGain, "Output"),
@@ -271,6 +272,8 @@ MemphisDustPanel::MemphisDustPanel (MemphisDustProcessor& proc)
 
     sampler.add<ui::Knob> (s, pid::crushRate, "Rate");
     sampler.add<ui::Knob> (s, pid::crushBits, "Bits");
+    sampler.add<ui::Knob> (s, pid::crushPitch, "Pitch Trick");
+    sampler.add<ui::Choice> (s, pid::crushDac, "DAC");
     sampler.add<ui::Toggle> (s, pid::crushAA, "ANTI-ALIAS");
 
     cassetteEq.add<ui::Knob> (s, pid::lowCut,  "Low Cut");
@@ -300,6 +303,13 @@ MemphisDustPanel::MemphisDustPanel (MemphisDustProcessor& proc)
     comp.add<ui::Knob>   (s, pid::compMix,     "Mix");
     comp.add<ui::Choice> (s, pid::compMode,    "Mode");
 
+    texture.add<ui::Knob> (s, pid::texHiss,    "Hiss");
+    texture.add<ui::Knob> (s, pid::texDust,    "Dust");
+    texture.add<ui::Knob> (s, pid::texDensity, "Density");
+    texture.add<ui::Knob> (s, pid::texTone,    "Tone");
+    texture.add<ui::Knob> (s, pid::texWidth,   "Width");
+    texture.add<ui::Knob> (s, pid::texDuck,    "Duck");
+
     master.add<ui::Toggle> (s, pid::monoOn,       "MONO BASS");
     master.add<ui::Knob>   (s, pid::monoFreq,     "Mono Below");
     master.add<ui::Toggle> (s, pid::limitOn,      "LIMITER");
@@ -311,7 +321,7 @@ MemphisDustPanel::MemphisDustPanel (MemphisDustProcessor& proc)
     sub.add<ui::Knob> (s, pid::subHard,  "Hardness");
     sub.add<ui::Knob> (s, pid::subLevel, "Level");
 
-    for (auto* c : std::initializer_list<juce::Component*> { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &master,
+    for (auto* c : std::initializer_list<juce::Component*> { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &texture, &master,
                                                              &inputKnob, &mixKnob, &outputKnob, &clipToggle, &autoToggle,
                                                              &grMeter, &tapeMeter })
         addAndMakeVisible (c);
@@ -400,7 +410,7 @@ void MemphisDustPanel::paint (juce::Graphics& g)
     // Signal-flow hint between sections
     g.setColour (colours::textDim);
     g.setFont (juce::FontOptions (10.5f));
-    g.drawText ("FLOW:  IN > 07 mono > 01 > 02 > [ 04 encode > 03 tape > 04 decode ] > 05 > 06 > out gain > clip > 07 limiter     "
+    g.drawText ("FLOW:  IN > 08 mono > 01 > 02 > [ 04 encode > 03 tape > 04 decode ] > 05 > 06 > mix > 07 texture > out > clip > 08 limiter     "
                 "hiss + dropouts live between dbx encode/decode, so they breathe like a real 424",
                 22, sampler.getBottom() + 4, 1200, 14, juce::Justification::centredLeft);
 
@@ -443,8 +453,8 @@ void MemphisDustPanel::resized()
 
     auto body = area.removeFromTop (450);
     const int gap = 10;
-    const int w = (body.getWidth() - gap * 6) / 7;
-    for (auto* s : { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &master })
+    const int w = (body.getWidth() - gap * 7) / 8;
+    for (auto* s : { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &texture, &master })
     {
         s->setBounds (body.removeFromLeft (w));
         body.removeFromLeft (gap);
@@ -484,7 +494,7 @@ MemphisDustEditor::MemphisDustEditor (MemphisDustProcessor& proc)
     getConstrainer()->setFixedAspectRatio ((double) W / (double) H);
 
     // remember the window size with the session
-    const int savedW = processor.apvts.state.getProperty ("uiWidth", (int) (W * 0.9));
+    const int savedW = processor.apvts.state.getProperty ("uiWidth", (int) (W * 0.85));
     setSize (savedW, juce::roundToInt (savedW * (double) H / W));
 }
 

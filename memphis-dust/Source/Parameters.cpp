@@ -59,6 +59,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::crushBits, "Bit Depth", { 4.0f, 16.0f, 0.1f }, 12.0f,
                     [] (float v, int) { return juce::String (v, 1) + " bit"; }));
     layout.add (bp (pid::crushAA, "Anti-Alias", false));
+    layout.add (fp (pid::crushPitch, "Pitch Trick", { 0.0f, 12.0f, 0.1f }, 0.0f,
+                    [] (float v, int) { return v < 0.05f ? juce::String ("Off") : "+" + juce::String (v, 1) + " st"; }));
+    layout.add (std::make_unique<APC> (juce::ParameterID { pid::crushDac, 1 }, "DAC",
+                                       juce::StringArray { "Linear", "Companded" }, 0));
 
     // 02 Cassette EQ
     layout.add (bp (pid::eqOn, "EQ On", true));
@@ -106,7 +110,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::subHard,  "Hardness",  { 0.0f, 1.0f, 0.01f }, 0.6f, pctText));
     layout.add (fp (pid::subLevel, "Sub Level", { -24.0f, 12.0f, 0.1f }, 0.0f, dbText));
 
-    // 07 Master
+    // 07 Texture
+    auto offDb = [] (float v, int) { return v <= -89.9f ? juce::String ("Off") : juce::String (v, 1) + " dB"; };
+    layout.add (bp (pid::texOn, "Texture On", false));
+    layout.add (fp (pid::texHiss,    "Texture Hiss", { -90.0f, -24.0f, 0.1f }, -54.0f, offDb));
+    layout.add (fp (pid::texDust,    "Vinyl Dust",   { -90.0f, -24.0f, 0.1f }, -42.0f, offDb));
+    layout.add (fp (pid::texDensity, "Dust Density", { 0.0f, 1.0f, 0.01f }, 0.35f, pctText));
+    layout.add (fp (pid::texTone,    "Texture Tone", skewed (4000.0f, 12000.0f, 8000.0f, 1.0f), 9000.0f, hzText));
+    layout.add (fp (pid::texWidth,   "Texture Width", { 0.0f, 1.0f, 0.01f }, 0.3f, pctText));
+    layout.add (fp (pid::texDuck,    "Texture Duck", { 0.0f, 12.0f, 0.1f }, 3.0f,
+                    [] (float v, int) { return "-" + juce::String (v, 1) + " dB"; }));
+
+    // 08 Master
     layout.add (bp (pid::monoOn, "Mono Bass", false));
     layout.add (fp (pid::monoFreq, "Mono Below", skewed (40.0f, 300.0f, 120.0f, 1.0f), 120.0f, hzText));
     layout.add (bp (pid::limitOn, "Limiter", false));
@@ -178,10 +193,24 @@ const std::vector<Preset>& getFactoryPresets()
             { pid::flutter, 0.08f }, { pid::dropouts, 0.0f }, { pid::hiss, -72 }, { pid::dbxOn, 0 },
             { pid::subOn, 0 }, { pid::compMode, 1 }, { pid::compRatio, 0 }, { pid::compThresh, -16 },
             { pid::compAttack, 10 }, { pid::compRelease, 150 }, { pid::compMakeup, 3 }, { pid::outClip, 0 },
-            { pid::limitOn, 1 }, { pid::limitDrive, 5 }, { pid::limitCeiling, -0.3f } } },
+            { pid::limitOn, 1 }, { pid::limitDrive, 5 }, { pid::limitCeiling, -0.3f },
+            { pid::texOn, 1 }, { pid::texHiss, -56 }, { pid::texDust, -44 }, { pid::texDensity, 0.3f } } },
+        // Pitch-up / resample / pitch-down: 22.05 kHz with a +7 st trick = ~14.7 kHz effective,
+        // export-style (filtered) resampling, dark playback and a light tape + texture glue.
+        { "Pitch-Down Resample", {
+            { pid::crushRate, 22050 }, { pid::crushPitch, 7 }, { pid::crushBits, 12 }, { pid::crushAA, 1 },
+            { pid::highCut, 9500 }, { pid::boxGain, 2.5f }, { pid::tapeDrive, 5 }, { pid::wow, 0.12f },
+            { pid::flutter, 0.15f }, { pid::hiss, -70 }, { pid::dbxOn, 0 }, { pid::subOn, 0 },
+            { pid::compRatio, 0 }, { pid::compThresh, -16 }, { pid::compMakeup, 5 }, { pid::outputGain, 2.5f },
+            { pid::texOn, 1 }, { pid::texHiss, -58 }, { pid::texDust, -46 }, { pid::texDensity, 0.25f } } },
+        { "Companded 12-bit (MPC-ish)", {
+            { pid::crushRate, 40000 }, { pid::crushBits, 12 }, { pid::crushDac, 1 }, { pid::highCut, 14000 },
+            { pid::boxGain, 2 }, { pid::tapeDrive, 4 }, { pid::wow, 0.05f }, { pid::flutter, 0.05f },
+            { pid::hiss, -80 }, { pid::dbxOn, 0 }, { pid::compRatio, 0 }, { pid::compThresh, -14 },
+            { pid::compMakeup, 4 } } },
         { "Clean (Init)", {
             { pid::crushOn, 0 }, { pid::eqOn, 0 }, { pid::tapeOn, 0 }, { pid::dbxOn, 0 }, { pid::compOn, 0 },
-            { pid::subOn, 0 }, { pid::outClip, 0 }, { pid::outputGain, 0 } } },
+            { pid::subOn, 0 }, { pid::texOn, 0 }, { pid::outClip, 0 }, { pid::outputGain, 0 } } },
     };
     return presets;
 }

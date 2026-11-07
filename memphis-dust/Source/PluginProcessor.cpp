@@ -16,6 +16,10 @@ MemphisDustProcessor::MemphisDustProcessor()
     p.dbxTilt = get (pid::dbxTilt);       p.compMode = get (pid::compMode);
     p.monoOn = get (pid::monoOn);         p.monoFreq = get (pid::monoFreq);     p.limitOn = get (pid::limitOn);
     p.limitDrive = get (pid::limitDrive); p.limitCeiling = get (pid::limitCeiling);
+    p.crushPitch = get (pid::crushPitch); p.crushDac = get (pid::crushDac);
+    p.texOn = get (pid::texOn);           p.texHiss = get (pid::texHiss);       p.texDust = get (pid::texDust);
+    p.texDensity = get (pid::texDensity); p.texTone = get (pid::texTone);       p.texWidth = get (pid::texWidth);
+    p.texDuck = get (pid::texDuck);
     p.crushOn = get (pid::crushOn);       p.crushRate = get (pid::crushRate);   p.crushBits = get (pid::crushBits);
     p.crushAA = get (pid::crushAA);
     p.eqOn = get (pid::eqOn);             p.lowCut = get (pid::lowCut);         p.boxFreq = get (pid::boxFreq);
@@ -57,6 +61,7 @@ void MemphisDustProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     dropouts.prepare (sampleRate);
     monoBass.prepare (sampleRate);
     limiter.prepare (sampleRate);
+    texture.prepare (sampleRate);
     sampleRateHz = sampleRate;
     alInPow = alOutPow = 0.0f;
     alGainDb.reset (sampleRate, 0.25);
@@ -92,7 +97,11 @@ void MemphisDustProcessor::updateParameters()
     outGain.setTargetValue (juce::Decibels::decibelsToGain (p.outputGain->load()));
     dryWet.setWetMixProportion (p.mix->load());
 
-    crusher.setParams (p.crushRate->load(), p.crushBits->load(), on (p.crushAA));
+    crusher.setParams (p.crushRate->load(), p.crushBits->load(), on (p.crushAA), p.crushPitch->load(),
+                       p.crushDac->load() > 0.5f);
+    texOn = on (p.texOn);
+    texture.setParams (p.texHiss->load(), p.texDust->load(), p.texDensity->load(), p.texTone->load(),
+                       p.texWidth->load(), p.texDuck->load());
     eq.setParams (p.lowCut->load(), p.boxFreq->load(), p.boxGain->load(), p.boxQ->load(), p.highCut->load(),
                   p.presence->load());
     dbx.setParams (p.dbxBreath->load(), p.dbxRelease->load(), p.dbxTilt->load());
@@ -159,7 +168,7 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
     }
     if (inPeak > tapeInPeak.load()) tapeInPeak.store (inPeak);
 
-    // 07a — master utility: true-mono low end (first, before anything eats headroom)
+    // 08 — master utility: true-mono low end (first, before anything eats headroom)
     if (monoOn) monoBass.process (ch, chans, n);
 
     // 01 — 12-bit sampler
@@ -227,6 +236,10 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
         autoLevelDb.store (alGainDb.getCurrentValue());
     }
 
+    // 07 — texture layer (filtered, ducked, narrow hiss + vinyl dust), after the comp and the
+    // loudness match so neither the bus compression nor Auto Level pumps it up
+    if (texOn) texture.process (ch, chans, n);
+
     // Output gain + optional "mixer pushed into the red" soft clip
     for (int i = 0; i < n; ++i)
     {
@@ -238,7 +251,7 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
         }
     }
 
-    // 07b — brickwall limiter, always the very last thing (runs bypassed too: constant latency)
+    // 08 — brickwall limiter, always the very last thing (runs bypassed too: constant latency)
     limiter.process (ch, chans, n);
 }
 

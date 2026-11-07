@@ -104,7 +104,7 @@ private:
 class MemphisDustPanel final : public juce::Component, private juce::Timer
 {
 public:
-    static constexpr int designWidth = 1440, designHeight = 720;
+    static constexpr int designWidth = 1600, designHeight = 720;
 
     explicit MemphisDustPanel (MemphisDustProcessor&);
 
@@ -119,7 +119,7 @@ private:
     MemphisDustProcessor& processor;
 
     juce::ComboBox presetBox;
-    md::ui::Section sampler, cassetteEq, tapeSec, dbxSec, sub, comp, master;
+    md::ui::Section sampler, cassetteEq, tapeSec, dbxSec, sub, comp, texture, master;
     md::ui::Knob inputKnob, mixKnob, outputKnob;
     md::ui::Toggle clipToggle, autoToggle;
     md::ui::GrMeter grMeter;

@@ -14,6 +14,8 @@ inline constexpr auto crushOn   = "crushOn";
 inline constexpr auto crushRate = "crushRate";
 inline constexpr auto crushBits = "crushBits";
 inline constexpr auto crushAA   = "crushAA";
+inline constexpr auto crushPitch = "crushPitch";
+inline constexpr auto crushDac   = "crushDac";
 // 02 Cassette EQ
 inline constexpr auto eqOn     = "eqOn";
 inline constexpr auto lowCut   = "lowCut";
@@ -51,7 +53,15 @@ inline constexpr auto subFreq  = "subFreq";
 inline constexpr auto subDrive = "subDrive";
 inline constexpr auto subHard  = "subHard";
 inline constexpr auto subLevel = "subLevel";
-// 07 Master
+// 07 Texture (master-bus noise layer)
+inline constexpr auto texOn      = "texOn";
+inline constexpr auto texHiss    = "texHiss";
+inline constexpr auto texDust    = "texDust";
+inline constexpr auto texDensity = "texDensity";
+inline constexpr auto texTone    = "texTone";
+inline constexpr auto texWidth   = "texWidth";
+inline constexpr auto texDuck    = "texDuck";
+// 08 Master
 inline constexpr auto monoOn       = "monoOn";
 inline constexpr auto monoFreq     = "monoFreq";
 inline constexpr auto limitOn      = "limitOn";
