@@ -174,6 +174,23 @@ Click **Progressions** (top right). Chords sit on a timeline as **blocks**, size
   progression's length and seamless** (tails wrap to the start), made for sampling.
   Files go to `Progressions/<preset>_<key>_<bpm>bpm_<seed>/`.
 
+**Your instruments in the loop.** Each melodic part has a **Sound**: the built-in recipe, **the
+main window's instrument + sound** (a copy, with the preset you dialled in), any installed VST3, or
+browse for one. **Edit** opens that plugin to choose its preset. Loops and stems then render through
+your instruments (dry - the finish below still applies); the MIDI is the same either way.
+
+**Finish:** a vintage look over the loop and every stem - **70s Tape** (saturation, wow & flutter,
+hiss, softened top), **Cassette**, **80s Digital** (bright, clean), **90s SP-1200** (12-bit, low
+sample rate crunch), **MPC60 / MPC3000** (12-bit warmth), **Vinyl** (crackle, rumble, surface noise)
+and **Dusty Record** (vinyl + tape).
+
+**Chops:** with Export Loop, the loop is also cut into pad chops - **one per chord**, **one per bar**,
+or **16 equal slices** - in `<name>_Chops/Bank_A` (pads 1-16), `Bank_B` ..., with `_Pad_Map.txt`.
+Load a bank in order and the pads play the progression.
+
+CLI: `--finish dusty`, `--chops chord|bar|16`, `--plugin-keys / --plugin-bass / --plugin-pad /
+--plugin-lead <file.vst3>`.
+
 **Genre presets** (vintage R&B first) - each uses a recipe for every part:
 
 | Preset | Keys | Bass | Pad / strings | Lead | Drums |

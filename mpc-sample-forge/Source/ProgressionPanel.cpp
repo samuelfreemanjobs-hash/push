@@ -284,6 +284,57 @@ ProgressionPanel::ProgressionPanel (Hooks h, juce::PropertiesFile* s) : hooks (s
         c->getProperties().set ("ids", recipeIds.joinIntoString (" "));
         addAndMakeVisible (c);
     }
+    // ---- the sound that plays each part in the loop: the built-in recipe, or your VST3
+    installed = hooks.installedPlugins ? hooks.installedPlugins() : juce::StringArray();
+    juce::String mainPath;
+    juce::MemoryBlock mainState;
+    const bool haveMain = hooks.mainSound && hooks.mainSound (mainPath, mainState);
+    for (int p = 0; p < 4; ++p)
+    {
+        auto* c = partSounds.add (new juce::ComboBox());
+        c->addItem ("Sound: built-in (the recipe)", 1);
+        if (haveMain) c->addItem ("Sound: the main window's instrument + sound (" + juce::File (mainPath).getFileNameWithoutExtension() + ")", 2);
+        for (int k = 0; k < installed.size(); ++k) c->addItem ("Sound: " + juce::File (installed[k]).getFileNameWithoutExtension(), 10 + k);
+        c->addItem ("Sound: browse for a VST3 ...", 9);
+        c->setSelectedId (1, juce::dontSendNotification);
+        c->setTooltip ("What plays this part in the loop and stems: the built-in recipe, or one of your VST3 instruments "
+                       "(click Edit to pick its preset / dial the sound). The MIDI is the same either way.");
+        c->onChange = [this, p] { soundChanged (p); };
+        addAndMakeVisible (c);
+        auto* e = partEditButtons.add (new juce::TextButton ("Edit"));
+        e->setTooltip ("Open the plugin to choose a preset / dial in the sound for this part");
+        e->setEnabled (false);
+        e->onClick = [this, p] { openPartEditor (p); };
+        addAndMakeVisible (e);
+    }
+
+    // ---- finish + chops
+    finishLabel.setText ("Finish", juce::dontSendNotification);
+    finishLabel.setColour (juce::Label::textColourId, dim);
+    for (size_t k = 0; k < vintageFinishes().size(); ++k) finishBox.addItem (vintageFinishes()[k].second, (int) k + 1);
+    finishBox.setSelectedId (1, juce::dontSendNotification);
+    if (settings != nullptr)
+        for (size_t k = 0; k < vintageFinishes().size(); ++k)
+            if (vintageFinishes()[k].first == settings->getValue ("songFinish")) finishBox.setSelectedId ((int) k + 1, juce::dontSendNotification);
+    finishBox.setTooltip ("A vintage look over the whole loop and its stems: tape, cassette, 80s digital, SP-1200 / MPC60 crunch, vinyl");
+    finishBox.onChange = [this]
+    {
+        arr.finish = vintageFinishes()[(size_t) juce::jmax (0, finishBox.getSelectedId() - 1)].first;
+        if (settings != nullptr) settings->setValue ("songFinish", arr.finish);
+    };
+    arr.finish = vintageFinishes()[(size_t) juce::jmax (0, finishBox.getSelectedId() - 1)].first;
+    chopsLabel.setText ("Chops", juce::dontSendNotification);
+    chopsLabel.setColour (juce::Label::textColourId, dim);
+    chopsBox.addItem ("No pad chops", 1);
+    chopsBox.addItem ("Pad chops: one per chord", 2);
+    chopsBox.addItem ("Pad chops: one per bar", 3);
+    chopsBox.addItem ("Pad chops: 16 equal slices", 4);
+    chopsBox.setSelectedId (settings != nullptr ? juce::jlimit (1, 4, settings->getIntValue ("songChops", 2)) : 2, juce::dontSendNotification);
+    chopsBox.setTooltip ("With Export Loop, also cut the loop into pad-ready chops (Bank_A: pads 1-16, Bank_B ...) with a pad map - "
+                         "load a bank in order and the pads play the progression");
+    chopsBox.onChange = [this] { if (this->settings != nullptr) this->settings->setValue ("songChops", chopsBox.getSelectedId()); };
+    for (auto* c : std::initializer_list<juce::Component*> { &finishLabel, &finishBox, &chopsLabel, &chopsBox }) addAndMakeVisible (c);
+
     newPartsButton.setTooltip ("Keep the chords, write new keys / bass / lead / drum parts (new seed)");
     newPartsButton.onClick = [this] { arr.seed = juce::Random::getSystemRandom().nextInt (999999); blocksChanged(); };
 
@@ -394,6 +445,14 @@ void ProgressionPanel::selectBlock (int index)
 void ProgressionPanel::blocksChanged()
 {
     generateParts (arr, preset());
+    // parts are rebuilt: re-attach the instruments chosen for them
+    for (int p = 0; p < 4 && p < partSounds.size(); ++p)
+        for (auto& part : arr.parts)
+            if (part.id == partIds[p])
+            {
+                part.pluginPath = partPlugins[p] != nullptr ? part.pluginPath : juce::String();
+                part.pluginName = partPlugins[p] != nullptr ? partPlugins[p]->getName() : juce::String();
+            }
     // show each part's recipe
     for (int p = 0; p < 4; ++p)
         for (auto& part : arr.parts)
@@ -418,14 +477,64 @@ void ProgressionPanel::blocksChanged()
 
 void ProgressionPanel::playLoop()
 {
-    if (arr.blocks.empty()) return;
-    juce::AudioBuffer<float> mix;
-    std::vector<juce::AudioBuffer<float>> stems;
-    juce::String err;
+    if (arr.blocks.empty() || renderThread != nullptr) return;
+    auto result = std::make_shared<juce::AudioBuffer<float>>();
+    auto error = std::make_shared<juce::String>();
+    auto copy = std::make_shared<Arrangement> (arr);
     auto sr = hooks.sampleRate ? hooks.sampleRate() : 44100.0;
-    if (! renderArrangement (arr, sr, mix, stems, err)) { status.setText ("Can't play: " + err, juce::dontSendNotification); return; }
-    if (hooks.play) hooks.play (mix, sr);
-    if (hooks.log) hooks.log ("> Progression loop: " + arr.progressionText() + "  (" + juce::String (arr.lengthSeconds(), 1) + " s, drumless)");
+    auto instruments = instrumentFor();
+    renderInBackground ([copy, result, error, sr, instruments] (std::function<void (double)> progress)
+                        {
+                            std::vector<juce::AudioBuffer<float>> stems;
+                            return renderArrangement (*copy, sr, *result, stems, *error, instruments, progress);
+                        },
+                        [this, result, error, sr]
+                        {
+                            if (result->getNumSamples() == 0) { status.setText ("Can't play: " + *error, juce::dontSendNotification); return; }
+                            if (hooks.play) hooks.play (*result, sr);
+                            if (hooks.log) hooks.log ("> Progression loop: " + arr.progressionText() + "  (" + juce::String (arr.lengthSeconds(), 1)
+                                                      + " s, drumless, finish: " + arr.finish + ")");
+                        });
+}
+
+InstrumentFor ProgressionPanel::instrumentFor()
+{
+    juce::AudioProcessor* plugins[4];
+    for (int p = 0; p < 4; ++p) plugins[p] = partPlugins[p].get();
+    return [k = plugins[0], b = plugins[1], pd = plugins[2], l = plugins[3]] (const Part& part) -> juce::AudioProcessor*
+    {
+        if (part.id == "keys") return k;
+        if (part.id == "bass") return b;
+        if (part.id == "pad")  return pd;
+        if (part.id == "lead") return l;
+        return nullptr;
+    };
+}
+
+namespace
+{
+    struct RenderThread final : juce::ThreadWithProgressWindow
+    {
+        RenderThread (std::function<bool (std::function<void (double)>)> w, std::function<void()> d)
+            : juce::ThreadWithProgressWindow ("Rendering the loop ...", true, false), work (std::move (w)), done (std::move (d)) {}
+        void run() override { work ([this] (double p) { setProgress (p); }); }
+        void threadComplete (bool) override { if (done) done(); }
+        std::function<bool (std::function<void (double)>)> work;
+        std::function<void()> done;
+    };
+}
+
+void ProgressionPanel::renderInBackground (std::function<bool (std::function<void (double)>)> work, std::function<void()> done)
+{
+    for (auto& e : partEditors) e.reset();        // a plugin can't be rendered and edited at once
+    auto safe = juce::Component::SafePointer<ProgressionPanel> (this);
+    auto* t = new RenderThread (std::move (work), [safe, done]
+    {
+        if (done) done();
+        juce::MessageManager::callAsync ([safe] { if (safe != nullptr) safe->renderThread.reset(); });
+    });
+    renderThread.reset (t);
+    t->launchThread();
 }
 
 juce::String ProgressionPanel::baseName() const
@@ -436,24 +545,139 @@ juce::String ProgressionPanel::baseName() const
 
 void ProgressionPanel::exportFiles (bool midi, bool loops)
 {
-    if (arr.blocks.empty()) return;
+    if (arr.blocks.empty() || renderThread != nullptr) return;
     auto base = hooks.outputFolder ? hooks.outputFolder() : juce::File::getSpecialLocation (juce::File::userHomeDirectory);
     auto folder = base.getChildFile ("Progressions").getChildFile (baseName()).getNonexistentSibling (false);
-    juce::StringArray written;
-    if (midi) written.addArray (writeArrangementMidi (arr, folder, baseName()));
-    if (loops)
-    {
-        juce::String err;
-        auto wavs = writeArrangementLoops (arr, folder, baseName(), hooks.exportRate ? hooks.exportRate() : 44100.0, hooks.bitDepth ? hooks.bitDepth() : 24, err);
-        if (wavs.isEmpty()) { status.setText ("Loop failed: " + err, juce::dontSendNotification); return; }
-        written.addArray (wavs);
-    }
+    auto written = std::make_shared<juce::StringArray>();
+    if (midi) written->addArray (writeArrangementMidi (arr, folder, baseName()));
+    juce::StringArray sounds;
+    for (auto& p : arr.parts) if (p.enabled && p.id != "drums") sounds.add (p.name + ": " + (p.pluginPath.isNotEmpty() ? p.pluginName : p.recipeId));
+    folder.createDirectory();
     folder.getChildFile ("_progression.txt").replaceWithText (preset().name + "\n" + pitchClassName (arr.tonic) + " " + arr.scale + ", "
                                                               + juce::String (arr.tempo, 0) + " BPM, swing " + juce::String (arr.swing, 2) + ", seed " + juce::String (arr.seed)
-                                                              + "\nChords: " + arr.progressionText() + "\n");
+                                                              + "\nChords: " + arr.progressionText() + "\nSounds: " + sounds.joinIntoString (", ")
+                                                              + "\nFinish: " + arr.finish + "\n");
     lastFolder = folder;
-    status.setText ("Wrote " + juce::String (written.size()) + " files to " + folder.getFullPathName(), juce::dontSendNotification);
-    if (hooks.log) hooks.log ("Progression export: " + written.joinIntoString (", ") + " -> " + folder.getFullPathName());
+    auto finished = [this, written, folder]
+    {
+        status.setText ("Wrote " + juce::String (written->size()) + " files to " + folder.getFullPathName(), juce::dontSendNotification);
+        if (hooks.log) hooks.log ("Progression export (" + juce::String (written->size()) + " files) -> " + folder.getFullPathName());
+    };
+    if (! loops) { finished(); return; }
+
+    static const char* chopModes[] = { "off", "chord", "bar", "16" };
+    const juce::String chops = chopModes[juce::jlimit (0, 3, chopsBox.getSelectedId() - 1)];
+    auto copy = std::make_shared<Arrangement> (arr);
+    auto error = std::make_shared<juce::String>();
+    const double rate = hooks.exportRate ? hooks.exportRate() : 44100.0;
+    const int bits = hooks.bitDepth ? hooks.bitDepth() : 24;
+    auto name = baseName();
+    auto instruments = instrumentFor();
+    renderInBackground ([copy, folder, name, rate, bits, chops, instruments, written, error] (std::function<void (double)> progress)
+                        {
+                            auto wavs = writeArrangementLoops (*copy, folder, name, rate, bits, *error, chops, instruments, progress);
+                            written->addArray (wavs);
+                            return ! wavs.isEmpty();
+                        },
+                        [this, error, finished, written]
+                        {
+                            if (error->isNotEmpty() && written->isEmpty()) status.setText ("Loop failed: " + *error, juce::dontSendNotification);
+                            else finished();
+                        });
+}
+
+void ProgressionPanel::soundChanged (int p)
+{
+    auto id = partSounds[p]->getSelectedId();
+    juce::String error;
+    if (id == 1) { setPartPlugin (p, nullptr, {}); return; }
+    if (id == 2 && hooks.mainSound && hooks.loadPlugin)
+    {
+        juce::String path;
+        juce::MemoryBlock state;
+        if (hooks.mainSound (path, state))
+            if (auto inst = hooks.loadPlugin (path, error))
+            {
+                inst->setStateInformation (state.getData(), (int) state.getSize());   // the sound you dialled in
+                setPartPlugin (p, std::move (inst), path);
+                return;
+            }
+    }
+    else if (id == 9)
+    {
+        chooser = std::make_unique<juce::FileChooser> ("Choose a VST3 instrument", juce::File(), "*.vst3");
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectDirectories,
+                              [this, p] (const juce::FileChooser& fc)
+                              {
+                                  auto f = fc.getResult();
+                                  juce::String e;
+                                  if (f != juce::File() && hooks.loadPlugin)
+                                      if (auto inst = hooks.loadPlugin (f.getFullPathName(), e))
+                                      {
+                                          partSounds[p]->addItem ("Sound: " + f.getFileNameWithoutExtension(), 1000 + p);
+                                          partSounds[p]->setSelectedId (1000 + p, juce::dontSendNotification);
+                                          setPartPlugin (p, std::move (inst), f.getFullPathName());
+                                          return;
+                                      }
+                                  if (e.isNotEmpty()) status.setText ("Couldn't load: " + e, juce::dontSendNotification);
+                                  partSounds[p]->setSelectedId (1, juce::dontSendNotification);
+                                  setPartPlugin (p, nullptr, {});
+                              });
+        return;
+    }
+    else if (id >= 10 && id - 10 < installed.size() && hooks.loadPlugin)
+    {
+        if (auto inst = hooks.loadPlugin (installed[id - 10], error)) { setPartPlugin (p, std::move (inst), installed[id - 10]); return; }
+    }
+    status.setText ("Couldn't load that instrument" + (error.isNotEmpty() ? ": " + error : juce::String()), juce::dontSendNotification);
+    partSounds[p]->setSelectedId (1, juce::dontSendNotification);
+    setPartPlugin (p, nullptr, {});
+}
+
+void ProgressionPanel::setPartPlugin (int p, std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& path)
+{
+    partEditors[p].reset();
+    partPlugins[p] = std::move (instance);
+    for (auto& part : arr.parts)
+        if (part.id == partIds[p])
+        {
+            part.pluginPath = partPlugins[p] != nullptr ? path : juce::String();
+            part.pluginName = partPlugins[p] != nullptr ? partPlugins[p]->getName() : juce::String();
+        }
+    partEditButtons[p]->setEnabled (partPlugins[p] != nullptr && partPlugins[p]->hasEditor());
+    partRecipes[p]->setEnabled (partPlugins[p] == nullptr);
+    if (partPlugins[p] != nullptr && hooks.log) hooks.log (juce::String (partNames[p]) + " will play on " + partPlugins[p]->getName() + " in loops");
+}
+
+void ProgressionPanel::openPartEditor (int p)
+{
+    if (partPlugins[p] == nullptr || ! partPlugins[p]->hasEditor() || renderThread != nullptr) return;
+    if (partEditors[p] != nullptr) { partEditors[p]->toFront (true); return; }
+    struct EditorWindow final : juce::DocumentWindow
+    {
+        EditorWindow (const juce::String& name, juce::AudioProcessorEditor* editor, std::function<void()> onClose)
+            : DocumentWindow (name, juce::Colours::black, DocumentWindow::closeButton), closed (std::move (onClose))
+        {
+            setUsingNativeTitleBar (true);
+            setContentOwned (editor, true);
+            centreWithSize (getWidth(), getHeight());
+            setVisible (true);
+        }
+        void closeButtonPressed() override { if (closed) juce::MessageManager::callAsync (closed); }
+        std::function<void()> closed;
+    };
+    if (auto* editor = partPlugins[p]->createEditorIfNeeded())
+    {
+        auto safe = juce::Component::SafePointer<ProgressionPanel> (this);
+        partEditors[p] = std::make_unique<EditorWindow> (juce::String (partNames[p]) + " - " + partPlugins[p]->getName(), editor,
+                                                         [safe, p] { if (safe != nullptr) safe->partEditors[p].reset(); });
+    }
+}
+
+ProgressionPanel::~ProgressionPanel()
+{
+    renderThread.reset();
+    for (auto& e : partEditors) e.reset();
 }
 
 void ProgressionPanel::paint (juce::Graphics& g) { g.fillAll (bg); }
@@ -510,10 +734,22 @@ void ProgressionPanel::resized()
     {
         auto pr = row (26);
         partToggles[p]->setBounds (pr.removeFromLeft (150));
-        partRecipes[p]->setBounds (pr.removeFromLeft (420));
+        partRecipes[p]->setBounds (pr.removeFromLeft (360));
+        if (p < 4)
+        {
+            pr.removeFromLeft (8);
+            partEditButtons[p]->setBounds (pr.removeFromRight (60)); pr.removeFromRight (4);
+            partSounds[p]->setBounds (pr);
+        }
     }
 
     auto bottom = r.removeFromBottom (32);
+    r.removeFromBottom (8);
+    auto looks = r.removeFromBottom (28);
+    finishLabel.setBounds (looks.removeFromLeft (50));
+    finishBox.setBounds (looks.removeFromLeft (260)); looks.removeFromLeft (16);
+    chopsLabel.setBounds (looks.removeFromLeft (50));
+    chopsBox.setBounds (looks.removeFromLeft (260));
     bothButton.setBounds (bottom.removeFromRight (170)); bottom.removeFromRight (6);
     loopButton.setBounds (bottom.removeFromRight (110)); bottom.removeFromRight (6);
     midiButton.setBounds (bottom.removeFromRight (110)); bottom.removeFromRight (12);

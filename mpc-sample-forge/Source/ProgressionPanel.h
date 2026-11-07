@@ -43,9 +43,13 @@ namespace forge
             std::function<double()> exportRate;                                       // for files (the Format setting)
             std::function<int()> bitDepth;
             std::function<void (const juce::String&)> log;
+            std::function<juce::StringArray()> installedPlugins;                      // VST3 paths
+            std::function<std::unique_ptr<juce::AudioPluginInstance> (const juce::String&, juce::String&)> loadPlugin;
+            std::function<bool (juce::String& path, juce::MemoryBlock& state)> mainSound; // the main window's plugin + its sound
         };
 
         ProgressionPanel (Hooks hooks, juce::PropertiesFile* settings);
+        ~ProgressionPanel() override;
 
         void paint (juce::Graphics&) override;
         void resized() override;
@@ -59,6 +63,12 @@ namespace forge
         void addBlock (const ChordBlock& b);
         void playLoop();
         void exportFiles (bool midi, bool loops);
+        void soundChanged (int part);
+        void setPartPlugin (int part, std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& path);
+        void openPartEditor (int part);
+        InstrumentFor instrumentFor();
+        /** Renders on a background thread with a progress window, then calls `done` on the message thread. */
+        void renderInBackground (std::function<bool (std::function<void (double)>)> work, std::function<void()> done);
         juce::String baseName() const;
         const SongPreset& preset() const;
         std::vector<ChordBlock> keyChords() const;
@@ -85,5 +95,16 @@ namespace forge
         juce::OwnedArray<juce::ToggleButton> partToggles;
         juce::OwnedArray<juce::ComboBox> partRecipes;
         BlockLane lane;
+
+        // your instruments for the loop: one optional VST3 per melodic part
+        juce::OwnedArray<juce::ComboBox> partSounds;
+        juce::OwnedArray<juce::TextButton> partEditButtons;
+        std::unique_ptr<juce::AudioPluginInstance> partPlugins[4];
+        std::unique_ptr<juce::DocumentWindow> partEditors[4];
+        juce::StringArray installed;
+        std::unique_ptr<juce::FileChooser> chooser;
+        juce::ComboBox finishBox, chopsBox;
+        juce::Label finishLabel, chopsLabel;
+        std::unique_ptr<juce::Thread> renderThread;
     };
 }

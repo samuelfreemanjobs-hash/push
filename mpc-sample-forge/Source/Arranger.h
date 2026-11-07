@@ -1,6 +1,7 @@
 #pragma once
 #include "SamplePlanner.h"
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
 namespace forge
 {
@@ -24,6 +25,7 @@ namespace forge
     {
         juce::String id, name;             // "keys", "Keys"
         juce::String recipeId;             // which one-shot recipe sounds it in loops (engine + FX)
+        juce::String pluginPath, pluginName; // a VST3 that plays this part in loops instead (rendered dry)
         int channel = 1;                   // MIDI channel (drums = 10)
         bool enabled = true;
         std::vector<PartNote> notes;
@@ -55,6 +57,7 @@ namespace forge
         juce::int64 seed = 1;
         std::vector<ChordBlock> blocks;
         std::vector<Part> parts;           // keys, bass, pad, lead, drums
+        juce::String finish = "clean";     // vintage finish over the loop and stems (see vintageFinishes())
 
         double totalBeats() const;
         double lengthSeconds() const { return totalBeats() * 60.0 / tempo; }
@@ -76,13 +79,28 @@ namespace forge
         <name>_chords.mid (block chords). Returns the files written. */
     juce::StringArray writeArrangementMidi (const Arrangement& arrangement, const juce::File& folder, const juce::String& name);
 
+    /** Whole-loop looks: 70s tape, cassette, 80s digital, SP-1200, MPC60, vinyl ... (id, name). */
+    const std::vector<std::pair<juce::String, juce::String>>& vintageFinishes();
+    juce::var vintageFinishFx (const juce::String& id);
+
+    /** Gives the instrument that plays a part (a loaded VST3), or nullptr for the built-in synth. */
+    using InstrumentFor = std::function<juce::AudioProcessor* (const Part&)>;
+
     /** Renders the melodic parts with the built-in synth and each part's recipe FX into loops of
         exactly the arrangement's length (tails folded back to the start, so they loop seamlessly).
         stems[i] matches parts[i] (empty if the part is off / drums). Drums stay MIDI-only. */
     bool renderArrangement (const Arrangement& arrangement, double sampleRate, juce::AudioBuffer<float>& mix,
-                            std::vector<juce::AudioBuffer<float>>& stems, juce::String& error);
+                            std::vector<juce::AudioBuffer<float>>& stems, juce::String& error,
+                            InstrumentFor instrumentFor = {}, std::function<void (double)> progress = {});
+
+    /** Cuts a rendered loop into pad chops: "chord" (one per chord), "bar", "16" (16 equal slices).
+        Writes <name>_Chops/Bank_A/01_... (16 per bank) and a pad map. Returns the files written. */
+    juce::StringArray writeLoopChops (const Arrangement& arrangement, const juce::AudioBuffer<float>& loop, const juce::File& folder,
+                                      const juce::String& name, const juce::String& mode, double sampleRate, int bitDepth);
 
     /** Renders and writes <name>_loop.wav plus one stem per part. Returns the files written. */
     juce::StringArray writeArrangementLoops (const Arrangement& arrangement, const juce::File& folder, const juce::String& name,
-                                             double sampleRate, int bitDepth, juce::String& error);
+                                             double sampleRate, int bitDepth, juce::String& error,
+                                             const juce::String& chopMode = "off", InstrumentFor instrumentFor = {},
+                                             std::function<void (double)> progress = {});
 }

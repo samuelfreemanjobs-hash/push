@@ -228,6 +228,48 @@ namespace
         }
     }
 
+    void tapeHiss (juce::AudioBuffer<float>& b, double sr, double levelDb, juce::Random& rng);
+
+    /** Record surface: random crackles and pops (filtered so they tick rather than click hard),
+        a low rumble and a little surface hiss, scaled to the music's level. */
+    void vinylNoise (juce::AudioBuffer<float>& b, double sr, double amount, juce::Random& rng)
+    {
+        auto peak = peakOf (b);
+        if (peak <= 0 || amount <= 0) return;
+        const int n = b.getNumSamples();
+        juce::AudioBuffer<float> crackle (2, n), rumble (2, n);
+        crackle.clear();
+        const double perSecond = 6.0 + 30.0 * amount;
+        const int count = (int) (perSecond * n / sr);
+        for (int k = 0; k < count; ++k)
+        {
+            const int at = rng.nextInt (juce::jmax (1, n - 64));
+            const float level = (rng.nextFloat() < 0.08f ? 1.0f : 0.25f + 0.35f * rng.nextFloat()) * (rng.nextBool() ? 1.0f : -1.0f);
+            const int len = 2 + rng.nextInt (12);
+            const int ch = rng.nextInt (3);                       // left, right or both
+            for (int i = 0; i < len; ++i)
+            {
+                const float v = level * (1.0f - (float) i / len) * (rng.nextFloat() * 2.0f - 1.0f);
+                if (ch != 1) crackle.addSample (0, at + i, v);
+                if (ch != 0) crackle.addSample (1, at + i, v);
+            }
+        }
+        filterBuffer (crackle, sr, FilterKind::High, 800.0, 2, 0.0);
+        filterBuffer (crackle, sr, FilterKind::Low, 7000.0, 2, 0.0);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < n; ++i) rumble.setSample (ch, i, rng.nextFloat() * 2.0f - 1.0f);
+        filterBuffer (rumble, sr, FilterKind::Low, 60.0, 2, 0.0);
+        auto cp = peakOf (crackle), rp = peakOf (rumble);
+        if (cp > 0) crackle.applyGain (peak * (float) (0.08 + 0.12 * amount) / cp);
+        if (rp > 0) rumble.applyGain (peak * (float) (0.02 + 0.03 * amount) / rp);
+        for (int ch = 0; ch < b.getNumChannels(); ++ch)
+        {
+            b.addFrom (ch, 0, crackle, juce::jmin (ch, 1), 0, n);
+            b.addFrom (ch, 0, rumble, juce::jmin (ch, 1), 0, n);
+        }
+        tapeHiss (b, sr, -50.0 + 6.0 * amount, rng);
+    }
+
     void tapeHiss (juce::AudioBuffer<float>& b, double sr, double levelDb, juce::Random& rng)
     {
         auto peak = peakOf (b);
@@ -437,7 +479,7 @@ namespace
 juce::StringArray effectTypes()
 {
     return { "lowpass", "highpass", "bandpass", "peak", "tape", "tube", "overdrive", "bitcrush", "wowflutter",
-             "hiss", "chorus", "widen", "compressor", "reverb", "delay", "shimmer", "rotary", "gain", "reverse" };
+             "hiss", "chorus", "widen", "compressor", "reverb", "delay", "shimmer", "rotary", "gain", "reverse", "vinyl" };
 }
 
 bool validateFx (const juce::var& fx, juce::String& error)
@@ -526,6 +568,7 @@ void applyFxChain (juce::AudioBuffer<float>& b, double sr, const juce::var& fx, 
         else if (type == "shimmer")    delay (b, sr, o, tempo, true);
         else if (type == "rotary")     rotary (b, sr, o);
         else if (type == "gain")       b.applyGain (juce::Decibels::decibelsToGain ((float) num (o, "db", 0)));
+        else if (type == "vinyl")      vinylNoise (b, sr, num (o, "amount", 0.5), rng);
         else if (type == "reverse")
         {
             // play it backwards (a reverse swell): drop the near-silent start the old tail leaves, then short fades

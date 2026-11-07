@@ -8,6 +8,7 @@
 #include "RenderQueue.h"
 #include "RecipeCard.h"
 #include "Arranger.h"
+#include "Effects.h"
 #include <cmath>
 
 namespace forge
@@ -581,11 +582,30 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
         dir.deleteRecursively();
         auto files = writeArrangementMidi (a, dir, "test");
         dir.deleteRecursively();
-        ok = ok && presetsOk == (int) songPresets().size() && recipesMissing == 0 && rendered && mix.getNumSamples() == expected && files.size() == 7;
+        // vintage finishes are valid effect chains; chops cut the loop exactly
+        int finishesOk = 0;
+        for (auto& [id, name] : vintageFinishes())
+        {
+            juce::String fxError;
+            auto fx = vintageFinishFx (id);
+            finishesOk += (id == "clean" ? fx.isVoid() : fx.isArray()) && validateFx (fx, fxError);
+        }
+        auto chopDir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("forge_selftest_chops");
+        chopDir.deleteRecursively();
+        auto chops = rendered ? writeLoopChops (a, mix, chopDir, "test", "chord", 44100.0, 16) : juce::StringArray();
+        juce::int64 chopSamples = 0;
+        for (auto& c : chops)
+            if (auto reader = std::unique_ptr<juce::AudioFormatReader> (juce::WavAudioFormat().createReaderFor (chopDir.getChildFile (c).createInputStream().release(), true)))
+                chopSamples += reader->lengthInSamples;
+        chopDir.deleteRecursively();
+        ok = ok && presetsOk == (int) songPresets().size() && recipesMissing == 0 && rendered && mix.getNumSamples() == expected && files.size() == 7
+                && finishesOk == (int) vintageFinishes().size() && chops.size() == 4 && chopSamples == expected;
         say (ok ? L::Pass : L::Fail, "Progressions",
              juce::String (presetsOk) + "/" + juce::String ((int) songPresets().size()) + " genre presets write 8 bars + 5 parts"
              + (recipesMissing > 0 ? ", " + juce::String (recipesMissing) + " RECIPES MISSING" : juce::String())
-             + "; loop " + juce::String (mix.getNumSamples()) + "/" + juce::String (expected) + " samples; " + juce::String (files.size()) + " MIDI files");
+             + "; loop " + juce::String (mix.getNumSamples()) + "/" + juce::String (expected) + " samples; " + juce::String (files.size()) + " MIDI files; "
+             + juce::String (finishesOk) + "/" + juce::String ((int) vintageFinishes().size()) + " finishes; " + juce::String (chops.size()) + " chops = "
+             + juce::String (chopSamples) + " samples");
     }
 
     // ------------------------------------------------------------ trap progression library

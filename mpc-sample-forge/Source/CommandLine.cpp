@@ -2,6 +2,7 @@
 #include "ProgressionLibrary.h"
 #include "RecipeCard.h"
 #include "Arranger.h"
+#include <map>
 #include "BuiltInSynth.h"
 #include "Diagnostics.h"
 #include "Analysis.h"
@@ -88,7 +89,10 @@ juce::String cliHelpText()
       << "  --song <preset>           e.g. quiet-storm, philly-soul, neo-soul (see --list-song-presets)\n"
       << "  --key <C..B|random> --bars <4|8|16> --tempo <bpm> --swing <0-1> --seed <n>\n"
       << "  --chords \"ii:m9 V:13 I:maj9 vi:m9\"   your own progression (numerals or chord symbols, *2 = 2 beats)\n"
-      << "  --no-loop                 MIDI only (no audio loop / stems)\n\n"
+      << "  --no-loop                 MIDI only (no audio loop / stems)\n"
+      << "  --finish <clean|tape70s|cassette|digital80s|sp1200|mpc60|vinyl|dusty>   vintage look for loop + stems\n"
+      << "  --chops <off|chord|bar|16>   also cut the loop into pad chops (Bank_A ...) with a pad map\n"
+      << "  --plugin-keys / --plugin-bass / --plugin-pad / --plugin-lead <file.vst3>   play that part with your VST3\n\n"
       << "Render queue (set it up in the app with \"Add to Queue\"):\n"
       << "  --queue [file.json]       render every waiting batch of the queue, one after another\n"
       << "                            (default: the app's own queue, " << defaultQueueFile().getFullPathName() << ")\n\n"
@@ -210,10 +214,31 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         if (args.contains ("--plan-only")) return onDone (0);
         auto midi = writeArrangementMidi (arr, folder, name);
         out ("MIDI: " + midi.joinIntoString (", "));
+        arr.finish = option (args, "--finish", "clean");
         if (! args.contains ("--no-loop"))
         {
+            // --plugin-keys / --plugin-bass / --plugin-pad / --plugin-lead <file.vst3>: your instruments play those parts
+            const double rate = option (args, "--rate", "44100").getDoubleValue();
+            std::map<juce::String, std::unique_ptr<juce::AudioPluginInstance>> partPlugins;
+            for (auto* id : { "keys", "bass", "pad", "lead" })
+                if (args.contains ("--plugin-" + juce::String (id)))
+                {
+                    juce::String e;
+                    auto path = option (args, "--plugin-" + juce::String (id));
+                    auto inst = host.load (path, rate, 512, e);
+                    if (inst == nullptr) return fail ("--plugin-" + juce::String (id) + ": " + e);
+                    for (auto& part : arr.parts) if (part.id == id) { part.pluginPath = path; part.pluginName = inst->getName(); }
+                    out ("  " + juce::String (id) + " plays on " + inst->getName());
+                    partPlugins[id] = std::move (inst);
+                }
+            InstrumentFor instrumentFor = [&partPlugins] (const Part& part) -> juce::AudioProcessor*
+            {
+                auto it = partPlugins.find (part.id);
+                return it != partPlugins.end() ? it->second.get() : nullptr;
+            };
             juce::String err;
-            auto wavs = writeArrangementLoops (arr, folder, name, option (args, "--rate", "44100").getDoubleValue(), option (args, "--bits", "24").getIntValue(), err);
+            auto wavs = writeArrangementLoops (arr, folder, name, rate, option (args, "--bits", "24").getIntValue(), err,
+                                               option (args, "--chops", "off"), instrumentFor);
             if (wavs.isEmpty()) return fail ("loop: " + err);
             out ("Loops: " + wavs.joinIntoString (", "));
         }

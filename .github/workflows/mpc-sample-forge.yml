@@ -84,6 +84,10 @@ jobs:
           # variations of the current sound
           "$CLI" --plugin $P --style neo-soul --sweep variations --sweep-variations 24 --sweep-strength 0.7 --sweep-keep 4 --short-names --warmup 0.3 --out sweep-out/variations
           test "$(ls -d sweep-out/variations/0*_Variation* | wc -l | tr -d ' ')" -ge 2
+          # a progression loop with a part played by a real VST3
+          "$CLI" --song philly-soul --key C --bars 4 --seed 3 --plugin-keys $P --finish sp1200 --chops 16 --out sweep-out/song_plugin
+          test -f sweep-out/song_plugin/*_stem_keys.wav
+          test "$(ls sweep-out/song_plugin/*_Chops/Bank_A/*.wav | wc -l | tr -d ' ')" -eq 16
 
       - name: Render demo kit
         run: |
@@ -127,9 +131,10 @@ jobs:
           test -f demo-out/RecipeCard_DL_BHC/DL_BHC_Fs5_LEAD.wav
           test -f demo-out/RecipeCard_DL_BHC/DL_BHC_MELODY.mid
           # a written progression with 5 parts: multi-track MIDI + drumless loop and stems
-          "${{ steps.bin.outputs.cli }}" --song quiet-storm --key Eb --bars 8 --seed 7 --out demo-out/Progression_QuietStorm
+          "${{ steps.bin.outputs.cli }}" --song quiet-storm --key Eb --bars 8 --seed 7 --finish dusty --chops chord --out demo-out/Progression_QuietStorm
           test "$(ls demo-out/Progression_QuietStorm/*.mid | wc -l | tr -d ' ')" -eq 7
           test "$(ls demo-out/Progression_QuietStorm/*.wav | wc -l | tr -d ' ')" -eq 5
+          test "$(ls demo-out/Progression_QuietStorm/*_Chops/Bank_A/*.wav | wc -l | tr -d ' ')" -eq 8
           test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
 
       - name: Package

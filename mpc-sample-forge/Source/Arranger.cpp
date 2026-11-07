@@ -353,6 +353,7 @@ void generateParts (Arrangement& arr, const SongPreset& preset)
         p.id = id; p.name = name; p.channel = channel;
         p.recipeId = previous.count (id) ? previous[id].recipeId : recipe;
         p.enabled = previous.count (id) ? previous[id].enabled : true;
+        if (previous.count (id)) { p.pluginPath = previous[id].pluginPath; p.pluginName = previous[id].pluginName; }
         return p;
     };
     Part keys = makePart ("keys", "Keys", preset.keysRecipe, 1);
@@ -654,12 +655,126 @@ juce::StringArray writeArrangementMidi (const Arrangement& arr, const juce::File
 //==============================================================================
 // Loops
 
-bool renderArrangement (const Arrangement& arr, double sr, juce::AudioBuffer<float>& mix, std::vector<juce::AudioBuffer<float>>& stems, juce::String& error)
+const std::vector<std::pair<juce::String, juce::String>>& vintageFinishes()
+{
+    static const std::vector<std::pair<juce::String, juce::String>> f {
+        { "clean", "Clean (no finish)" }, { "tape70s", "70s Tape" }, { "cassette", "Cassette" }, { "digital80s", "80s Digital" },
+        { "sp1200", "90s SP-1200 (crunchy)" }, { "mpc60", "MPC60 / MPC3000" }, { "vinyl", "Vinyl" }, { "dusty", "Dusty Record (vinyl + tape)" } };
+    return f;
+}
+
+juce::var vintageFinishFx (const juce::String& id)
+{
+    auto fx = [] (std::initializer_list<std::initializer_list<std::pair<const char*, juce::var>>> list)
+    {
+        juce::Array<juce::var> a;
+        for (auto& e : list)
+        {
+            auto* o = new juce::DynamicObject();
+            for (auto& [k, v] : e) o->setProperty (k, v);
+            a.add (juce::var (o));
+        }
+        return juce::var (a);
+    };
+    if (id == "tape70s")
+        return fx ({ { { "type", "tape" }, { "drive", 0.45 } }, { { "type", "wowflutter" }, { "amount", 0.22 } },
+                     { { "type", "lowpass" }, { "freq", 9500 }, { "poles", 2 } }, { { "type", "hiss" }, { "levelDb", -50 } },
+                     { { "type", "compressor" }, { "thresholdDb", -14 }, { "ratio", 2 }, { "attackMs", 10 }, { "releaseMs", 150 } } });
+    if (id == "cassette")
+        return fx ({ { { "type", "tape" }, { "drive", 0.55 } }, { { "type", "wowflutter" }, { "amount", 0.4 } },
+                     { { "type", "lowpass" }, { "freq", 7000 }, { "poles", 2 } }, { { "type", "highpass" }, { "freq", 60 }, { "poles", 2 } },
+                     { { "type", "hiss" }, { "levelDb", -42 } } });
+    if (id == "digital80s")
+        return fx ({ { { "type", "peak" }, { "freq", 9000 }, { "gainDb", 3 }, { "q", 0.7 } }, { { "type", "peak" }, { "freq", 250 }, { "gainDb", -2 }, { "q", 0.8 } },
+                     { { "type", "compressor" }, { "thresholdDb", -16 }, { "ratio", 3 }, { "attackMs", 5 }, { "releaseMs", 100 } } });
+    if (id == "sp1200")
+        return fx ({ { { "type", "bitcrush" }, { "bits", 12 }, { "downsample", 2 } }, { { "type", "lowpass" }, { "freq", 11000 }, { "poles", 2 } },
+                     { { "type", "tube" }, { "drive", 0.25 } } });
+    if (id == "mpc60")
+        return fx ({ { { "type", "bitcrush" }, { "bits", 12 }, { "downsample", 1 } }, { { "type", "lowpass" }, { "freq", 15000 }, { "poles", 2 } },
+                     { { "type", "tube" }, { "drive", 0.2 } },
+                     { { "type", "compressor" }, { "thresholdDb", -12 }, { "ratio", 2.5 }, { "attackMs", 3 }, { "releaseMs", 80 } } });
+    if (id == "vinyl")
+        return fx ({ { { "type", "highpass" }, { "freq", 35 }, { "poles", 2 } }, { { "type", "lowpass" }, { "freq", 11000 }, { "poles", 2 } },
+                     { { "type", "vinyl" }, { "amount", 0.5 } } });
+    if (id == "dusty")
+        return fx ({ { { "type", "tape" }, { "drive", 0.4 } }, { { "type", "wowflutter" }, { "amount", 0.2 } },
+                     { { "type", "lowpass" }, { "freq", 8500 }, { "poles", 2 } }, { { "type", "vinyl" }, { "amount", 0.7 } } });
+    return {};
+}
+
+/** Plays a part through an instrument over the loop's exact timeline (plus room for its tail). */
+static juce::AudioBuffer<float> renderPart (juce::AudioProcessor& proc, const Arrangement& arr, const Part& part, double sr,
+                                            int loopLen, int tailLen, bool isPlugin)
+{
+    const int bs = 512;
+    proc.setNonRealtime (true);
+    proc.prepareToPlay (sr, bs);
+    const int chans = juce::jmax (2, proc.getTotalNumInputChannels(), proc.getTotalNumOutputChannels());
+    const int outs = juce::jmax (1, proc.getTotalNumOutputChannels());
+    juce::AudioBuffer<float> block (chans, bs);
+    if (isPlugin)
+    {
+        // some instruments load samples in the background: let them, and silence anything left over
+        auto end = juce::Time::getMillisecondCounterHiRes() + 1200.0;
+        juce::MidiBuffer off;
+        for (int ch = 1; ch <= 16; ++ch) off.addEvent (juce::MidiMessage::allNotesOff (ch), 0);
+        while (juce::Time::getMillisecondCounterHiRes() < end)
+        {
+            block.clear();
+            proc.processBlock (block, off);
+            off.clear();
+            juce::Thread::sleep (2);
+        }
+    }
+    struct Ev { juce::int64 pos; juce::MidiMessage msg; };
+    std::vector<Ev> events;
+    for (auto& n : part.notes)
+    {
+        auto on = (juce::int64) (n.start * 60.0 / arr.tempo * sr);
+        auto offPos = (juce::int64) ((n.start + n.length) * 60.0 / arr.tempo * sr);
+        events.push_back ({ on, juce::MidiMessage::noteOn (1, juce::jlimit (0, 127, n.note), (juce::uint8) juce::jlimit (1, 127, n.velocity)) });
+        events.push_back ({ juce::jmax (on + 1, offPos), juce::MidiMessage::noteOff (1, juce::jlimit (0, 127, n.note)) });
+    }
+    std::stable_sort (events.begin(), events.end(), [] (auto& a, auto& b) { return a.pos < b.pos; });
+    const auto latency = juce::jmax (0, proc.getLatencySamples());
+
+    juce::AudioBuffer<float> audio (2, loopLen + tailLen + bs + latency);
+    audio.clear();
+    size_t next = 0;
+    juce::int64 written = 0;
+    for (juce::int64 pos = 0; pos < loopLen + tailLen + latency; pos += bs)
+    {
+        juce::MidiBuffer midi;
+        while (next < events.size() && events[next].pos < pos + bs) { midi.addEvent (events[next].msg, (int) (events[next].pos - pos)); ++next; }
+        block.clear();
+        proc.processBlock (block, midi);
+        for (int i = 0; i < bs; ++i)
+        {
+            const auto at = pos + i - latency;            // the plugin's reported delay comes off the front
+            if (at < 0 || at >= audio.getNumSamples()) continue;
+            audio.setSample (0, (int) at, block.getSample (0, i));
+            audio.setSample (1, (int) at, block.getSample (juce::jmin (1, outs - 1), i));
+            written = at;
+        }
+    }
+    juce::ignoreUnused (written);
+    juce::MidiBuffer off;
+    for (int ch = 1; ch <= 16; ++ch) off.addEvent (juce::MidiMessage::allNotesOff (ch), 0);
+    block.clear();
+    proc.processBlock (block, off);
+    proc.releaseResources();
+    proc.setNonRealtime (false);
+    audio.setSize (2, loopLen + tailLen, true);
+    return audio;
+}
+
+bool renderArrangement (const Arrangement& arr, double sr, juce::AudioBuffer<float>& mix, std::vector<juce::AudioBuffer<float>>& stems,
+                        juce::String& error, InstrumentFor instrumentFor, std::function<void (double)> progress)
 {
     const int loopLen = juce::roundToInt (arr.lengthSeconds() * sr);
     if (loopLen <= 0) { error = "the progression is empty"; return false; }
     const int tailLen = (int) (sr * 4.0);
-    const int bs = 512;
     stems.assign (arr.parts.size(), {});
     mix.setSize (2, loopLen);
     mix.clear();
@@ -667,52 +782,33 @@ bool renderArrangement (const Arrangement& arr, double sr, juce::AudioBuffer<flo
 
     for (size_t i = 0; i < arr.parts.size(); ++i)
     {
+        if (progress) progress ((double) i / (double) arr.parts.size());
         const auto& part = arr.parts[i];
         if (! part.enabled || part.id == "drums" || part.notes.empty()) continue;
         const auto& recipe = recipeOr (part.recipeId);
 
-        BuiltInSynth synth;
-        Engine engine;
-        if (! parseEngine (recipe.engine == "mixed" ? juce::String ("epiano") : recipe.engine, engine)) parseEngine ("epiano", engine);
-        synth.setEngine (engine);
-        synth.setVariation (arr.seed * 31 + (juce::int64) i);
-        synth.setNonRealtime (true);
-        synth.prepareToPlay (sr, bs);
-
-        struct Ev { juce::int64 pos; juce::MidiMessage msg; };
-        std::vector<Ev> events;
-        for (auto& n : part.notes)
+        juce::AudioBuffer<float> audio;
+        auto* plugin = instrumentFor ? instrumentFor (part) : nullptr;
+        if (plugin != nullptr)
+            audio = renderPart (*plugin, arr, part, sr, loopLen, tailLen, true);     // your instrument, dry
+        else
         {
-            auto on = (juce::int64) (n.start * 60.0 / arr.tempo * sr);
-            auto off = (juce::int64) ((n.start + n.length) * 60.0 / arr.tempo * sr);
-            events.push_back ({ on, juce::MidiMessage::noteOn (1, n.note, (juce::uint8) n.velocity) });
-            events.push_back ({ juce::jmax (on + 1, off), juce::MidiMessage::noteOff (1, n.note) });
+            BuiltInSynth synth;
+            Engine engine;
+            if (! parseEngine (recipe.engine == "mixed" ? juce::String ("epiano") : recipe.engine, engine)) parseEngine ("epiano", engine);
+            synth.setEngine (engine);
+            synth.setVariation (arr.seed * 31 + (juce::int64) i);
+            audio = renderPart (synth, arr, part, sr, loopLen, tailLen, false);
+            // the recipe's sound: its effects over the whole part (not its one-shot trim / varispeed)
+            if (recipe.processing.fx.isArray()) applyFxChain (audio, sr, recipe.processing.fx, arr.tempo, arr.seed + (juce::int64) i);
         }
-        std::stable_sort (events.begin(), events.end(), [] (auto& a, auto& b) { return a.pos < b.pos; });
-
-        juce::AudioBuffer<float> audio (2, loopLen + tailLen + bs);
-        audio.clear();
-        juce::AudioBuffer<float> block (2, bs);
-        size_t next = 0;
-        for (juce::int64 pos = 0; pos < loopLen + tailLen; pos += bs)
-        {
-            juce::MidiBuffer midi;
-            while (next < events.size() && events[next].pos < pos + bs) { midi.addEvent (events[next].msg, (int) (events[next].pos - pos)); ++next; }
-            block.clear();
-            synth.processBlock (block, midi);
-            for (int ch = 0; ch < 2; ++ch) audio.copyFrom (ch, (int) pos, block, ch, 0, bs);
-        }
-        synth.releaseResources();
-
-        // the recipe's sound: its effects over the whole part (not its one-shot trim / varispeed)
-        if (recipe.processing.fx.isArray()) applyFxChain (audio, sr, recipe.processing.fx, arr.tempo, arr.seed + (juce::int64) i);
 
         // fold the tail back onto the start: the loop plays seamlessly
         juce::AudioBuffer<float> loop (2, loopLen);
         loop.clear();
         for (int ch = 0; ch < 2; ++ch)
             for (int s = 0; s < audio.getNumSamples(); ++s)
-                loop.addSample (ch, s % loopLen, audio.getSample (juce::jmin (ch, audio.getNumChannels() - 1), s));
+                loop.addSample (ch, s % loopLen, audio.getSample (ch, s));
 
         auto peak = loop.getMagnitude (0, loopLen);
         if (peak > 1.0e-5f)
@@ -724,21 +820,90 @@ bool renderArrangement (const Arrangement& arr, double sr, juce::AudioBuffer<flo
         for (int ch = 0; ch < 2; ++ch) mix.addFrom (ch, 0, loop, ch, 0, loopLen);
     }
 
-    // master: the mix peaks at -1 dBFS; the stems keep the same gain so they add up to the mix
     auto peak = mix.getMagnitude (0, loopLen);
-    if (peak < 1.0e-5f) { error = "nothing to render (all melodic parts are off?)"; return false; }
+    if (peak < 1.0e-5f) { error = "nothing to render (all melodic parts are off, or an instrument made no sound)"; return false; }
+    mix.applyGain (0.7f / peak);
+    for (auto& st : stems) if (st.getNumSamples() > 0) st.applyGain (0.7f / peak);
+
+    // the vintage finish over the mix and each stem (so stems still sound like the mix)
+    auto finish = vintageFinishFx (arr.finish);
+    if (finish.isArray())
+    {
+        applyFxChain (mix, sr, finish, arr.tempo, arr.seed + 99);
+        for (size_t i = 0; i < stems.size(); ++i)
+            if (stems[i].getNumSamples() > 0) applyFxChain (stems[i], sr, finish, arr.tempo, arr.seed + 99 + (juce::int64) i);
+    }
+
+    // master: the mix peaks at -1 dBFS; the stems keep the same gain so they add up to the mix
+    peak = mix.getMagnitude (0, loopLen);
+    if (peak < 1.0e-5f) { error = "the finish silenced the loop"; return false; }
     const float master = 0.891f / peak;
     mix.applyGain (master);
     for (auto& st : stems) if (st.getNumSamples() > 0) st.applyGain (master);
+    if (progress) progress (1.0);
     return true;
 }
 
-juce::StringArray writeArrangementLoops (const Arrangement& arr, const juce::File& folder, const juce::String& name, double sr, int bits, juce::String& error)
+juce::StringArray writeLoopChops (const Arrangement& arr, const juce::AudioBuffer<float>& loop, const juce::File& folder,
+                                  const juce::String& name, const juce::String& mode, double sr, int bits)
+{
+    juce::StringArray written;
+    if (mode == "off" || mode.isEmpty() || loop.getNumSamples() == 0) return written;
+    struct Cut { double startBeat, beats; juce::String label; int root; };
+    std::vector<Cut> cuts;
+    const double total = arr.totalBeats();
+    if (mode == "chord")
+    {
+        double t = 0;
+        for (auto& b : arr.blocks) { cuts.push_back ({ t, b.beats, safeFileName (b.name()), 48 + b.rootPc }); t += b.beats; }
+    }
+    else if (mode == "bar")
+    {
+        for (double t = 0; t < total - 1e-6; t += 4) cuts.push_back ({ t, std::min (4.0, total - t), "bar" + juce::String ((int) (t / 4) + 1).paddedLeft ('0', 2), 48 + arr.tonic });
+    }
+    else
+    {
+        for (int k = 0; k < 16; ++k) cuts.push_back ({ total * k / 16.0, total / 16.0, "slice" + juce::String (k + 1).paddedLeft ('0', 2), 48 + arr.tonic });
+    }
+    auto chopsFolder = folder.getChildFile (safeFileName (name) + "_Chops");
+    chopsFolder.deleteRecursively();
+    juce::String map;
+    map << "PAD CHOPS - " << name << "\n" << arr.progressionText() << "   (" << juce::String (arr.tempo, 0) << " BPM)\n"
+        << "Load each Bank folder into a drum program in order: file 01 on Pad 1 ... 16 on Pad 16.\n"
+        << "Play the pads in order to play the progression; set the pads to One Shot so each chop plays out.\n\n";
+    const double secPerBeat = 60.0 / arr.tempo;
+    for (size_t k = 0; k < cuts.size(); ++k)
+    {
+        const auto& c = cuts[k];
+        const int from = juce::jlimit (0, loop.getNumSamples() - 1, juce::roundToInt (c.startBeat * secPerBeat * sr));
+        const int to = juce::jlimit (from + 1, loop.getNumSamples(), juce::roundToInt ((c.startBeat + c.beats) * secPerBeat * sr));
+        juce::AudioBuffer<float> chop (2, to - from);
+        for (int ch = 0; ch < 2; ++ch) chop.copyFrom (ch, 0, loop, juce::jmin (ch, loop.getNumChannels() - 1), from, to - from);
+        const int fadeIn = juce::jmin (chop.getNumSamples() / 4, (int) (sr * 0.002)), fadeOut = juce::jmin (chop.getNumSamples() / 4, (int) (sr * 0.006));
+        chop.applyGainRamp (0, fadeIn, 0.0f, 1.0f);
+        chop.applyGainRamp (chop.getNumSamples() - fadeOut, fadeOut, 1.0f, 0.0f);
+        const int pad = (int) (k % 16) + 1;
+        const auto bank = juce::String::charToString ((juce::juce_wchar) ('A' + (int) (k / 16) % 26));
+        auto file = chopsFolder.getChildFile ("Bank_" + bank).getChildFile (juce::String (pad).paddedLeft ('0', 2) + "_" + c.label + ".wav");
+        file.getParentDirectory().createDirectory();
+        juce::String e;
+        if (OfflineRenderer::writeWav (file, chop, sr, bits, c.root, e))
+            written.add (file.getRelativePathFrom (folder));
+        map << "Bank " << bank << "  Pad " << juce::String (pad).paddedLeft (' ', 2) << ":  " << c.label.paddedRight (' ', 12)
+            << " beats " << juce::String (c.startBeat, 2) << " - " << juce::String (c.startBeat + c.beats, 2) << "\n";
+    }
+    chopsFolder.getChildFile ("_Pad_Map.txt").replaceWithText (map);
+    return written;
+}
+
+juce::StringArray writeArrangementLoops (const Arrangement& arr, const juce::File& folder, const juce::String& name, double sr, int bits,
+                                         juce::String& error, const juce::String& chopMode, InstrumentFor instrumentFor,
+                                         std::function<void (double)> progress)
 {
     juce::StringArray written;
     juce::AudioBuffer<float> mix;
     std::vector<juce::AudioBuffer<float>> stems;
-    if (! renderArrangement (arr, sr, mix, stems, error)) return written;
+    if (! renderArrangement (arr, sr, mix, stems, error, instrumentFor, progress)) return written;
     folder.createDirectory();
     const int root = 48 + arr.tonic;
     auto write = [&] (const juce::String& fileName, const juce::AudioBuffer<float>& audio)
@@ -751,6 +916,7 @@ juce::StringArray writeArrangementLoops (const Arrangement& arr, const juce::Fil
     write (name + "_loop", mix);
     for (size_t i = 0; i < arr.parts.size(); ++i)
         if (stems[i].getNumSamples() > 0) write (name + "_stem_" + arr.parts[i].id, stems[i]);
+    written.addArray (writeLoopChops (arr, mix, folder, name, chopMode, sr, bits));
     return written;
 }
 }

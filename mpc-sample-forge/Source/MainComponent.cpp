@@ -2098,6 +2098,19 @@ void MainComponent::openProgressions()
     hooks.exportRate = [this] { return (double) rateBox.getSelectedId(); };
     hooks.bitDepth = [this] { return bitsBox.getSelectedId(); };
     hooks.log = [this] (const juce::String& m) { log (m); };
+    hooks.installedPlugins = [this] { return installedPlugins; };
+    hooks.loadPlugin = [this] (const juce::String& path, juce::String& error) -> std::unique_ptr<juce::AudioPluginInstance>
+    {
+        log ("Loading " + path + " for a progression part ...");
+        return host.load (path, (double) rateBox.getSelectedId(), 512, error);
+    };
+    hooks.mainSound = [this] (juce::String& path, juce::MemoryBlock& state)
+    {
+        if (instrument == nullptr || dynamic_cast<BuiltInSynth*> (instrument.get()) != nullptr || instrumentPath.isEmpty()) return false;
+        path = instrumentPath;
+        instrument->getStateInformation (state);
+        return true;
+    };
     auto safe = juce::Component::SafePointer<MainComponent> (this);
     progressionsWindow = std::make_unique<ToolWindow> ("Progressions", new ProgressionPanel (hooks, props.getUserSettings()),
                                                        [safe] { if (safe != nullptr) safe->progressionsWindow.reset(); });
