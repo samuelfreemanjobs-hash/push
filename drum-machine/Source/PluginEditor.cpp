@@ -223,7 +223,7 @@ void TrackHeader::update()
 void TrackHeader::paint (juce::Graphics& g)
 {
     const auto colour = trackColour (track);
-    auto r = getLocalBounds().toFloat().reduced (2.0f, 3.0f);
+    auto r = getLocalBounds().toFloat().reduced (2.0f, 2.0f);
 
     g.setColour (selected ? colour.withAlpha (0.18f) : juce::Colour (0xff1f222a));
     g.fillRoundedRectangle (r, 4.0f);
@@ -242,17 +242,18 @@ void TrackHeader::paint (juce::Graphics& g)
     const int typeIndex = (int) getParamValue (proc.apvts, voiceParamID (track, Type));
     g.setColour (dimText);
     g.setFont (uiFont (11.0f, true));
-    g.drawText (juce::String (track + 1), r.withTrimmedLeft (10.0f).withWidth (16.0f), juce::Justification::centredLeft);
+    g.drawText (juce::String (track + 1), r.withTrimmedLeft (8.0f).withWidth (18.0f), juce::Justification::centredLeft);
 
-    auto text = r.withTrimmedLeft (28.0f).withTrimmedRight (22.0f);
+    auto text = r.withTrimmedLeft (28.0f).withTrimmedRight (20.0f);
     auto name = proc.getVoiceName (track);
     if (name.isEmpty()) name = voiceTypeNames()[typeIndex];
-    g.setColour (textColour);
-    g.setFont (uiFont (12.5f, true));
-    g.drawText (name, text.removeFromTop (text.getHeight() * 0.58f), juce::Justification::bottomLeft, true);
     g.setColour (dimText);
-    g.setFont (uiFont (9.5f, true));
-    g.drawText (voiceTypeNames()[typeIndex].toUpperCase(), text, juce::Justification::topLeft);
+    g.setFont (uiFont (9.0f, true));
+    const auto typeText = voiceTypeNames()[typeIndex].toUpperCase();
+    g.drawText (typeText, text.removeFromRight (64.0f), juce::Justification::centredRight);
+    g.setColour (textColour);
+    g.setFont (uiFont (12.0f, true));
+    g.drawText (name, text, juce::Justification::centredLeft, true);
 }
 
 void TrackHeader::mouseDown (const juce::MouseEvent&)
@@ -576,7 +577,10 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         const int pat = proc.getCurrentPattern();
         for (int t = 0; t < numTracks; ++t)
             for (int s = 0; s < numSteps; ++s)
+            {
                 clipboard[(size_t) (t * numSteps + s)] = proc.patterns.get (pat, t, s);
+                clipboardRatchets[(size_t) (t * numSteps + s)] = (uint8_t) proc.patterns.getRatchet (pat, t, s);
+            }
         hasClipboard = true;
     };
     pasteButton.onClick = [this]
@@ -585,7 +589,10 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         const int pat = proc.getCurrentPattern();
         for (int t = 0; t < numTracks; ++t)
             for (int s = 0; s < numSteps; ++s)
+            {
                 proc.patterns.set (pat, t, s, clipboard[(size_t) (t * numSteps + s)]);
+                proc.patterns.setRatchet (pat, t, s, clipboardRatchets[(size_t) (t * numSteps + s)]);
+            }
         grid.repaint();
     };
     clearButton.onClick = [this] { proc.patterns.clear (proc.getCurrentPattern()); grid.repaint(); };
@@ -596,6 +603,13 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     };
     for (auto* b : { &copyButton, &pasteButton, &clearButton, &generateButton })
         content.addAndMakeVisible (b);
+
+    rollButton.setClickingTogglesState (true);
+    rollButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff47c0ff));
+    rollButton.setTooltip ("Roll edit mode: clicking a step cycles its ratchet x1 / x2 (1/32) / x3 (triplet roll) / x4 (1/64). "
+                           "Ctrl/Cmd-click does the same in normal mode.");
+    rollButton.onClick = [this] { grid.setRollMode (rollButton.getToggleState()); };
+    content.addAndMakeVisible (rollButton);
 
     // ---- Tracks ----
     for (int t = 0; t < numTracks; ++t)
@@ -644,7 +658,10 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     setResizeLimits (baseWidth / 2, baseHeight / 2, baseWidth * 2, baseHeight * 2);
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
-    setSize ((int) (baseWidth * 0.9), (int) (baseHeight * 0.9));
+    float scale = 0.9f;
+    if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+        scale = juce::jlimit (0.55f, 1.0f, (float) display->userArea.getHeight() * 0.88f / (float) baseHeight);
+    setSize ((int) (baseWidth * scale), (int) (baseHeight * scale));
     startTimerHz (30);
 }
 
@@ -729,39 +746,27 @@ void KitForgeEditor::loadKitFromFile()
 
 void KitForgeEditor::exportPack()
 {
-    juce::PopupMenu menu;
-    menu.addSectionHeader ("Export sample pack (WAV 24-bit / 44.1 kHz + SFZ)");
-    menu.addItem (1, "As pads A01 - A08");
-    menu.addItem (9, "As pads A09 - A16");
+    auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("KitForge Packs");
+    dir.createDirectory();
+    chooser = std::make_unique<juce::FileChooser> ("Choose a folder for the 16-pad sample pack (WAV 24-bit / 44.1 kHz + SFZ)", dir);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              const auto parent = fc.getResult();
+                              if (parent == juce::File()) return;
 
-    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (exportButton), [this] (int firstPad)
-    {
-        if (firstPad == 0)
-            return;
+                              const auto kit = proc.captureCurrentKit();
+                              Exporter::Options opt;
+                              opt.prefix = kit.name.trimCharactersAtEnd ("*");
+                              const auto folder = parent.getChildFile (Exporter::sanitise (opt.prefix.upToFirstOccurrenceOf (" (", false, false)));
+                              const auto result = Exporter::exportKit (kit, folder, opt);
 
-        auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("KitForge Packs");
-        dir.createDirectory();
-        chooser = std::make_unique<juce::FileChooser> ("Choose a folder for the sample pack", dir);
-        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
-                              [this, firstPad] (const juce::FileChooser& fc)
-                              {
-                                  const auto parent = fc.getResult();
-                                  if (parent == juce::File()) return;
-
-                                  const auto kit = proc.captureCurrentKit();
-                                  Exporter::Options opt;
-                                  opt.firstPad = firstPad;
-                                  opt.prefix = kit.name.trimCharactersAtEnd ("*");
-                                  const auto folder = parent.getChildFile (Exporter::sanitise (opt.prefix.upToFirstOccurrenceOf (" (", false, false)));
-                                  const auto result = Exporter::exportKit (kit, folder, opt);
-
-                                  juce::AlertWindow::showMessageBoxAsync (
-                                      result.ok() ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon,
-                                      "KitForge export",
-                                      result.ok() ? "Wrote " + juce::String (result.files.size()) + " files to\n" + folder.getFullPathName()
-                                                  : result.error);
-                              });
-    });
+                              juce::AlertWindow::showMessageBoxAsync (
+                                  result.ok() ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon,
+                                  "KitForge export",
+                                  result.ok() ? "Wrote " + juce::String (result.files.size()) + " files to\n" + folder.getFullPathName()
+                                              : result.error);
+                          });
 }
 
 void KitForgeEditor::timerCallback()
@@ -833,8 +838,8 @@ void KitForgeEditor::paintContent (juce::Graphics& g)
     // Help text
     g.setColour (dimText.withAlpha (0.7f));
     g.setFont (uiFont (11.0f));
-    g.drawText ("Click: toggle / drag to paint   Right-click: cycle velocity   Alt-drag: fine velocity   MIDI C1-G1 plays tracks 1-8",
-                patternArea.withTrimmedLeft (patternArea.getWidth() - 620), juce::Justification::centredRight);
+    g.drawText ("Right-click: velocity   Alt-drag: fine   Ctrl-click: roll   MIDI C1-D#2 = pads 1-16",
+                patternArea.withTrimmedLeft (patternArea.getWidth() - 400), juce::Justification::centredRight);
 }
 
 void KitForgeEditor::resized()
@@ -894,16 +899,18 @@ void KitForgeEditor::layoutContent()
             b->setBounds (p.removeFromLeft (b == &generateButton ? 90 : 64));
             p.removeFromLeft (4);
         }
+        p.removeFromLeft (12);
+        rollButton.setBounds (p.removeFromLeft (64));
     }
 
     r.removeFromTop (24);
 
     // ---- Tracks + grid ----
-    const int rowH = 34;
+    const int rowH = 25;
     gridArea = r.removeFromTop (rowH * numTracks);
     {
         auto g = gridArea;
-        auto headerCol = g.removeFromLeft (170);
+        auto headerCol = g.removeFromLeft (232);
         auto muteCol = g.removeFromLeft (32);
         auto soloCol = g.removeFromLeft (32);
         g.removeFromLeft (8);
@@ -912,8 +919,8 @@ void KitForgeEditor::layoutContent()
         for (int t = 0; t < numTracks; ++t)
         {
             headers[(size_t) t]->setBounds (headerCol.removeFromTop (rowH));
-            muteButtons[(size_t) t].setBounds (muteCol.removeFromTop (rowH).reduced (2, 5));
-            soloButtons[(size_t) t].setBounds (soloCol.removeFromTop (rowH).reduced (2, 5));
+            muteButtons[(size_t) t].setBounds (muteCol.removeFromTop (rowH).reduced (2, 3));
+            soloButtons[(size_t) t].setBounds (soloCol.removeFromTop (rowH).reduced (2, 3));
         }
     }
 

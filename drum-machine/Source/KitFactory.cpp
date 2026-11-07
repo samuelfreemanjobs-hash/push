@@ -40,8 +40,75 @@ const juce::StringArray& factoryKitNames()
 {
     static const juce::StringArray names { "Boom Analog", "Punch Machine", "Electro Steel",
                                            "Dusty Lo-Fi", "Industrial Forge", "Minimal Tick",
-                                           "Jazz Phonk A (pads 1-8)", "Jazz Phonk B (pads 9-16)" };
+                                           "Jazz Phonk (16 pads)" };
     return names;
+}
+
+static void clampVoice (VoiceDef& v)
+{
+    for (int i = 0; i < NumVP; ++i)
+    {
+        const auto& sp = voiceSpec (i);
+        v[(size_t) i] = juce::jlimit (sp.min, sp.max, v[(size_t) i]);
+    }
+}
+
+static void deriveBankTwo (Kit& k)
+{
+    using VT = VoiceType;
+
+    // Find a bank-1 voice of one of the given types to base a variation on.
+    auto find = [&k] (std::initializer_list<VT> types, int fallback)
+    {
+        for (int t = 0; t < 8; ++t)
+            for (auto type : types)
+                if ((VT) (int) k.voices[(size_t) t][Type] == type)
+                    return k.voices[(size_t) t];
+        return k.voices[(size_t) fallback];
+    };
+
+    auto set = [&k] (int pad, VoiceDef v, VT type, const juce::String& name)
+    {
+        v[Type] = (float) type;
+        clampVoice (v);
+        k.voices[(size_t) pad] = v;
+        k.voiceNames[(size_t) pad] = name;
+    };
+
+    const auto tom = find ({ VT::Tom, VT::Perc }, 5);
+    auto lowTom = tom;
+    lowTom[Pitch] *= 0.7f; lowTom[ToneDecay] *= 1.3f; lowTom[Pan] = -0.3f;
+    set (8, lowTom, VT::Tom, "Low Tom");
+
+    auto highTom = tom;
+    highTom[Pitch] *= 1.4f; highTom[ToneDecay] *= 0.8f; highTom[Pan] = 0.3f;
+    set (9, highTom, VT::Tom, "High Tom");
+
+    auto snare = find ({ VT::Snare, VT::Clap }, 1);
+    snare[Pitch] *= 1.25f; snare[ToneDecay] *= 0.7f; snare[NoiseDecay] *= 0.6f; snare[Level] *= 0.85f;
+    set (10, snare, VT::Snare, "Snare Alt");
+
+    // A shorter, brighter hat for rolls. Same choke group as the main hats.
+    auto hat = find ({ VT::ClosedHat }, 3);
+    hat[NoiseDecay] *= 0.6f; hat[Pitch] *= 1.12f; hat[Cutoff] *= 1.1f; hat[Level] *= 0.9f;
+    set (11, hat, VT::ClosedHat, "Roll Hat");
+
+    set (12, make (VT::Sub808, { { Wave, sine }, { Pitch, 43.65f }, { PEnvAmt, 7 }, { PEnvDecay, 150 }, { ToneDecay, 1600 },
+                                 { Click, 0.05f }, { Drive, 0.2f }, { Level, 0.9f }, { LoFiSend, 0 } }),
+         VT::Sub808, "808 Sub");
+
+    auto perc = find ({ VT::Cowbell, VT::Rim, VT::Perc }, 6);
+    perc[Pitch] *= 1.5f; perc[Pan] = -perc[Pan];
+    set (13, perc, (VT) (int) perc[Type], "Perc Alt");
+
+    auto cym = find ({ VT::Cymbal, VT::OpenHat }, 7);
+    cym[NoiseDecay] *= 0.5f; cym[Choke] = 0;
+    set (14, cym, VT::Cymbal, "Crash Short");
+
+    set (15, make (VT::Shaker, { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 80 },
+                                 { FilterMode, HP }, { Cutoff, 7000 }, { Reso, 0.7f }, { Burst, 2 }, { Click, 0 },
+                                 { Attack, 10 }, { Level, 0.45f }, { Pan, 0.25f } }),
+         VT::Shaker, "Shaker");
 }
 
 Kit factoryKit (int index)
@@ -52,11 +119,19 @@ Kit factoryKit (int index)
     k.hasBus = true;
     k.bus = defaultBus();
 
+    // Each kit designs bank 1 (pads A01-A08). Bank 2 (A09-A16) is either
+    // designed too, or derived from bank 1 by deriveBankTwo().
+    using Bank = std::array<VoiceDef, 8>;
+    using Names = std::array<juce::String, 8>;
+    Bank bankA, bankB;
+    Names namesA, namesB;
+    bool haveBankB = false;
+
     switch (index)
     {
         default:
         case 0: // Boom Analog -- deep, round, long-tailed
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 46 }, { PEnvAmt, 30 }, { PEnvDecay, 25 }, { ToneDecay, 1100 },
                                        { Click, 0.15f }, { Drive, 0.15f }, { Level, 0.95f } }),
                 make (VT::Snare,     { { Wave, tri }, { Pitch, 185 }, { PEnvAmt, 8 }, { PEnvDecay, 15 }, { ToneDecay, 110 }, { ToneLevel, 0.6f },
@@ -77,7 +152,7 @@ Kit factoryKit (int index)
             break;
 
         case 1: // Punch Machine -- tight, punchy, bright
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 52 }, { PEnvAmt, 36 }, { PEnvDecay, 35 }, { ToneDecay, 450 },
                                        { NoiseLevel, 0.08f }, { NoiseDecay, 20 }, { FilterMode, LP }, { Cutoff, 5000 },
                                        { Click, 0.5f }, { Drive, 0.35f }, { Level, 0.95f } }),
@@ -101,7 +176,7 @@ Kit factoryKit (int index)
             break;
 
         case 2: // Electro Steel -- FM, metallic, driven
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 60 }, { PEnvAmt, 40 }, { PEnvDecay, 18 }, { ToneDecay, 300 },
                                        { FmAmt, 1.5f }, { FmRatio, 0.5f }, { Click, 0.3f }, { Drive, 0.6f }, { Level, 0.9f } }),
                 make (VT::Snare,     { { Wave, saw }, { Pitch, 240 }, { PEnvAmt, 6 }, { PEnvDecay, 10 }, { ToneDecay, 70 }, { ToneLevel, 0.6f },
@@ -123,7 +198,7 @@ Kit factoryKit (int index)
             break;
 
         case 3: // Dusty Lo-Fi -- dark, soft, saturated
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, tri }, { Pitch, 50 }, { PEnvAmt, 18 }, { PEnvDecay, 40 }, { ToneDecay, 350 },
                                        { NoiseLevel, 0.1f }, { NoiseDecay, 30 }, { FilterMode, LP }, { Cutoff, 1200 },
                                        { Click, 0.1f }, { Attack, 1 }, { Drive, 0.5f }, { Level, 0.9f } }),
@@ -146,7 +221,7 @@ Kit factoryKit (int index)
             break;
 
         case 4: // Industrial Forge -- huge, distorted, resonant
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 42 }, { PEnvAmt, 48 }, { PEnvDecay, 60 }, { ToneDecay, 700 },
                                        { NoiseLevel, 0.2f }, { NoiseDecay, 80 }, { FilterMode, LP }, { Cutoff, 1500 },
                                        { Click, 0.6f }, { Drive, 0.9f }, { Level, 0.85f } }),
@@ -170,7 +245,7 @@ Kit factoryKit (int index)
             break;
 
         case 5: // Minimal Tick -- short, clean, clicky
-            k.voices = {
+            bankA = {
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 58 }, { PEnvAmt, 20 }, { PEnvDecay, 12 }, { ToneDecay, 180 },
                                        { Click, 0.3f }, { Level, 0.95f } }),
                 make (VT::Snare,     { { Wave, tri }, { Pitch, 330 }, { PEnvAmt, 4 }, { PEnvDecay, 8 }, { ToneDecay, 40 }, { ToneLevel, 0.6f },
@@ -193,8 +268,8 @@ Kit factoryKit (int index)
         // Jazz x Phonk x Trap: a 16-pad 12-bit lo-fi kit in two banks of 8.
         // Both banks run through an SP-1200 style bus with the lows kept clean.
         //----------------------------------------------------------------------
-        case 6: // Jazz Phonk A -- pads A01..A08
-            k.voices = {
+        case 6: // Jazz Phonk -- 16 pads, bank 1: A01..A08
+            bankA = {
                 // A01 acoustic jazz kick thud layered over an 808-style sub, mild crush
                 make (VT::Kick,      { { Wave, sine }, { Pitch, 45 }, { PEnvAmt, 24 }, { PEnvDecay, 30 }, { ToneDecay, 900 },
                                        { NoiseLevel, 0.12f }, { NoiseDecay, 60 }, { FilterMode, LP }, { Cutoff, 2500 },
@@ -227,16 +302,10 @@ Kit factoryKit (int index)
                 make (VT::Clap,      { { ToneLevel, 0 }, { NoiseLevel, 1 }, { NoiseDecay, 260 }, { FilterMode, BP }, { Cutoff, 1300 },
                                        { Reso, 1.4f }, { Burst, 3 }, { Click, 0 }, { Drive, 0.4f }, { Level, 0.8f } }),
             };
-            k.voiceNames = { "Jazz Sub Kick", "Memphis Bite Snare", "Silk Rim Stab", "Rage Trap Hat Closed",
+            namesA = { "Jazz Sub Kick", "Memphis Bite Snare", "Silk Rim Stab", "Rage Trap Hat Closed",
                              "Chiff Hat Open", "Phonk Cowbell F#", "Jazz Brush Ghost", "Trap Clap Stack" };
-            k.bus = machineBus (1);
-            k.bus[BLowKeep] = 100.0f;
-            k.bus[BPunch] = 0.25f;   // about +1.5 dB on the attack
-            k.bus[BVinyl] = 0.12f;
-            break;
-
-        case 7: // Jazz Phonk B -- pads A09..A16
-            k.voices = {
+            // ---- bank 2: pads A09..A16 ----
+            bankB = {
                 // A09 deep tom with body resonance, driven
                 make (VT::Tom,       { { Wave, sine }, { Pitch, 82 }, { PEnvAmt, 9 }, { PEnvDecay, 80 }, { ToneDecay, 650 },
                                        { NoiseLevel, 0.08f }, { NoiseDecay, 50 }, { Click, 0.15f }, { Drive, 0.45f }, { Level, 0.85f }, { Pan, -0.25f } }),
@@ -253,7 +322,7 @@ Kit factoryKit (int index)
                                        { FmAmt, 3 }, { FmRatio, 1.414f }, { FmDecay, 300 }, { Click, 0 },
                                        { Level, 0.4f }, { Pan, 0.25f }, { LoFiSend, 0.4f } }),
                 // A13 808 sub with a downward glide, saturated, no crush at all
-                make (VT::Kick,      { { Wave, sine }, { Pitch, 43.65f }, { PEnvAmt, 7 }, { PEnvDecay, 180 }, { ToneDecay, 1800 },
+                make (VT::Sub808,      { { Wave, sine }, { Pitch, 43.65f }, { PEnvAmt, 7 }, { PEnvDecay, 180 }, { ToneDecay, 1800 },
                                        { Click, 0.05f }, { Drive, 0.25f }, { Level, 0.9f }, { LoFiSend, 0 } }),
                 // A14 vinyl crackle hit: high-passed noise bursts
                 make (VT::Perc,      { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 900 },
@@ -263,18 +332,32 @@ Kit factoryKit (int index)
                 make (VT::Cymbal,    { { ToneLevel, 0 }, { NoiseType, metal }, { Pitch, 470 }, { NoiseLevel, 1 }, { NoiseDecay, 650 },
                                        { FilterMode, HP }, { Cutoff, 4500 }, { Reso, 0.8f }, { Click, 0 }, { Level, 0.45f }, { Pan, -0.2f } }),
                 // A16 egg shaker: soft swell, double grain
-                make (VT::Perc,      { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 70 },
+                make (VT::Shaker,      { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 70 },
                                        { FilterMode, HP }, { Cutoff, 6000 }, { Reso, 0.7f }, { Burst, 2 }, { Click, 0 },
                                        { Attack, 12 }, { Level, 0.45f }, { Pan, 0.3f }, { LoFiSend, 0.6f } }),
             };
-            k.voiceNames = { "Low Tom Drive", "Mid Tom Bite", "Phonk Vox Stab", "Smooth Chime Perc",
+            namesB = { "Low Tom Drive", "Mid Tom Bite", "Phonk Vox Stab", "Smooth Chime Perc",
                              "Sub Glide 808", "Vinyl Crackle", "Crash Jazz Muted", "Shaker LoFi Groove" };
+            haveBankB = true;
             k.bus = machineBus (1);
             k.bus[BLowKeep] = 100.0f;
-            k.bus[BPunch] = 0.25f;
+            k.bus[BPunch] = 0.25f;   // about +1.5 dB on the attack
             k.bus[BVinyl] = 0.12f;
             break;
     }
+
+    for (int t = 0; t < 8; ++t)
+    {
+        k.voices[(size_t) t] = bankA[(size_t) t];
+        k.voiceNames[(size_t) t] = namesA[(size_t) t];
+        if (haveBankB)
+        {
+            k.voices[(size_t) t + 8] = bankB[(size_t) t];
+            k.voiceNames[(size_t) t + 8] = namesB[(size_t) t];
+        }
+    }
+    if (! haveBankB)
+        deriveBankTwo (k);
 
     for (int t = 0; t < numTracks; ++t)
         if (k.voiceNames[(size_t) t].isEmpty())
@@ -448,6 +531,39 @@ VoiceDef forgeVoice (VoiceType type, juce::Random& r)
             v[Level] = uni (r, 0.35f, 0.5f);
             break;
 
+        case VoiceType::Sub808:
+        {
+            // Root notes E1..A#1 so the sub sits in a key.
+            static const float roots[] = { 41.20f, 43.65f, 46.25f, 49.00f, 51.91f, 55.00f, 58.27f };
+            v[Wave] = sine;
+            v[Pitch] = roots[r.nextInt ((int) std::size (roots))];
+            v[PEnvAmt] = chance (r, 0.6f) ? uni (r, 3, 12) : 0;   // glide from above
+            v[PEnvDecay] = logu (r, 60, 260);
+            v[ToneDecay] = logu (r, 800, 2600);
+            v[ToneLevel] = 1;
+            v[NoiseLevel] = 0;
+            v[Click] = uni (r, 0, 0.12f);
+            v[Drive] = chance (r, 0.6f) ? uni (r, 0.1f, 0.6f) : 0;  // saturate mids for audibility
+            v[Level] = uni (r, 0.8f, 0.95f);
+            v[Pan] = 0;
+            v[LoFiSend] = 0;   // never crush the sub
+            break;
+        }
+
+        case VoiceType::Shaker:
+            v[ToneLevel] = 0;
+            v[NoiseType] = white;
+            v[NoiseLevel] = 1;
+            v[NoiseDecay] = logu (r, 40, 130);
+            v[FilterMode] = chance (r, 0.7f) ? HP : BP;
+            v[Cutoff] = logu (r, 5000, 10000);
+            v[Reso] = uni (r, 0.6f, 1.5f);
+            v[Burst] = (float) r.nextInt ({ 1, 3 });
+            v[Attack] = uni (r, 4, 20);
+            v[Click] = 0;
+            v[Level] = uni (r, 0.4f, 0.55f);
+            break;
+
         case VoiceType::Perc:
             v[Wave] = (float) r.nextInt (4);
             v[Pitch] = logu (r, 100, 2500);
@@ -483,7 +599,9 @@ Kit forgeKit (juce::Random& r)
 {
     using VT = VoiceType;
     static const VT layout[numTracks] = { VT::Kick, VT::Snare, VT::Clap, VT::ClosedHat,
-                                          VT::OpenHat, VT::Tom, VT::Rim, VT::Cymbal };
+                                          VT::OpenHat, VT::Tom, VT::Rim, VT::Cymbal,
+                                          VT::Tom, VT::Tom, VT::Snare, VT::ClosedHat,
+                                          VT::Sub808, VT::Cowbell, VT::Cymbal, VT::Shaker };
 
     static const char* adjectives[] = { "Molten", "Rusty", "Neon", "Hollow", "Crystal", "Grit", "Velvet",
                                         "Static", "Cobalt", "Feral", "Phantom", "Solar", "Brass", "Carbon" };
@@ -500,7 +618,10 @@ Kit forgeKit (juce::Random& r)
         auto type = layout[t];
         if (t == 5 && chance (r, 0.3f)) type = VT::Perc;
         if (t == 6 && chance (r, 0.4f)) type = chance (r, 0.5f) ? VT::Cowbell : VT::Perc;
+        if (t == 13 && chance (r, 0.5f)) type = VT::Perc;
         k.voices[(size_t) t] = forgeVoice (type, r);
+        if (t == 8)  k.voices[8][Pitch]  = juce::jmin (k.voices[8][Pitch], 110.0f);  // keep a low tom
+        if (t == 9)  k.voices[9][Pitch]  = juce::jmax (k.voices[9][Pitch], 150.0f);  // and a high tom
         k.voiceNames[(size_t) t] = forgeVoiceName (type, r);
     }
     return k;
@@ -624,12 +745,14 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
         }
     }
 
+    int maxIndex = -1;
     for (auto* voice : xml.getChildWithTagNameIterator ("Voice"))
     {
         const int t = voice->getIntAttribute ("index", -1);
         if (t < 0 || t >= numTracks)
             continue;
         kit.voiceNames[(size_t) t] = voice->getStringAttribute ("name");
+        maxIndex = juce::jmax (maxIndex, t);
 
         for (int vp = 0; vp < NumVP; ++vp)
         {
@@ -641,6 +764,10 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
     for (int t = 0; t < numTracks; ++t)
         if (kit.voiceNames[(size_t) t].isEmpty())
             kit.voiceNames[(size_t) t] = voiceTypeNames()[(int) kit.voices[(size_t) t][Type]];
+    // Kits saved with 8 pads get a derived second bank.
+    if (maxIndex < 8)
+        deriveBankTwo (kit);
+
     return true;
 }
 
@@ -652,8 +779,11 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
     constexpr uint8_t ghost = 45, normal = 100, accent = 127;
     bank.clear (pattern);
 
-    const bool fourOnFloor = chance (r, 0.5f);
-    const bool sixteenthHats = chance (r, 0.4f);
+    // Pick a feel. Trap = half-time snare on beat 3, 808 sub, hat rolls.
+    const float feel = r.nextFloat();
+    const bool trap = feel < 0.4f;
+    const bool fourOnFloor = ! trap && feel < 0.7f;
+    const bool sixteenthHats = ! trap && chance (r, 0.4f);
 
     for (int t = 0; t < numTracks; ++t)
     {
@@ -663,7 +793,13 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
         switch (type)
         {
             case VoiceType::Kick:
-                if (fourOnFloor)
+                if (trap)
+                {
+                    put (0, accent);
+                    for (int s : { 3, 6, 7, 10, 11, 14 })
+                        if (chance (r, 0.3f)) put (s, normal);
+                }
+                else if (fourOnFloor)
                 {
                     for (int s = 0; s < numSteps; s += 4) put (s, accent);
                     if (chance (r, 0.3f)) put (14 + r.nextInt (2), normal);
@@ -679,6 +815,7 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
                 break;
 
             case VoiceType::Snare:
+                if (trap) { put (8, accent); break; }
                 put (4, accent);
                 put (12, accent);
                 for (int s = 0; s < numSteps; ++s)
@@ -687,11 +824,27 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
                 break;
 
             case VoiceType::Clap:
+                if (trap) { put (8, accent); break; }
                 if (chance (r, 0.6f)) { put (4, normal); put (12, normal); }
                 else if (chance (r, 0.5f)) put (12, accent);
                 break;
 
             case VoiceType::ClosedHat:
+                if (trap)
+                {
+                    // 8ths with rolls: 1/32 (x2), 1/16-triplet roll (x3), 1/64 (x4)
+                    for (int s = 0; s < numSteps; ++s)
+                    {
+                        if (s % 2 == 0 || chance (r, 0.35f))
+                        {
+                            put (s, s % 4 == 0 ? normal : (uint8_t) 80);
+                            const float rollChance = s >= 12 ? 0.45f : 0.15f;
+                            if (chance (r, rollChance))
+                                bank.setRatchet (pattern, t, s, 2 + r.nextInt (maxRatchet - 1));
+                        }
+                    }
+                    break;
+                }
                 for (int s = 0; s < numSteps; ++s)
                 {
                     if (sixteenthHats)
@@ -716,12 +869,32 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
                 if (chance (r, 0.5f)) put (0, normal);
                 break;
 
+            case VoiceType::Sub808:
+                // The sub doubles the kick and adds a pickup or two.
+                put (0, accent);
+                if (trap)
+                {
+                    for (int s : { 6, 10, 11, 14 })
+                        if (chance (r, 0.35f)) put (s, normal);
+                }
+                else if (chance (r, 0.5f))
+                {
+                    put (8 + 2 * r.nextInt (3), normal);
+                }
+                break;
+
+            case VoiceType::Shaker:
+                for (int s = 0; s < numSteps; ++s)
+                    if (chance (r, trap ? 0.25f : 0.8f))
+                        put (s, s % 2 == 1 ? (uint8_t) 90 : ghost);
+                break;
+
             case VoiceType::Tom:
             case VoiceType::Rim:
             case VoiceType::Cowbell:
             case VoiceType::Perc:
                 for (int s = 0; s < numSteps; ++s)
-                    if (chance (r, 0.12f))
+                    if (chance (r, 0.07f))
                         put (s, chance (r, 0.5f) ? normal : ghost + 20);
                 break;
         }
@@ -766,5 +939,19 @@ void writeDefaultPatterns (PatternBank& bank)
     row (1, 4, { { 2, 100 }, { 6, 100 }, { 10, 100 }, { 14, 100 } });
     row (1, 5, { { 15, 90 } });
     row (1, 6, { { 3, 60 }, { 11, 60 } });
+    row (1, 15, { { 1, 50 }, { 3, 80 }, { 5, 50 }, { 7, 80 }, { 9, 50 }, { 11, 80 }, { 13, 50 }, { 15, 80 } });
+
+    // C: trap -- half-time clap, 808 sub, hat rolls
+    row (2, 0, { { 0, 127 }, { 7, 100 }, { 11, 90 } });
+    row (2, 12, { { 0, 127 }, { 7, 110 }, { 11, 100 }, { 14, 90 } });
+    row (2, 2, { { 8, 127 } });
+    row (2, 3, { { 0, 100 }, { 2, 80 }, { 4, 100 }, { 6, 80 }, { 8, 100 }, { 10, 80 }, { 12, 100 }, { 13, 80 }, { 14, 90 }, { 15, 90 } });
+    bank.setRatchet (2, 3, 6, 2);   // 1/32
+    bank.setRatchet (2, 3, 13, 3);  // triplet roll
+    bank.setRatchet (2, 3, 14, 4);  // 1/64
+    bank.setRatchet (2, 3, 15, 2);
+    row (2, 4, { { 10, 90 } });
+    row (2, 11, { { 3, 60 } });
+    bank.setRatchet (2, 11, 3, 4);
 }
 } // namespace kf::KitFactory

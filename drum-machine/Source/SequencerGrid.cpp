@@ -44,7 +44,7 @@ void SequencerGrid::paint (juce::Graphics& g)
 
         for (int s = 0; s < numSteps; ++s)
         {
-            auto cell = cellBounds (t, s).reduced (3.0f);
+            auto cell = cellBounds (t, s).reduced (2.5f, 2.0f);
             const bool beyondLength = s >= length;
             const bool beatStart = s % 4 == 0;
             const auto vel = proc.patterns.get (pattern, t, s);
@@ -77,6 +77,26 @@ void SequencerGrid::paint (juce::Graphics& g)
                 }
             }
 
+            // Ratchet / roll: split the cell into its repeats
+            if (const int ratchet = proc.patterns.getRatchet (pattern, t, s); ratchet > 1 && vel > 0)
+            {
+                g.setColour (juce::Colours::black.withAlpha (0.55f));
+                for (int i = 1; i < ratchet; ++i)
+                {
+                    const float x = cell.getX() + cell.getWidth() * (float) i / (float) ratchet;
+                    g.fillRect (x - 1.0f, cell.getY() + 2.0f, 2.0f, cell.getHeight() - 8.0f);
+                }
+                g.setColour (juce::Colours::white);
+                g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+                g.drawText ("x" + juce::String (ratchet), cell.reduced (3.0f, 1.0f), juce::Justification::topRight);
+            }
+            else if (rollMode && vel > 0)
+            {
+                g.setColour (juce::Colours::white.withAlpha (0.5f));
+                g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+                g.drawText ("x1", cell.reduced (3.0f, 1.0f), juce::Justification::topRight);
+            }
+
             if (s == playing)
             {
                 g.setColour (juce::Colours::white.withAlpha (vel > 0 ? 0.45f : 0.12f));
@@ -84,6 +104,14 @@ void SequencerGrid::paint (juce::Graphics& g)
             }
         }
     }
+}
+
+void SequencerGrid::paintOverChildren (juce::Graphics& g)
+{
+    // Divider between pad bank 1 (A01-A08) and bank 2 (A09-A16)
+    const float y = cellBounds (8, 0).getY();
+    g.setColour (juce::Colours::white.withAlpha (0.18f));
+    g.drawHorizontalLine ((int) y, 0.0f, (float) getWidth());
 }
 
 void SequencerGrid::mouseDown (const juce::MouseEvent& e)
@@ -97,6 +125,24 @@ void SequencerGrid::mouseDown (const juce::MouseEvent& e)
 
     if (onTrackClicked)
         onTrackClicked (t);
+
+    if (rollMode || e.mods.isCommandDown())
+    {
+        // Cycle the roll. An empty step is switched on with a x2 roll.
+        if (current == 0)
+        {
+            proc.patterns.set (pattern, t, s, defaultVelocity);
+            proc.patterns.setRatchet (pattern, t, s, 2);
+        }
+        else
+        {
+            const int r = proc.patterns.getRatchet (pattern, t, s);
+            proc.patterns.setRatchet (pattern, t, s, r >= maxRatchet ? 1 : r + 1);
+        }
+        dragMode = DragMode::None;
+        repaint();
+        return;
+    }
 
     if (e.mods.isAltDown() && current > 0)
     {
@@ -124,6 +170,8 @@ void SequencerGrid::mouseDown (const juce::MouseEvent& e)
 
     paintValue = current > 0 ? 0 : defaultVelocity;
     proc.patterns.set (pattern, t, s, paintValue);
+    if (paintValue == 0)
+        proc.patterns.setRatchet (pattern, t, s, 1);
     dragMode = DragMode::Paint;
     lastTrack = t;
     lastStep = s;
@@ -149,6 +197,8 @@ void SequencerGrid::mouseDrag (const juce::MouseEvent& e)
     if (cellAt (e.getPosition(), t, s) && (t != lastTrack || s != lastStep))
     {
         proc.patterns.set (pattern, t, s, paintValue);
+        if (paintValue == 0)
+            proc.patterns.setRatchet (pattern, t, s, 1);
         lastTrack = t;
         lastStep = s;
         repaint();

@@ -7,12 +7,17 @@ There are no samples. Every sound comes from a built-in **drum synthesizer engin
 ## Features
 
 ### Step sequencer
-- 8 tracks × 16 steps, 8 patterns (A–H, automatable)
+- **16 pads** (A01–A16, two banks of 8 shown together) × 16 steps, 8 patterns (A–H, automatable)
 - Per-step velocity: **click** toggles, **drag** paints or erases, **right-click/shift-click** cycles soft → medium → normal → accent, and **Alt-drag** sets the velocity finely
-- Pattern length 1–16, MPC-style swing (50–75 %), mute and solo per track
-- Copy / Paste / Clear patterns, plus **Generate**, which writes a groove that fits each track's drum type
+- **Hi-hat rolls / ratchets**: any step can play x2 (1/32), x3 (1/16-triplet roll) or x4 (1/64) repeats. Turn on
+  **ROLL** mode and click steps to cycle the ratchet, or Ctrl/Cmd-click in normal mode. Rolls span the step as it is
+  actually played, so they follow the swing. Repeats sit slightly under the first hit (80 % velocity).
+- Pattern length 1–16, MPC-style swing (50–75 %), mute and solo per pad
+- Copy / Paste / Clear patterns, plus **Generate**, which writes a groove that fits each pad's drum type. It picks
+  one of three feels: boom-bap, four-on-the-floor, or trap (half-time snare, 808 sub, hat rolls)
+- Built-in patterns: A boom-bap, B four-on-the-floor with shaker, C trap with hat rolls
 - Follows the host transport and tempo when the DAW is playing. Otherwise it uses its own clock: press **PLAY** (in the standalone app or in the plugin)
-- MIDI input: notes **C1–G1 (36–43)** play tracks 1–8, so you can finger-drum or sequence from your DAW
+- MIDI input: notes **C1–D#2 (36–51)** play pads 1–16 (standard 16-pad layout), so you can finger-drum or sequence from your DAW
 
 ### Drum synth engine (per track)
 | Section | Parameters |
@@ -50,20 +55,24 @@ The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS.
 
 ### Kit Factory
 - **8 factory kits**: Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick,
-  plus **Jazz Phonk A + B**: a 16-pad jazz × phonk × trap 12-bit kit split into two banks (see below)
+  plus **Jazz Phonk (16 pads)**: a jazz × phonk × trap 12-bit kit (see below). Every kit has 16 pads. In the original
+  six kits, pads A09–A16 are derived from bank 1: low/high toms, a snare variation, a short "roll hat" that chokes
+  with the main hats, an 808 sub, a percussion variation, a short crash and a shaker. Kit files saved with 8 pads
+  get the same derived bank 2 when loaded.
+- Drum types now include **808 Sub** (sine tuned to E1–A#1 with a glide; never crushed) and **Shaker**
 - **FORGE KIT** builds a complete new kit (with a generated name) from per-drum-type "recipes"
 - **FORGE VOICE** regenerates only the selected track, using its *Drum Type* (Kick, Snare, Clap, Closed/Open Hat, Tom, Rim, Cymbal, Cowbell, Perc)
 - **MUTATE** nudges every parameter of the current kit in a random direction, for variations
 - **SAVE / LOAD** stores kits as `.kitforge` XML files (by default in `Documents/KitForge Kits`). Double-click the kit name to rename it
 - **EXPORT** renders every pad through the vintage bus into a **sample pack**: 24-bit / 44.1 kHz WAVs, an `.sfz`
   keymap (with hat choke groups), the `.kitforge` file and, if Vinyl is up, a 4-second vinyl texture loop.
-  Files are named `<Kit>_<Type>_<Name>_A<pad>_<bits>bit.wav` (e.g. `JazzPhonkA_Kick_JazzSubKick_A01_12bit.wav`).
+  Files are named `<Kit>_<Type>_<Name>_A<pad>_<bits>bit.wav` (e.g. `JazzPhonk_Kick_JazzSubKick_A01_12bit.wav`).
   They are normalised by type: kicks / snares / claps to -1 dBFS, toms / rims -2, percussion -3, hats / cymbals -4.
 - Each pad has a name. Double-click the name in the voice editor to change it; export uses it in the file names.
 - Kits (including bus settings and pad names), patterns and mixer state are all saved with your DAW project
 
 ### Jazz × Phonk × Trap 16-pad kit
-| Pad | Jazz Phonk A | Pad | Jazz Phonk B |
+| Pad | Bank 1 | Pad | Bank 2 |
 |---|---|---|---|
 | A01 | Jazz Sub Kick: thud over sub, half send (mild crush) | A09 | Low Tom Drive: deep, saturated body |
 | A02 | Memphis Bite Snare: hollow mid-range bite, hard attack | A10 | Mid Tom Bite: snappy drum-machine tom |
@@ -74,8 +83,8 @@ The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS.
 | A07 | Jazz Brush Ghost: soft swirl, rolled-off top | A15 | Crash Jazz Muted: dampened metallic crash |
 | A08 | Trap Clap Stack: 3 stacked claps, crunchy | A16 | Shaker LoFi Groove: soft double-grain shaker |
 
-Both banks use the SP-1200 style bus with Low Keep 100 Hz, Punch 0.25 (about +1.5 dB on attacks) and light vinyl.
-Export bank A as pads A01-A08 and bank B as A09-A16, and the two SFZ files together cover MIDI notes 36-51.
+The kit uses the SP-1200 style bus with Low Keep 100 Hz, Punch 0.25 (about +1.5 dB on attacks) and light vinyl.
+EXPORT writes all 16 pads at once, mapped to MIDI notes 36–51 in the SFZ.
 
 Not covered by the synth engine: real acoustic or vocal recordings, chorus, and reverb. Layer those in your sampler or DAW.
 

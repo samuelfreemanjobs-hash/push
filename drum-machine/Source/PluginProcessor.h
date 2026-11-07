@@ -91,7 +91,8 @@ private:
 
     double sampleRate = 44100.0;
     double internalPpq = 0.0;
-    juce::int64 lastStepIndex = std::numeric_limits<juce::int64>::min();
+    static constexpr juce::int64 noHit = std::numeric_limits<juce::int64>::min();
+    juce::int64 lastHitKey = noHit;
     juce::SmoothedValue<float> masterGain;
 
     std::atomic<bool> internalPlaying { false };

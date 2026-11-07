@@ -4,16 +4,17 @@
 
 namespace kf
 {
-constexpr int numTracks   = 8;
+constexpr int numTracks   = 16;  // pads A01..A16
 constexpr int numSteps    = 16;
 constexpr int numPatterns = 8;
-constexpr int midiBaseNote = 36; // C1 triggers track 1, C#1 track 2 ...
+constexpr int midiBaseNote = 36; // C1 triggers pad 1 ... D#2 (51) pad 16
+constexpr int maxRatchet = 4;    // step repeats: 1 = normal, 2 = 1/32, 3 = 1/16 triplet-roll, 4 = 1/64
 
 // What kind of drum a track is. Used by the Kit Factory to "forge" sounds and
 // by the pattern generator to write sensible rhythms.
 enum class VoiceType
 {
-    Kick, Snare, Clap, ClosedHat, OpenHat, Tom, Rim, Cymbal, Cowbell, Perc
+    Kick, Snare, Clap, ClosedHat, OpenHat, Tom, Rim, Cymbal, Cowbell, Perc, Sub808, Shaker
 };
 
 const juce::StringArray& voiceTypeNames();

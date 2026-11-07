@@ -156,7 +156,7 @@ private:
     void paintContent (juce::Graphics&);
     void layoutContent();
 
-    static constexpr int baseWidth = 1180, baseHeight = 920;
+    static constexpr int baseWidth = 1180, baseHeight = 1040;
     ContentView content;
 
     KitForgeProcessor& proc;
@@ -177,6 +177,8 @@ private:
     juce::TextButton copyButton { "COPY" }, pasteButton { "PASTE" },
                      clearButton { "CLEAR" }, generateButton { "GENERATE" };
     std::array<uint8_t, kf::numTracks * kf::numSteps> clipboard {};
+    std::array<uint8_t, kf::numTracks * kf::numSteps> clipboardRatchets {};
+    juce::TextButton rollButton { "ROLL" };
     bool hasClipboard = false;
 
     // Tracks

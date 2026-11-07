@@ -71,7 +71,7 @@ int main (int argc, char* argv[])
         for (int k = 0; k < kf::KitFactory::factoryKitNames().size(); ++k)
         {
             auto kit = kf::KitFactory::factoryKit (k);
-            kits.emplace_back (kit, kit.name.contains ("9-16") ? 9 : 1);
+            kits.emplace_back (kit, 1);
         }
     }
     else

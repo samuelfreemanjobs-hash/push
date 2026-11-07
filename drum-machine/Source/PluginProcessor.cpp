@@ -60,7 +60,7 @@ void KitForgeProcessor::prepareToPlay (double sr, int)
 
     masterGain.reset (sr, 0.02);
     masterGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (masterParam->load()));
-    lastStepIndex = std::numeric_limits<juce::int64>::min();
+    lastHitKey = noHit;
 }
 
 int KitForgeProcessor::getCurrentPattern() const noexcept
@@ -178,7 +178,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (resetInternalClock.exchange (false))
     {
         internalPpq = 0.0;
-        lastStepIndex = std::numeric_limits<juce::int64>::min();
+        lastHitKey = noHit;
     }
 
     const bool running = hostIsPlaying || internalPlaying.load();
@@ -198,20 +198,49 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         const auto first = (juce::int64) std::floor (ppqStart / stepLen) - 1;
         const auto last  = (juce::int64) std::floor (ppqEnd / stepLen);
 
+        // Each step is split into a 12-position grid so ratchets of 2, 3 and 4
+        // land exactly (1/32, 1/16-triplet rolls, 1/64). Rolls span the step as
+        // it is actually played, so they follow the swing.
+        constexpr int grid = 12;
+        auto stepTime = [&] (juce::int64 k) { return (double) k * stepLen + ((k & 1) ? swingOffset : 0.0); };
+
         for (auto k = first; k <= last; ++k)
         {
-            const double t = (double) k * stepLen + ((k & 1) ? swingOffset : 0.0);
-            if (t < ppqStart || t >= ppqEnd || k == lastStepIndex)
+            const double t0 = stepTime (k), t1 = stepTime (k + 1);
+            if (t1 <= ppqStart || t0 >= ppqEnd)
                 continue;
 
-            lastStepIndex = k;
-            const int offset = juce::jlimit (0, numSamples - 1, (int) ((t - ppqStart) / ppqPerSample));
             const int step = (int) (((k % length) + length) % length);
-            currentStep.store (step);
 
-            for (int tr = 0; tr < numTracks; ++tr)
-                if (const auto vel = patterns.get (pattern, tr, step); vel > 0 && audible (tr))
-                    events.push_back ({ offset, tr, (float) vel / 127.0f });
+            for (int pos = 0; pos < grid; ++pos)
+            {
+                const double t = t0 + (t1 - t0) * pos / grid;
+                if (t < ppqStart || t >= ppqEnd)
+                    continue;
+
+                // Skip a hit we already played (host position jitter between blocks).
+                const juce::int64 key = k * grid + pos;
+                if (lastHitKey != noHit && key <= lastHitKey && lastHitKey - key < grid / 2)
+                    continue;
+                lastHitKey = key;
+
+                if (pos == 0)
+                    currentStep.store (step);
+
+                const int offset = juce::jlimit (0, numSamples - 1, (int) ((t - ppqStart) / ppqPerSample));
+                for (int tr = 0; tr < numTracks; ++tr)
+                {
+                    const auto vel = patterns.get (pattern, tr, step);
+                    if (vel == 0 || ! audible (tr))
+                        continue;
+                    const int spacing = grid / patterns.getRatchet (pattern, tr, step);
+                    if (pos % spacing != 0)
+                        continue;
+                    // Repeats of a roll sit a little under the first hit.
+                    const float v = (float) vel / 127.0f * (pos == 0 ? 1.0f : 0.8f);
+                    events.push_back ({ offset, tr, v });
+                }
+            }
         }
 
         if (! hostIsPlaying)
@@ -220,7 +249,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     else
     {
         currentStep.store (-1);
-        lastStepIndex = std::numeric_limits<juce::int64>::min();
+        lastHitKey = noHit;
     }
 
     // ---- Pad previews from the GUI ----
@@ -313,7 +342,10 @@ void KitForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
         auto* pat = pats->createNewChildElement ("Pattern");
         pat->setAttribute ("index", p);
         for (int t = 0; t < numTracks; ++t)
+        {
             pat->setAttribute ("t" + juce::String (t + 1), patterns.trackToString (p, t));
+            pat->setAttribute ("r" + juce::String (t + 1), patterns.ratchetsToString (p, t));
+        }
     }
 
     copyXmlToBinary (*xml, destData);
@@ -343,7 +375,10 @@ void KitForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             if (! juce::isPositiveAndBelow (p, numPatterns))
                 continue;
             for (int t = 0; t < numTracks; ++t)
+            {
                 patterns.trackFromString (p, t, pat->getStringAttribute ("t" + juce::String (t + 1)));
+                patterns.ratchetsFromString (p, t, pat->getStringAttribute ("r" + juce::String (t + 1)));
+            }
         }
         xml->removeChildElement (pats, true);
     }

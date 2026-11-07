@@ -3,21 +3,25 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
 
-// The 8 x 16 step grid.
+// The 16-pad x 16-step grid.
 //  - Left click toggles a step (drag to paint / erase across steps)
 //  - Right click (or shift-click) cycles velocity: soft -> medium -> normal -> accent
 //  - Alt/Option-drag vertically on a step to set its velocity freely
+//  - Ctrl/Cmd-click (or any click in Roll mode) cycles the step's ratchet:
+//    x1 -> x2 (1/32) -> x3 (1/16 triplet roll) -> x4 (1/64) -> x1
 class SequencerGrid : public juce::Component
 {
 public:
     explicit SequencerGrid (KitForgeProcessor&);
 
     void paint (juce::Graphics&) override;
+    void paintOverChildren (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
 
     void setSelectedTrack (int t) { selectedTrack = t; repaint(); }
+    void setRollMode (bool on) { rollMode = on; repaint(); }
     int getRowHeight() const { return getHeight() / kf::numTracks; }
 
     std::function<void (int track)> onTrackClicked;
@@ -28,6 +32,7 @@ private:
 
     KitForgeProcessor& proc;
     int selectedTrack = 0;
+    bool rollMode = false;
 
     enum class DragMode { None, Paint, Velocity };
     DragMode dragMode = DragMode::None;

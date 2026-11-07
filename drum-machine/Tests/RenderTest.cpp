@@ -273,8 +273,10 @@ int main (int argc, char* argv[])
     {
         const auto dir = outDir.getChildFile ("pack_test");
         dir.deleteRecursively();
-        auto kit = kf::KitFactory::factoryKit (kf::KitFactory::factoryKitNames().indexOf ("Jazz Phonk A (pads 1-8)"));
-        check (kit.voiceNames[0] == "Jazz Sub Kick", "Jazz Phonk A kit is available");
+        auto kit = kf::KitFactory::factoryKit (kf::KitFactory::factoryKitNames().indexOf ("Jazz Phonk (16 pads)"));
+        check (kit.voiceNames[0] == "Jazz Sub Kick" && kit.voiceNames[12] == "Sub Glide 808"
+                   && (kf::VoiceType) (int) kit.voices[12][kf::Type] == kf::VoiceType::Sub808,
+               "Jazz Phonk 16-pad kit is available (A01 Jazz Sub Kick .. A13 Sub Glide 808)");
         kf::Exporter::Options opt;
         const auto result = kf::Exporter::exportKit (kit, dir, opt);
         check (result.ok(), "export succeeds");
@@ -296,8 +298,109 @@ int main (int argc, char* argv[])
         }
         check (wavs == kf::numTracks, "one WAV per pad");
         check (levelsOk, "WAVs are 24-bit/44.1 kHz, normalised to -1..-4 dBFS");
-        check (result.files.contains ("JazzPhonkA_Kick_JazzSubKick_A01_12bit.wav"), "files follow the naming convention");
-        check (dir.getChildFile ("JazzPhonkA.sfz").loadFileAsString().contains ("off_by=1"), "SFZ keymap with hat choke");
+        check (result.files.contains ("JazzPhonk_Kick_JazzSubKick_A01_12bit.wav"), "files follow the naming convention");
+        check (dir.getChildFile ("JazzPhonk.sfz").loadFileAsString().contains ("off_by=1"), "SFZ keymap with hat choke");
+        check (dir.getChildFile ("JazzPhonk.sfz").loadFileAsString().contains ("A16_12bit.wav key=51"), "SFZ maps pad A16 to note 51");
+        check (result.files.contains ("JazzPhonk_808Sub_SubGlide808_A13.wav"), "the 808 sub has no 12-bit tag (Lo-Fi Send 0)");
+    }
+
+    // ---- 16 pads: every factory kit has 16 real voices ----
+    {
+        bool ok = true;
+        for (int k = 0; k < kf::KitFactory::factoryKitNames().size(); ++k)
+        {
+            const auto kit = kf::KitFactory::factoryKit (k);
+            for (int t = 0; t < kf::numTracks; ++t)
+                ok &= kit.voices[(size_t) t][kf::Level] > 0.0f && kit.voiceNames[(size_t) t].isNotEmpty();
+        }
+        check (ok, "all factory kits fill 16 pads");
+
+        // An 8-pad kit file gets a derived second bank
+        auto xml = kf::KitFactory::kitToXml (kf::KitFactory::factoryKit (0));
+        for (auto* v = xml->getChildByName ("Voice"); v != nullptr;)
+        {
+            auto* next = v->getNextElementWithTagName ("Voice");
+            if (v->getIntAttribute ("index") >= 8) xml->removeChildElement (v, true);
+            v = next;
+        }
+        kf::Kit old;
+        kf::KitFactory::kitFromXml (*xml, old);
+        check (old.voiceNames[12] == "808 Sub" && old.voices[15][kf::Level] > 0.0f, "8-pad kit files load with a derived bank 2");
+
+        proc.loadKit (kf::KitFactory::factoryKit (0));
+        proc.setInternalPlaying (false);
+        render (proc, sr, block, 5.0);
+        juce::AudioBuffer<float> buf (2, block);
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::noteOn (1, kf::midiBaseNote + 15, (juce::uint8) 120), 0);
+        const int before = proc.getTriggerCount (15);
+        proc.processBlock (buf, midi);
+        check (proc.getTriggerCount (15) == before + 1, "MIDI note 51 (D#2) plays pad 16");
+    }
+
+    // ---- Ratchets / hat rolls ----
+    {
+        constexpr int pat = 7, tr = 3;
+        proc.patterns.clear (pat);
+        proc.patterns.set (pat, tr, 0, 100);  proc.patterns.setRatchet (pat, tr, 0, 4);   // 1/64
+        proc.patterns.set (pat, tr, 4, 100);  proc.patterns.setRatchet (pat, tr, 4, 3);   // triplet roll
+        proc.patterns.set (pat, tr, 8, 100);  proc.patterns.setRatchet (pat, tr, 8, 2);   // 1/32
+        proc.patterns.set (pat, tr, 12, 100);                                             // single
+        kf::setParamValue (proc.apvts, kf::ids::pattern, (float) pat);
+        kf::setParamValue (proc.apvts, kf::ids::tempo, 120.0f);
+
+        for (float swingAmount : { 50.0f, 66.0f })
+        {
+            kf::setParamValue (proc.apvts, kf::ids::swing, swingAmount);
+            proc.setInternalPlaying (false);
+            render (proc, sr, block, 0.1);
+            const int before = proc.getTriggerCount (tr);
+            proc.setInternalPlaying (true);
+            render (proc, sr, block, 1.99); // just under one bar at 120 BPM
+            proc.setInternalPlaying (false);
+            const int hits = proc.getTriggerCount (tr) - before;
+            check (hits == 4 + 3 + 2 + 1, "ratchets x4 + x3 + x2 + x1 give 10 hits per bar (swing "
+                                           + juce::String (swingAmount, 0) + "%, got " + juce::String (hits) + ")");
+        }
+        kf::setParamValue (proc.apvts, kf::ids::swing, 50.0f);
+
+        // Exact positions of a x4 roll: 1/64 notes at 120 BPM = 31.25 ms apart
+        proc.patterns.clear (pat);
+        proc.patterns.set (pat, tr, 0, 127);
+        proc.patterns.setRatchet (pat, tr, 0, 4);
+        proc.loadKit (kf::KitFactory::factoryKit (5)); // short hats
+        proc.setInternalPlaying (false);
+        render (proc, sr, block, 2.0);
+        for (int t = 0; t < kf::numTracks; ++t)
+            kf::setParamValue (proc.apvts, kf::voiceParamID (t, kf::Solo), t == tr ? 1.0f : 0.0f);
+        proc.setInternalPlaying (true);
+        auto out = render (proc, sr, 64, 0.2);
+        proc.setInternalPlaying (false);
+        kf::setParamValue (proc.apvts, kf::voiceParamID (tr, kf::Solo), 0.0f);
+
+        std::vector<int> onsets;
+        bool armed = true;
+        for (int i = 0; i < out.getNumSamples(); ++i)
+        {
+            const float a = std::abs (out.getSample (0, i));
+            if (armed && a > 0.02f) { onsets.push_back (i); armed = false; }
+            // re-arm after the hit has decayed for a bit
+            if (! armed && ! onsets.empty() && i - onsets.back() > (int) (0.02 * sr)) armed = true;
+        }
+        bool spacingOk = onsets.size() >= 4;
+        for (size_t i = 1; i < std::min<size_t> (onsets.size(), 4); ++i)
+            spacingOk &= std::abs ((onsets[i] - onsets[i - 1]) - (int) (0.03125 * sr)) < (int) (0.002 * sr);
+        check (spacingOk, "x4 roll hits are 1/64 notes (31.25 ms) apart");
+
+        // ratchets survive state save/restore
+        proc.patterns.setRatchet (6, 11, 9, 3);
+        proc.patterns.set (6, 11, 9, 90);
+        juce::MemoryBlock state;
+        proc.getStateInformation (state);
+        KitForgeProcessor other;
+        other.setStateInformation (state.getData(), (int) state.getSize());
+        check (other.patterns.getRatchet (6, 11, 9) == 3 && other.patterns.get (6, 11, 9) == 90,
+               "ratchets and pad 12 data survive save/restore");
     }
 
     std::cout << (failures == 0 ? "ALL TESTS PASSED" : juce::String (failures) + " TEST(S) FAILED")

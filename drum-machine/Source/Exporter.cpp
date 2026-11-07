@@ -9,6 +9,7 @@ float targetPeakDb (VoiceType type)
     switch (type)
     {
         case VoiceType::Kick:
+        case VoiceType::Sub808:
         case VoiceType::Snare:
         case VoiceType::Clap:      return -1.0f;
         case VoiceType::Tom:
@@ -17,6 +18,7 @@ float targetPeakDb (VoiceType type)
         case VoiceType::Perc:      return -3.0f;
         case VoiceType::ClosedHat:
         case VoiceType::OpenHat:
+        case VoiceType::Shaker:
         case VoiceType::Cymbal:    return -4.0f;
     }
     return -1.0f;

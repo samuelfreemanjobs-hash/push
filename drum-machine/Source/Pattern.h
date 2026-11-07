@@ -22,11 +22,25 @@ public:
         steps[pattern][track][step].store (velocity, std::memory_order_relaxed);
     }
 
+    // Ratchet / roll: how many evenly spaced hits the step plays (1..maxRatchet).
+    int getRatchet (int pattern, int track, int step) const noexcept
+    {
+        return ratchets[pattern][track][step].load (std::memory_order_relaxed);
+    }
+
+    void setRatchet (int pattern, int track, int step, int count) noexcept
+    {
+        ratchets[pattern][track][step].store ((uint8_t) juce::jlimit (1, maxRatchet, count), std::memory_order_relaxed);
+    }
+
     void clear (int pattern) noexcept
     {
         for (int t = 0; t < numTracks; ++t)
             for (int s = 0; s < numSteps; ++s)
+            {
                 set (pattern, t, s, 0);
+                setRatchet (pattern, t, s, 1);
+            }
     }
 
     void clearAll() noexcept
@@ -39,7 +53,10 @@ public:
     {
         for (int t = 0; t < numTracks; ++t)
             for (int s = 0; s < numSteps; ++s)
+            {
                 set (to, t, s, get (from, t, s));
+                setRatchet (to, t, s, getRatchet (from, t, s));
+            }
     }
 
     // Serialise one track of one pattern as a hex string ("00647F...").
@@ -60,7 +77,23 @@ public:
         }
     }
 
+    // Ratchets as one digit per step ("1112...").
+    juce::String ratchetsToString (int pattern, int track) const
+    {
+        juce::String s;
+        for (int i = 0; i < numSteps; ++i)
+            s << getRatchet (pattern, track, i);
+        return s;
+    }
+
+    void ratchetsFromString (int pattern, int track, const juce::String& s)
+    {
+        for (int i = 0; i < numSteps; ++i)
+            setRatchet (pattern, track, i, i < s.length() ? (int) (s[i] - '0') : 1);
+    }
+
 private:
     std::atomic<uint8_t> steps[numPatterns][numTracks][numSteps];
+    std::atomic<uint8_t> ratchets[numPatterns][numTracks][numSteps];
 };
 } // namespace kf

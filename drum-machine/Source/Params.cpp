@@ -5,7 +5,7 @@ namespace kf
 const juce::StringArray& voiceTypeNames()
 {
     static const juce::StringArray names { "Kick", "Snare", "Clap", "Closed Hat", "Open Hat",
-                                           "Tom", "Rim", "Cymbal", "Cowbell", "Perc" };
+                                           "Tom", "Rim", "Cymbal", "Cowbell", "Perc", "808 Sub", "Shaker" };
     return names;
 }
 
@@ -31,7 +31,7 @@ const VoiceParamSpec& voiceSpec (int vp)
 {
     static const VoiceParamSpec specs[NumVP] = {
         //  id            name           kind          min     max      def     centre  interval unit   choices
-        { "type",       "Type",        Kind::Choice, 0,      9,       0,      0,      1,       "",    &voiceTypeNames() },
+        { "type",       "Type",        Kind::Choice, 0,      11,       0,      0,      1,       "",    &voiceTypeNames() },
         { "wave",       "Wave",        Kind::Choice, 0,      3,       0,      0,      1,       "",    &waveNames() },
         { "pitch",      "Pitch",       Kind::Float,  20,     5000,    55,     200,    0,       "Hz",  nullptr },
         { "penv",       "Pitch Env",   Kind::Float,  0,      60,      24,     0,      0,       "st",  nullptr },
@@ -245,14 +245,10 @@ float getParamValue (juce::AudioProcessorValueTreeState& apvts, const juce::Stri
 juce::Colour trackColour (int track)
 {
     static const juce::uint32 colours[numTracks] = {
-        0xffff5a4e, // red
-        0xffffa53c, // orange
-        0xfff5d547, // yellow
-        0xff7ddc5b, // green
-        0xff3fd6c0, // teal
-        0xff4aa8ff, // blue
-        0xff9b7bff, // violet
-        0xffff6fc8, // pink
+        // bank 1: pads A01-A08
+        0xffff5a4e, 0xffffa53c, 0xfff5d547, 0xff7ddc5b, 0xff3fd6c0, 0xff4aa8ff, 0xff9b7bff, 0xffff6fc8,
+        // bank 2: pads A09-A16
+        0xffe8746a, 0xffd99a5a, 0xffc9bd5e, 0xff8fc57a, 0xff5fc0b2, 0xff6f9fd8, 0xffa592e0, 0xffe08bbf,
     };
     return juce::Colour (colours[juce::jlimit (0, numTracks - 1, track)]);
 }

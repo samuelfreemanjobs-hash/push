@@ -8,7 +8,7 @@
 // texture loop.
 //
 // File naming:  <Prefix>_<Type>_<Name>_A<pad>_<bits>bit.wav
-//   e.g.        JazzPhonkA_Kick_JazzSubKick_A01_12bit.wav
+//   e.g.        JazzPhonk_Kick_JazzSubKick_A01_12bit.wav
 // Levels:       kicks / snares / claps -1 dBFS, toms / rims -2 dBFS,
 //               percussion -3 dBFS, hats / cymbals -4 dBFS
 namespace kf::Exporter
@@ -17,7 +17,7 @@ struct Options
 {
     double sampleRate = 44100.0;
     int bitDepth = 24;
-    int firstPad = 1;          // 1 -> A01..A08, 9 -> A09..A16
+    int firstPad = 1;          // number of the first pad (A01)
     juce::String prefix;       // defaults to the kit name
     bool normalise = true;
     bool writeSfz = true;
