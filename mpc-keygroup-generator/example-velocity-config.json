@@ -1,0 +1,28 @@
+{
+  "_comment": "Example with 2 velocity layers per key — pp (soft) and ff (hard)",
+  "programName": "Piano Vel",
+  "outputFile": "PianoVel.xpm",
+  "samples": [
+    {
+      "rootNote": "C2",
+      "velocityLayers": [
+        { "file": "Piano_C2_pp.wav", "velStart": 0,  "velEnd": 63  },
+        { "file": "Piano_C2_ff.wav", "velStart": 64, "velEnd": 127 }
+      ]
+    },
+    {
+      "rootNote": "C3",
+      "velocityLayers": [
+        { "file": "Piano_C3_pp.wav", "velStart": 0,  "velEnd": 63  },
+        { "file": "Piano_C3_ff.wav", "velStart": 64, "velEnd": 127 }
+      ]
+    },
+    {
+      "rootNote": "C4",
+      "velocityLayers": [
+        { "file": "Piano_C4_pp.wav", "velStart": 0,  "velEnd": 63  },
+        { "file": "Piano_C4_ff.wav", "velStart": 64, "velEnd": 127 }
+      ]
+    }
+  ]
+}

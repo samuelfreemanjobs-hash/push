@@ -1,0 +1,12 @@
+{
+  "name": "mpc-keygroup-generator",
+  "version": "1.0.0",
+  "description": "Generate Akai MPC Keygroup Program (.xpm) files with correct keyzone mapping",
+  "type": "module",
+  "bin": {
+    "mpc-keygroup": "./generate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

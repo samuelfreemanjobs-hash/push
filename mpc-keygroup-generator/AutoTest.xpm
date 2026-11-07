@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPCVObject>
+  <Version>
+    <File_Version>2.1</File_Version>
+    <Application>MPC-V</Application>
+    <Application_Version>2.10.0</Application_Version>
+    <Platform>Linux</Platform>
+  </Version>
+  <Program type="Keygroup">
+    <ProgramName>AutoTest</ProgramName>
+    <KeygroupNumKeygroups>3</KeygroupNumKeygroups>
+    <KeygroupMasterTranspose>0</KeygroupMasterTranspose>
+    <Instruments>
+      <Instrument number="1">
+        <Polyphony>32</Polyphony>
+        <LowNote>0</LowNote>
+        <HighNote>58</HighNote>
+        <Layers>
+        <Layer number="1">
+          <SampleFile>Synth_C2.wav</SampleFile>
+          <RootNote>48</RootNote>
+          <VelStart>0</VelStart>
+          <VelEnd>127</VelEnd>
+          <SampleStart>0</SampleStart>
+          <SampleEnd>-1</SampleEnd>
+          <LoopStart>-1</LoopStart>
+          <LoopEnd>-1</LoopEnd>
+          <Looping>0</Looping>
+          <Bidirectional>0</Bidirectional>
+          <Reverse>0</Reverse>
+          <VolumeOffset>0</VolumeOffset>
+          <PanOffset>0</PanOffset>
+          <TuneOffset>0</TuneOffset>
+        </Layer>
+        </Layers>
+      </Instrument>
+      <Instrument number="2">
+        <Polyphony>32</Polyphony>
+        <LowNote>59</LowNote>
+        <HighNote>79</HighNote>
+        <Layers>
+        <Layer number="1">
+          <SampleFile>Synth_A3.wav</SampleFile>
+          <RootNote>69</RootNote>
+          <VelStart>0</VelStart>
+          <VelEnd>127</VelEnd>
+          <SampleStart>0</SampleStart>
+          <SampleEnd>-1</SampleEnd>
+          <LoopStart>-1</LoopStart>
+          <LoopEnd>-1</LoopEnd>
+          <Looping>0</Looping>
+          <Bidirectional>0</Bidirectional>
+          <Reverse>0</Reverse>
+          <VolumeOffset>0</VolumeOffset>
+          <PanOffset>0</PanOffset>
+          <TuneOffset>0</TuneOffset>
+        </Layer>
+        </Layers>
+      </Instrument>
+      <Instrument number="3">
+        <Polyphony>32</Polyphony>
+        <LowNote>80</LowNote>
+        <HighNote>127</HighNote>
+        <Layers>
+        <Layer number="1">
+          <SampleFile>Synth_F#5.wav</SampleFile>
+          <RootNote>90</RootNote>
+          <VelStart>0</VelStart>
+          <VelEnd>127</VelEnd>
+          <SampleStart>0</SampleStart>
+          <SampleEnd>-1</SampleEnd>
+          <LoopStart>-1</LoopStart>
+          <LoopEnd>-1</LoopEnd>
+          <Looping>0</Looping>
+          <Bidirectional>0</Bidirectional>
+          <Reverse>0</Reverse>
+          <VolumeOffset>0</VolumeOffset>
+          <PanOffset>0</PanOffset>
+          <TuneOffset>0</TuneOffset>
+        </Layer>
+        </Layers>
+      </Instrument>
+    </Instruments>
+  </Program>
+</MPCVObject>

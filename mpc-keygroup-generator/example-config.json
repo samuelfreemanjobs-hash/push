@@ -1,0 +1,14 @@
+{
+  "_comment": "Run: node generate.js example-config.json",
+  "programName": "My Piano",
+  "outputFile": "MyPiano.xpm",
+  "firmware": "2.10.0",
+  "polyphony": 32,
+  "samples": [
+    { "file": "Piano_C2.wav", "rootNote": "C2" },
+    { "file": "Piano_C3.wav", "rootNote": "C3" },
+    { "file": "Piano_C4.wav", "rootNote": "C4" },
+    { "file": "Piano_C5.wav", "rootNote": "C5" },
+    { "file": "Piano_C6.wav", "rootNote": "C6" }
+  ]
+}
