@@ -11,6 +11,8 @@
 #include "dsp/TapeHiss.h"
 #include "dsp/SubClipper.h"
 #include "dsp/FetCompressor.h"
+#include "dsp/DbxNR.h"
+#include "dsp/TapeDropouts.h"
 
 class MemphisDustProcessor final : public juce::AudioProcessor
 {
@@ -47,6 +49,8 @@ public:
     // UI metering (read on the message thread)
     float getGainReductionDb() noexcept { return compressor.getAndResetPeakGr(); }
     float getOutputPeak() noexcept      { return outPeak.exchange (0.0f); }
+    float getTapeInputPeak() noexcept   { return tapeInPeak.exchange (0.0f); } // level hitting the "tape" (post input gain)
+    float getAutoLevelDb() const noexcept { return autoLevelDb.load(); }
 
 private:
     void updateParameters();
@@ -56,7 +60,10 @@ private:
     struct Params
     {
         std::atomic<float>* inputGain {}; std::atomic<float>* outputGain {}; std::atomic<float>* mix {};
-        std::atomic<float>* outClip {};
+        std::atomic<float>* outClip {}; std::atomic<float>* autoLevel {}; std::atomic<float>* presence {};
+        std::atomic<float>* hissDuck {}; std::atomic<float>* dropouts {};
+        std::atomic<float>* dbxOn {}; std::atomic<float>* dbxBreath {}; std::atomic<float>* dbxRelease {};
+        std::atomic<float>* dbxTilt {};
         std::atomic<float>* crushOn {}; std::atomic<float>* crushRate {}; std::atomic<float>* crushBits {};
         std::atomic<float>* crushAA {};
         std::atomic<float>* eqOn {}; std::atomic<float>* lowCut {}; std::atomic<float>* boxFreq {};
@@ -77,12 +84,20 @@ private:
     md::TapeHiss hiss;
     md::SubClipper subClip;
     md::FetCompressor compressor;
+    md::DbxNR dbx;
+    md::TapeDropouts dropouts;
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::dsp::DryWetMixer<float> dryWet { 8192 };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> inGain, outGain;
 
-    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true;
+    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true, dbxOn = true, autoOn = false;
+
+    // Auto level: slow loudness match of wet output to the dry input (pre input-gain)
+    double sampleRateHz = 44100.0;
+    float alInPow = 0.0f, alOutPow = 0.0f;
+    juce::SmoothedValue<float> alGainDb;
+    std::atomic<float> autoLevelDb { 0.0f }, tapeInPeak { 0.0f };
     int maxBlock = 512, numCh = 2, currentProgram = 0;
     std::atomic<float> outPeak { 0.0f };
 

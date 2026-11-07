@@ -1,26 +1,30 @@
 # Memphis Dust
 
-A drum-bus plugin (VST3 / AU / Standalone, JUCE 8) that turns clean, modern drum samples into dusty 90s Memphis cassette-tape drums. It does the five steps of the classic workflow in one plugin:
+A drum-bus / master-bus plugin (VST3 / AU / Standalone, JUCE 8) that turns clean, modern drum samples into dusty 90s Memphis cassette-tape drums. It combines the classic Memphis workflow with a model of a worn Tascam Portastudio 424/414: head saturation, capstan wow & flutter, head bandwidth roll-off, and **dbx Type II** noise-reduction pumping.
 
 ![Memphis Dust UI](docs/screenshot.png)
 
 | # | Section | What it does | Key DSP |
 |---|---------|--------------|---------|
-| 01 | **Sampler** | 12-bit / low-rate grit (SP-1200, S900, SP-202) | Fractional zero-order-hold decimation (2–48 kHz), mid-tread quantiser with full-scale hard clip (4–16 bit). No reconstruction filter, so you get real aliasing. Optional 4th-order anti-alias pre-filter for the smoother S900 sound. |
-| 02 | **Cassette EQ** | Rolls off the highs and adds a boxy low-mid "cardboard" thwack | 12 dB/oct low cut → narrow RBJ bell (150–600 Hz, default +4 dB @ 300 Hz, Q 2) → 24 dB/oct Butterworth high cut (default 11 kHz) |
-| 03 | **Tape** | Saturation, wow/flutter, hiss | 2× oversampled biased-tanh saturator with pre-/de-emphasis, so highs saturate first like real tape (the shelves are exact inverses). Wow (0.55 Hz + random drift) and flutter (6.5 + 11.3 Hz + noise) through a Hermite-interpolated delay. Pink hiss, calibrated so the knob reads RMS dBFS. |
-| 04 | **FET Comp** | 1176-style bus slam | Stereo-linked peak detector, 20 µs–30 ms attack, program-dependent release (recovers up to 3× slower when slammed), 4/8/12/20:1 + **ALL** (all-buttons: overshoot + extra grit), FET colour that scales with gain reduction, parallel mix. The meter marks the 6–10 dB "Memphis zone". |
+| 01 | **Sampler** | 12-bit / low-rate grit (SP-1200, S900, SP-202) | Fractional zero-order-hold decimation (2–48 kHz), mid-tread quantiser with full-scale hard clip (4–16 bit). No reconstruction filter, so you get real aliasing. Optional anti-alias pre-filter for the smoother S900 sound. Switch it **off** for a pure-analog Portastudio sound. |
+| 02 | **Cassette EQ** | Head bandwidth + chassis colour | 12 dB/oct low cut (default 40 Hz, *before* the tape so the subs don't bog the head down) → "box" bell (150–600 Hz) → **3.5 kHz dip** (default −1.5 dB, softens digital harshness) → 24 dB/oct high cut (default 11 kHz) |
+| 03 | **Tape** | Heads, transport, hiss | 2× oversampled biased-tanh head saturation with pre-/de-emphasis, so highs compress first (the shelves are exact inverses). Wow (0.55 Hz + random drift) and flutter (6.5 + 11.3 Hz + noise) through a Hermite-interpolated delay. **Dropouts**: random level and HF losses from worn oxide. Pink **hiss**, calibrated so the knob reads RMS dBFS, with RC-20-style **Hiss Duck** (dips under hits and breathes in the gaps). |
+| 04 | **dbx II NR** | Compander pumping | A real 2:1 encoder before the tape and a 1:2 decoder after it, with pre-/de-emphasis and HF-weighted RMS detectors. With Breath at 0, encode→decode is transparent (tested to 0.00 dB), so the pumping comes from what the tape adds in between: hiss, saturation and dropouts get expanded, just like on the deck. **Breath** = decoder mistracking (steeper expansion, faster decoder release): transients jump, tails and hiss duck hard, cymbals swish. **Tilt** = dynamic de-emphasis mismatch: highs brighten on hits and darken as they decay. |
 | 05 | **808 Clip** | Mono, clipped sub that still shows up on phones and car speakers | LR4 crossover (flat when recombined) → lows summed to mono → tanh/hard-clip blend → 24 dB/oct LPF at the same frequency (default 120 Hz) → added back to the untouched highs |
+| 06 | **FET Comp** | 1176-style bus slam | Stereo-linked peak detector, 20 µs–30 ms attack, program-dependent release, 4/8/12/20:1 + **ALL** (all-buttons), FET colour that scales with gain reduction, parallel mix. The meter marks the 6–10 dB "Memphis zone". For the dbx-style pump, use 4:1, 3–5 ms attack, 80–150 ms release and 4–6 dB of GR. |
 
-**Signal flow:** `IN → 01 → 02 → 03 (sat → wow/flutter → hiss) → 05 → 04 → OUT (gain → soft clip) → dry/wet`
+**Signal flow:** `IN → 01 → 02 → [04 encode → 03 tape (sat → wow/flutter → dropouts → hiss) → 04 decode] → 05 → 06 → OUT → Auto Level → output gain → soft clip`
 
-The 808 clipper runs *before* the compressor so the bus pumps against the knock. Hiss goes in before the compressor so it breathes with the drums, as in step 4 of the blueprint.
+The 808 clipper runs *before* the compressor so the bus pumps against the knock. Hiss sits in front of both the dbx decoder and the comp, so it breathes twice.
 
 ### Globals
-Input, Dry/Wet (latency-compensated), Output, and **CLIP**: a soft clipper at 0 dBFS (the "mixer pushed into the red" sound). It also acts as a safety ceiling.
+- **Input**, **Dry/Wet** (latency-compensated), **Output**
+- **CLIP**: a soft clipper at 0 dBFS (the "mixer pushed into the red" sound). It also acts as a safety ceiling.
+- **AUTO LEVEL**: slowly matches the processed loudness to the dry input (±12 dB, ~1 s), so bypass comparisons judge tone rather than volume. It only adapts while program material is present, so it doesn't pull the hiss up in silence.
+- **Tape input meter**: peak level hitting the tape, with the **−12…−10 dBFS sweet spot** shaded. Use **Input** to make transients tickle the green zone. Amber means saturating, red means squish.
 
 ### Factory presets
-`Memphis '94 Bus` (default) · `Portastudio Slam` · `SP Crunch (26k/12)` · `8-Bit Basement` · `808 Car Knock` · `Parallel Smash` · `Clean (Init)`
+`Memphis '94 Bus` (default) · `Portastudio Slam` · `SP Crunch (26k/12)` · `8-Bit Basement` · `808 Car Knock` · `Parallel Smash` · **`Portastudio 424`** (your RC-20 / stock-chain recipe: no digital stage, 45 Hz–11.5 kHz, +2 dB @ 250 Hz, −1.5 dB @ 3.5 kHz, flutter 40 / wow 25 / dropouts 15 %, ducked hiss, 4:1 / 3 ms / 120 ms comp) · **`dbx Breather (mistracked)`** · **`Dubbed Tape Master`** (gentle, for the master bus) · `Clean (Init)`
 All presets are gain-staged to land within about ±2 dB of the input loudness.
 
 ## Build
@@ -45,7 +49,7 @@ Or set `COPY_PLUGIN_AFTER_BUILD TRUE` in `CMakeLists.txt` to have the build inst
 Linux needs these packages: `libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev`.
 
 ### Tests
-`tests/DspTests.cpp` checks each DSP stage numerically without JUCE: quantiser levels, EQ response, exact pre-/de-emphasis inverse, the clean W/F delay, hiss calibration, mono sub, and compressor gain reduction.
+`tests/DspTests.cpp` runs 25 numerical checks on the DSP stages without JUCE: quantiser levels, EQ response, exact pre-/de-emphasis inverse, the clean W/F delay, hiss calibration and ducking, mono sub, compressor gain reduction, dbx transparency / 2:1 encoding / noise reduction / breathing, and dropouts.
 ```bash
 cmake --build build --target dsp_tests && ./build/dsp_tests
 ```
@@ -54,4 +58,6 @@ cmake --build build --target dsp_tests && ./build/dsp_tests
 - **Put it on the drum bus.** For the full blueprint, put a second instance on the 808 with only 05 (and maybe 03) switched on.
 - Rate **26.04 kHz / 12 bit** is the SP-1200. **22.05 kHz / 12 bit** is the default Memphis grit. **11 kHz / 8 bit** is the Basement crunch.
 - Push the comp until the meter sits in the shaded 6–10 dB zone, then raise Hiss until you can just hear it breathe between hits.
+- With dbx on, hiss gets ~17 dB quieter in the gaps (that's what NR does), so set Hiss higher (−55…−45) and use **Breath** to choose how hard it pumps.
+- **Portastudio 424** on the drum bus, then **Dubbed Tape Master** on the master bus, gives the cumulative "dubbed tape" sound.
 - Latency is about 1 ms of oversampling filters + 3 ms of tape transport (193 samples at 48 kHz), and it is reported to the host, so PDC keeps everything aligned.

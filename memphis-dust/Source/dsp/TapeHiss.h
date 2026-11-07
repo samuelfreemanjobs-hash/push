@@ -17,6 +17,8 @@ public:
         const auto lp = BiquadCoeffs::lowpass (fs, 12000.0, 0.70710678);
         for (int c = 0; c < kMaxCh; ++c) lpf[c].c = lp;
         level.prepare (fs, 0.05, 0.0f);
+        duckAtk = (float) std::exp (-1.0 / (0.001 * fs));
+        duckRel = (float) std::exp (-1.0 / (0.18 * fs));
         reset();
     }
 
@@ -28,7 +30,11 @@ public:
             hpX[c] = hpY[c] = 0.0f;
             lpf[c].reset();
         }
+        duckEnv = 0.0f;
     }
+
+    // 0 = constant hiss, 1 = up to ~18 dB of ducking on loud hits (breathes in the gaps)
+    void setDuck (float amount01) { duck = std::clamp (amount01, 0.0f, 1.0f); }
 
     void setLevelDb (float db) { level.setTarget (db <= -89.9f ? 0.0f : dbToGain (db)); }
 
@@ -37,7 +43,11 @@ public:
         numCh = std::min (numCh, kMaxCh);
         for (int i = 0; i < n; ++i)
         {
-            const float g = level.next();
+            float key = 0.0f;
+            for (int c = 0; c < numCh; ++c) key = std::max (key, std::abs (ch[c][i]));
+            duckEnv = key + (key > duckEnv ? duckAtk : duckRel) * (duckEnv - key);
+            const float duckDb = -18.0f * duck * std::clamp ((gainToDb (duckEnv) + 40.0f) / 30.0f, 0.0f, 1.0f);
+            const float g = level.next() * (duck > 0.0f ? dbToGain (duckDb) : 1.0f);
             for (int c = 0; c < numCh; ++c)
             {
                 auto& b = st[c];
@@ -67,5 +77,6 @@ private:
     Biquad lpf[kMaxCh];
     Rng rng[kMaxCh] { Rng (0xA341316Cu), Rng (0xC8013EA4u) };
     Smoother level;
+    float duck = 0.0f, duckEnv = 0.0f, duckAtk = 0.0f, duckRel = 0.0f;
 };
 } // namespace md

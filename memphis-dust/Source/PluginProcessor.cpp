@@ -10,7 +10,10 @@ MemphisDustProcessor::MemphisDustProcessor()
     auto get = [this] (const char* id) { auto* v = apvts.getRawParameterValue (id); jassert (v != nullptr); return v; };
     using namespace md;
     p.inputGain = get (pid::inputGain);   p.outputGain = get (pid::outputGain); p.mix = get (pid::mix);
-    p.outClip = get (pid::outClip);
+    p.outClip = get (pid::outClip);       p.autoLevel = get (pid::autoLevel);   p.presence = get (pid::presence);
+    p.hissDuck = get (pid::hissDuck);     p.dropouts = get (pid::dropouts);
+    p.dbxOn = get (pid::dbxOn);           p.dbxBreath = get (pid::dbxBreath);   p.dbxRelease = get (pid::dbxRelease);
+    p.dbxTilt = get (pid::dbxTilt);
     p.crushOn = get (pid::crushOn);       p.crushRate = get (pid::crushRate);   p.crushBits = get (pid::crushBits);
     p.crushAA = get (pid::crushAA);
     p.eqOn = get (pid::eqOn);             p.lowCut = get (pid::lowCut);         p.boxFreq = get (pid::boxFreq);
@@ -48,6 +51,12 @@ void MemphisDustProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     hiss.prepare (sampleRate);
     subClip.prepare (sampleRate);
     compressor.prepare (sampleRate);
+    dbx.prepare (sampleRate);
+    dropouts.prepare (sampleRate);
+    sampleRateHz = sampleRate;
+    alInPow = alOutPow = 0.0f;
+    alGainDb.reset (sampleRate, 0.25);
+    alGainDb.setCurrentAndTargetValue (0.0f);
 
     const int latency = (int) oversampler->getLatencyInSamples() + wowFlutter.getLatencySamples();
     setLatencySamples (latency);
@@ -70,13 +79,18 @@ void MemphisDustProcessor::updateParameters()
 
     crushOn = on (p.crushOn); eqOn = on (p.eqOn); tapeOn = on (p.tapeOn);
     subOn = on (p.subOn);     compOn = on (p.compOn); clipOn = on (p.outClip);
+    dbxOn = on (p.dbxOn);     autoOn = on (p.autoLevel);
 
     inGain.setTargetValue (juce::Decibels::decibelsToGain (p.inputGain->load()));
     outGain.setTargetValue (juce::Decibels::decibelsToGain (p.outputGain->load()));
     dryWet.setWetMixProportion (p.mix->load());
 
     crusher.setParams (p.crushRate->load(), p.crushBits->load(), on (p.crushAA));
-    eq.setParams (p.lowCut->load(), p.boxFreq->load(), p.boxGain->load(), p.boxQ->load(), p.highCut->load());
+    eq.setParams (p.lowCut->load(), p.boxFreq->load(), p.boxGain->load(), p.boxQ->load(), p.highCut->load(),
+                  p.presence->load());
+    dbx.setParams (p.dbxBreath->load(), p.dbxRelease->load(), p.dbxTilt->load());
+    dropouts.setAmount (p.dropouts->load());
+    hiss.setDuck (p.hissDuck->load());
     tape.setParams (p.tapeDrive->load(), p.tapeBias->load());
     // Delay line always runs (constant latency); modulation is zeroed when the tape is off.
     wowFlutter.setParams (tapeOn ? p.wow->load() : 0.0f, tapeOn ? p.flutter->load() : 0.0f);
@@ -123,20 +137,31 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
 
     dryWet.pushDrySamples (block);
 
-    // Input gain
+    // Input gain (+ measure the dry level for Auto Level and the level hitting the tape)
+    double inPow = 0.0;
+    float inPeak = 0.0f;
     for (int i = 0; i < n; ++i)
     {
         const float g = inGain.getNextValue();
-        for (int c = 0; c < chans; ++c) ch[c][i] *= g;
+        for (int c = 0; c < chans; ++c)
+        {
+            inPow += (double) ch[c][i] * ch[c][i];
+            ch[c][i] *= g;
+            inPeak = juce::jmax (inPeak, std::abs (ch[c][i]));
+        }
     }
+    if (inPeak > tapeInPeak.load()) tapeInPeak.store (inPeak);
 
     // 01 — 12-bit sampler
     if (crushOn) crusher.process (ch, chans, n);
 
-    // 02 — cassette EQ curve
+    // 02 — cassette EQ curve (low cut + high cut BEFORE the tape, per good gain staging)
     if (eqOn) eq.process (ch, chans, n);
 
-    // 03 — tape: saturation (2x oversampled), wow/flutter, hiss
+    // 04 — dbx II encode (2:1, pre-emphasis) ... everything until decode is "on the tape"
+    if (dbxOn) dbx.encode (ch, chans, n);
+
+    // 03 — tape: saturation (2x oversampled), wow/flutter, dropouts, hiss
     {
         auto up = oversampler->processSamplesUp (block);
         if (tapeOn)
@@ -147,15 +172,50 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
         oversampler->processSamplesDown (block);
     }
     wowFlutter.process (ch, chans, n);
-    if (tapeOn) hiss.process (ch, chans, n);
+    if (tapeOn)
+    {
+        dropouts.process (ch, chans, n);
+        hiss.process (ch, chans, n);
+    }
+
+    // 04 — dbx II decode (1:2 expansion, de-emphasis): hiss + dropouts get expanded -> breathing
+    if (dbxOn) dbx.decode (ch, chans, n);
 
     // 05 — mono 808 clip (before the comp so the bus pumps against the knock)
     if (subOn) subClip.process (ch, chans, n);
 
-    // 04 — FET bus compressor
+    // 06 — FET bus compressor
     if (compOn) compressor.process (ch, chans, n);
 
     dryWet.mixWetSamples (block);
+
+    // Auto Level: match long-term loudness to the dry input so bypass comparisons are honest
+    {
+        double outPow = 0.0;
+        for (int c = 0; c < chans; ++c)
+            for (int i = 0; i < n; ++i) outPow += (double) ch[c][i] * ch[c][i];
+
+        const float denom = (float) (n * chans);
+        const float a = 1.0f - std::exp (-(float) n / (1.2f * (float) sampleRateHz));
+        alInPow  += a * ((float) inPow / denom - alInPow);
+        alOutPow += a * ((float) outPow / denom - alOutPow);
+
+        if (autoOn)
+        {
+            if (alInPow > 1.0e-6f && alOutPow > 1.0e-9f) // only adapt while there is real program (> -60 dBFS)
+                alGainDb.setTargetValue (juce::jlimit (-12.0f, 12.0f, 10.0f * std::log10 (alInPow / alOutPow)));
+        }
+        else
+            alGainDb.setTargetValue (0.0f);
+
+        if (alGainDb.isSmoothing() || std::abs (alGainDb.getCurrentValue()) > 1.0e-3f)
+            for (int i = 0; i < n; ++i)
+            {
+                const float g = juce::Decibels::decibelsToGain (alGainDb.getNextValue());
+                for (int c = 0; c < chans; ++c) ch[c][i] *= g;
+            }
+        autoLevelDb.store (alGainDb.getCurrentValue());
+    }
 
     // Output gain + optional "mixer pushed into the red" soft clip
     for (int i = 0; i < n; ++i)

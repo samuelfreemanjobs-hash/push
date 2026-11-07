@@ -8,6 +8,7 @@ inline constexpr auto inputGain  = "inputGain";
 inline constexpr auto outputGain = "outputGain";
 inline constexpr auto mix        = "mix";
 inline constexpr auto outClip    = "outClip";
+inline constexpr auto autoLevel  = "autoLevel";
 // 01 Sampler
 inline constexpr auto crushOn   = "crushOn";
 inline constexpr auto crushRate = "crushRate";
@@ -20,6 +21,7 @@ inline constexpr auto boxFreq  = "boxFreq";
 inline constexpr auto boxGain  = "boxGain";
 inline constexpr auto boxQ     = "boxQ";
 inline constexpr auto highCut  = "highCut";
+inline constexpr auto presence = "presence";
 // 03 Tape
 inline constexpr auto tapeOn    = "tapeOn";
 inline constexpr auto tapeDrive = "tapeDrive";
@@ -27,6 +29,13 @@ inline constexpr auto tapeBias  = "tapeBias";
 inline constexpr auto wow       = "wow";
 inline constexpr auto flutter   = "flutter";
 inline constexpr auto hiss      = "hiss";
+inline constexpr auto hissDuck  = "hissDuck";
+inline constexpr auto dropouts  = "dropouts";
+// 04 dbx Type II NR
+inline constexpr auto dbxOn      = "dbxOn";
+inline constexpr auto dbxBreath  = "dbxBreath";
+inline constexpr auto dbxRelease = "dbxRelease";
+inline constexpr auto dbxTilt    = "dbxTilt";
 // 04 FET comp
 inline constexpr auto compOn      = "compOn";
 inline constexpr auto compThresh  = "compThresh";

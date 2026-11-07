@@ -83,6 +83,19 @@ private:
     float display = 0.0f, hold = 0.0f;
     int holdCounter = 0;
 };
+
+// Peak meter for the level hitting the tape, with the -12..-10 dBFS sweet spot marked.
+class TapeLevelMeter final : public juce::Component
+{
+public:
+    void setPeak (float linear);
+    void setAutoLevelDb (float db) { autoDb = db; }
+    void paint (juce::Graphics&) override;
+
+private:
+    float displayDb = -60.0f, holdDb = -60.0f, autoDb = 0.0f;
+    int holdCounter = 0;
+};
 } // namespace md::ui
 
 class MemphisDustEditor final : public juce::AudioProcessorEditor, private juce::Timer
@@ -103,10 +116,11 @@ private:
     md::ui::DustLookAndFeel lnf;
 
     juce::ComboBox presetBox;
-    md::ui::Section sampler, cassetteEq, tapeSec, comp, sub;
+    md::ui::Section sampler, cassetteEq, tapeSec, dbxSec, sub, comp;
     md::ui::Knob inputKnob, mixKnob, outputKnob;
-    md::ui::Toggle clipToggle;
+    md::ui::Toggle clipToggle, autoToggle;
     md::ui::GrMeter grMeter;
+    md::ui::TapeLevelMeter tapeMeter;
 
     juce::Rectangle<int> reelArea;
     float reelAngle = 0.0f, activity = 0.0f;

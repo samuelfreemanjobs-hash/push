@@ -51,6 +51,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::outputGain, "Output", { -24.0f, 24.0f, 0.1f }, 0.0f, dbText));
     layout.add (fp (pid::mix,        "Mix",    { 0.0f, 1.0f, 0.01f }, 1.0f, pctText));
     layout.add (bp (pid::outClip,    "Output Clip", true));
+    layout.add (bp (pid::autoLevel,  "Auto Level", false));
 
     // 01 Sampler
     layout.add (bp (pid::crushOn, "Sampler On", true));
@@ -61,12 +62,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
     // 02 Cassette EQ
     layout.add (bp (pid::eqOn, "EQ On", true));
-    layout.add (fp (pid::lowCut,  "Low Cut",  skewed (20.0f, 300.0f, 60.0f, 1.0f), 30.0f, hzText));
+    layout.add (fp (pid::lowCut,  "Low Cut",  skewed (20.0f, 300.0f, 60.0f, 1.0f), 40.0f, hzText));
     layout.add (fp (pid::boxFreq, "Box Freq", skewed (150.0f, 600.0f, 300.0f, 1.0f), 300.0f, hzText));
     layout.add (fp (pid::boxGain, "Box Gain", { -6.0f, 12.0f, 0.1f }, 4.0f, dbText));
     layout.add (fp (pid::boxQ,    "Box Q",    skewed (0.5f, 6.0f, 1.8f, 0.01f), 2.0f,
                     [] (float v, int) { return juce::String (v, 2); }));
     layout.add (fp (pid::highCut, "High Cut", skewed (3000.0f, 20000.0f, 10000.0f, 1.0f), 11000.0f, hzText));
+    layout.add (fp (pid::presence, "Presence", { -6.0f, 3.0f, 0.1f }, -1.5f, dbText));
 
     // 03 Tape
     layout.add (bp (pid::tapeOn, "Tape On", true));
@@ -76,6 +78,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::flutter,   "Flutter",    { 0.0f, 1.0f, 0.01f }, 0.2f, pctText));
     layout.add (fp (pid::hiss,      "Hiss",       { -90.0f, -30.0f, 0.1f }, -64.0f,
                     [] (float v, int) { return v <= -89.9f ? juce::String ("Off") : juce::String (v, 1) + " dB"; }));
+    layout.add (fp (pid::hissDuck,  "Hiss Duck",  { 0.0f, 1.0f, 0.01f }, 0.0f, pctText));
+    layout.add (fp (pid::dropouts,  "Dropouts",   { 0.0f, 1.0f, 0.01f }, 0.05f, pctText));
+
+    // 04 dbx Type II
+    layout.add (bp (pid::dbxOn, "dbx NR On", true));
+    layout.add (fp (pid::dbxBreath,  "dbx Breath",  { 0.0f, 1.0f, 0.01f }, 0.3f, pctText));
+    layout.add (fp (pid::dbxRelease, "dbx Release", skewed (30.0f, 400.0f, 120.0f, 1.0f), 120.0f, msText));
+    layout.add (fp (pid::dbxTilt,    "dbx Tilt",    { 0.0f, 1.0f, 0.01f }, 0.3f, pctText));
 
     // 04 FET comp
     layout.add (bp (pid::compOn, "Comp On", true));
@@ -109,7 +119,7 @@ const std::vector<Preset>& getFactoryPresets()
             { pid::compMakeup, 14 }, { pid::compRelease, 50 }, { pid::outputGain, 3 } } },
         { "SP Crunch (26k/12)", {
             { pid::crushRate, 26040 }, { pid::crushBits, 12 }, { pid::highCut, 13000 }, { pid::boxGain, 3 },
-            { pid::tapeDrive, 6 }, { pid::wow, 0.05f }, { pid::flutter, 0.1f }, { pid::hiss, -80 },
+            { pid::tapeDrive, 6 }, { pid::wow, 0.05f }, { pid::flutter, 0.1f }, { pid::hiss, -80 }, { pid::dbxOn, 0 },
             { pid::compThresh, -14 }, { pid::compRatio, 0 }, { pid::compMakeup, 6 }, { pid::subDrive, 8 } } },
         { "8-Bit Basement", {
             { pid::crushRate, 11025 }, { pid::crushBits, 8 }, { pid::crushAA, 1 }, { pid::highCut, 7000 },
@@ -125,9 +135,33 @@ const std::vector<Preset>& getFactoryPresets()
         { "Parallel Smash", {
             { pid::compRatio, 4 }, { pid::compThresh, -30 }, { pid::compMakeup, 12 }, { pid::compMix, 0.45f }, { pid::outputGain, 2 },
             { pid::tapeDrive, 12 } } },
+        // From the RC-20 / stock-chain recipe: no digital stage, 45 Hz-11.5 kHz head bandwidth,
+        // broad +2 dB @ 250 Hz, -1.5 dB @ 3.5 kHz, flutter 40 / wow 25 / dropouts 15, ducked hiss,
+        // 4:1 comp with fast attack and ~120 ms release for 4-6 dB of pumping.
+        { "Portastudio 424", {
+            { pid::crushOn, 0 }, { pid::lowCut, 45 }, { pid::highCut, 11500 }, { pid::boxFreq, 250 },
+            { pid::boxGain, 2 }, { pid::boxQ, 0.8f }, { pid::presence, -1.5f }, { pid::tapeDrive, 5 },
+            { pid::tapeBias, 0.35f }, { pid::wow, 0.25f }, { pid::flutter, 0.4f }, { pid::dropouts, 0.15f },
+            { pid::hiss, -52 }, { pid::hissDuck, 0.6f }, { pid::dbxBreath, 0.35f }, { pid::dbxTilt, 0.35f },
+            { pid::compRatio, 0 }, { pid::compAttack, 3 }, { pid::compRelease, 120 }, { pid::compThresh, -18 },
+            { pid::compMakeup, 5 }, { pid::subOn, 0 }, { pid::autoLevel, 1 } } },
+        { "dbx Breather (mistracked)", {
+            { pid::crushOn, 0 }, { pid::lowCut, 45 }, { pid::highCut, 10500 }, { pid::boxFreq, 250 },
+            { pid::boxGain, 2 }, { pid::boxQ, 0.8f }, { pid::tapeDrive, 6 }, { pid::wow, 0.2f },
+            { pid::flutter, 0.3f }, { pid::dropouts, 0.1f }, { pid::hiss, -46 }, { pid::dbxBreath, 0.85f },
+            { pid::dbxRelease, 160 }, { pid::dbxTilt, 0.8f }, { pid::compRatio, 1 }, { pid::compAttack, 4 },
+            { pid::compRelease, 100 }, { pid::compThresh, -20 }, { pid::compMakeup, 6 }, { pid::subOn, 0 },
+            { pid::autoLevel, 1 } } },
+        { "Dubbed Tape Master", {
+            { pid::crushOn, 0 }, { pid::lowCut, 35 }, { pid::highCut, 12500 }, { pid::boxFreq, 250 },
+            { pid::boxGain, 1.5f }, { pid::boxQ, 0.7f }, { pid::presence, -1 }, { pid::tapeDrive, 4 },
+            { pid::tapeBias, 0.25f }, { pid::wow, 0.12f }, { pid::flutter, 0.2f }, { pid::dropouts, 0.03f },
+            { pid::hiss, -60 }, { pid::hissDuck, 0.3f }, { pid::dbxBreath, 0.15f }, { pid::dbxTilt, 0.2f },
+            { pid::compRatio, 0 }, { pid::compAttack, 5 }, { pid::compRelease, 150 }, { pid::compThresh, -12 },
+            { pid::compMakeup, 2 }, { pid::subOn, 0 }, { pid::autoLevel, 1 } } },
         { "Clean (Init)", {
-            { pid::crushOn, 0 }, { pid::eqOn, 0 }, { pid::tapeOn, 0 }, { pid::compOn, 0 }, { pid::subOn, 0 },
-            { pid::outClip, 0 }, { pid::outputGain, 0 } } },
+            { pid::crushOn, 0 }, { pid::eqOn, 0 }, { pid::tapeOn, 0 }, { pid::dbxOn, 0 }, { pid::compOn, 0 },
+            { pid::subOn, 0 }, { pid::outClip, 0 }, { pid::outputGain, 0 } } },
     };
     return presets;
 }

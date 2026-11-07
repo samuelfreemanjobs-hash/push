@@ -6,6 +6,8 @@
 #include "dsp/TapeHiss.h"
 #include "dsp/SubClipper.h"
 #include "dsp/FetCompressor.h"
+#include "dsp/DbxNR.h"
+#include "dsp/TapeDropouts.h"
 
 #include <cstdio>
 #include <set>
@@ -112,6 +114,72 @@ int main()
         const float gr = gainToDb (rms (a, N / 2) / rms (ref, N / 2));
         CHECK (gr < -8.0f && gr > -12.0f, "comp 8:1 @ -18 dB on -6 dBFS sine: %.1f dB GR (expect ~-10.5)", gr);
         CHECK (f.getAndResetPeakGr() < -8.0f, "GR meter reports reduction");
+    }
+
+    { // 04 dbx II: encode->decode transparent at Breath 0, compresses 2:1 in between
+        for (float amp : { 0.5f, 0.05f, 0.005f })
+        {
+            DbxNR d; d.prepare (fs); d.setParams (0, 120, 0);
+            auto a = sine (1000, amp, N), b = a, ref = a;
+            float* ch[2] = { a.data(), b.data() };
+            for (int pos = 0; pos < N; pos += 256) { float* c2[2] = { ch[0] + pos, ch[1] + pos }; d.encode (c2, 2, std::min (256, N - pos)); d.decode (c2, 2, std::min (256, N - pos)); }
+            const float err = gainToDb (rms (a, N / 2) / rms (ref, N / 2));
+            CHECK (std::abs (err) < 0.5f, "dbx encode->decode transparent at %.0f dBFS: %.2f dB", gainToDb (amp), err);
+        }
+        DbxNR e; e.prepare (fs); e.setParams (0, 120, 0);
+        auto lo = sine (1000, 0.01f, N), lo2 = lo; float* c1[2] = { lo.data(), lo2.data() }; e.encode (c1, 2, N);
+        DbxNR e2; e2.prepare (fs); e2.setParams (0, 120, 0);
+        auto hi = sine (1000, 0.5f, N), hi2 = hi; float* c2[2] = { hi.data(), hi2.data() }; e2.encode (c2, 2, N);
+        const float encRange = gainToDb (rms (hi, N / 2) / rms (lo, N / 2));
+        CHECK (std::abs (encRange - 17.0f) < 1.5f, "dbx encoder: 34 dB input range -> %.1f dB on tape (2:1)", encRange);
+
+        // noise reduction + breathing: hiss injected "on tape" is suppressed in gaps
+        auto runHiss = [&] (bool nr, float breath) {
+            DbxNR d; d.prepare (fs); d.setParams (breath, 120, 0);
+            TapeHiss h; h.prepare (fs); h.setLevelDb (-50);
+            const int M = N * 2; std::vector<float> a ((size_t) M, 0.0f), b = a;
+            for (int i = 0; i < M; ++i) if ((i / 48000) % 2 == 0) a[(size_t) i] = b[(size_t) i] = 0.5f * (float) std::sin (kTwoPi * 200 * i / fs) * (float) std::exp (-(i % 48000) / 1500.0);
+            for (int pos = 0; pos < M; pos += 256)
+            {
+                const int n = std::min (256, M - pos);
+                float* c[2] = { a.data() + pos, b.data() + pos };
+                if (nr) d.encode (c, 2, n);
+                h.process (c, 2, n);
+                if (nr) d.decode (c, 2, n);
+            }
+            double s = 0; int cnt = 0; // measure late in the 1 s silent gaps
+            for (int i = 0; i < M; ++i) if ((i / 48000) % 2 == 1 && i % 48000 > 24000) { s += a[(size_t) i] * a[(size_t) i]; ++cnt; }
+            return gainToDb ((float) std::sqrt (s / cnt));
+        };
+        const float off = runHiss (false, 0), on = runHiss (true, 0), br = runHiss (true, 1);
+        CHECK (on < off - 15.0f, "dbx suppresses hiss in gaps: %.1f -> %.1f dBFS", off, on);
+        CHECK (br < on - 3.0f, "Breath (mistrack) ducks the gaps further: %.1f dBFS", br);
+    }
+    { // dropouts
+        TapeDropouts d; d.prepare (fs); d.setAmount (1.0f);
+        auto a = sine (5000, 0.5f, N * 2), b = a; float* c[2] = { a.data(), b.data() }; d.process (c, 2, N * 2);
+        int dips = 0; bool inDip = false;
+        for (int i = 0; i < N * 2; i += 48) { float pk = 0; for (int k = 0; k < 48 && i + k < N * 2; ++k) pk = std::max (pk, std::abs (a[(size_t) (i + k)]));
+            if (pk < 0.35f && ! inDip) { ++dips; inDip = true; } else if (pk > 0.45f) inDip = false; }
+        CHECK (finite (a) && dips >= 3 && dips <= 25, "dropouts at 100%% produce %d audible dips in 4 s", dips);
+        TapeDropouts z; z.prepare (fs); z.setAmount (0.0f);
+        auto q = sine (5000, 0.5f, N), w = q, ref = q; float* cz[2] = { q.data(), w.data() }; z.process (cz, 2, N);
+        CHECK (q == ref, "dropouts at 0%% are bit-transparent");
+    }
+    { // hiss duck
+        auto run = [&] (float duck) {
+            TapeHiss h; h.prepare (fs); h.setLevelDb (-50); h.setDuck (duck);
+            auto a = sine (100, 0.7f, N), b = a, ref = a; float* c[2] = { a.data(), b.data() }; h.process (c, 2, N);
+            for (size_t i = 0; i < a.size(); ++i) a[i] -= ref[i];
+            return gainToDb (rms (a, 9600)); };
+        const float d0 = run (0), d1 = run (1);
+        CHECK (d1 < d0 - 12.0f, "hiss duck under a loud signal: %.1f -> %.1f dBFS", d0, d1);
+    }
+    { // presence dip
+        CassetteEQ eq; eq.prepare (fs); eq.setParams (20, 300, 0, 1, 20000, -1.5f);
+        auto a = sine (3500, 0.5f, N), b = a; run (eq, a, b);
+        const float g = gainToDb (rms (a, 4800) / (0.5f / std::sqrt (2.0f)));
+        CHECK (std::abs (g + 1.5f) < 0.3f, "presence dip at 3.5 kHz = %.2f dB (expect -1.5)", g);
     }
 
     std::printf ("\n%s (%d failure%s)\n", failures ? "FAILED" : "ALL PASSED", failures, failures == 1 ? "" : "s");
