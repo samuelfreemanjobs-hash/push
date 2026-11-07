@@ -1,0 +1,17 @@
+MEMPHIS DUST - Windows install
+==============================
+
+Easiest: run MemphisDust-<version>-Windows-Setup.exe. It installs the VST3 into
+C:\Program Files\Common Files\VST3 and (optionally) the standalone app.
+
+Manual (zip):
+ 1. Copy the folder  VST3\Memphis Dust.vst3  into
+        C:\Program Files\Common Files\VST3\
+ 2. Restart your DAW (or re-scan plugins). It shows up as "Memphis Dust"
+    by "Sam Freeman" under Fx / Distortion / Dynamics.
+ 3. Standalone\Memphis Dust.exe runs without a DAW (pick your audio device
+    under Options > Audio/MIDI Settings).
+
+No Visual C++ redistributable is needed (the runtime is linked statically).
+The plugin is not code-signed, so Windows SmartScreen may warn about the
+installer: click "More info" > "Run anyway".

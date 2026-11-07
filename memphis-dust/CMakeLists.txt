@@ -4,6 +4,8 @@ project(MemphisDust VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
+# Windows: link the C++ runtime statically so the plugin runs without the VC++ redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # Point JUCE_DIR at a local JUCE checkout to skip the download:
 #   cmake -B build -DJUCE_DIR=/path/to/JUCE
@@ -55,9 +57,27 @@ target_link_libraries(MemphisDust
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
+if(MSVC)
+    target_compile_options(MemphisDust PRIVATE /bigobj /MP)
+endif()
+
 # Pure-C++ DSP tests (no JUCE needed): cmake --build build --target dsp_tests && ./build/dsp_tests
 option(MEMPHIS_DUST_TESTS "Build DSP unit tests" ON)
 if(MEMPHIS_DUST_TESTS)
     add_executable(dsp_tests tests/DspTests.cpp)
     target_include_directories(dsp_tests PRIVATE Source)
+endif()
+
+# Host smoke test: loads the built VST3 and runs every preset through it.
+#   cmake --build build --target memphis_dust_host_test
+#   ./build/memphis_dust_host_test "build/MemphisDust_artefacts/Release/VST3/Memphis Dust.vst3"
+option(MEMPHIS_DUST_HOST_TEST "Build the VST3 host smoke test" ON)
+if(MEMPHIS_DUST_HOST_TEST)
+    juce_add_console_app(memphis_dust_host_test PRODUCT_NAME "memphis_dust_host_test")
+    target_sources(memphis_dust_host_test PRIVATE tests/HostTest.cpp)
+    target_compile_definitions(memphis_dust_host_test PRIVATE
+        JUCE_PLUGINHOST_VST3=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(memphis_dust_host_test PRIVATE
+        juce::juce_audio_processors juce::juce_gui_basics
+        juce::juce_recommended_config_flags)
 endif()
