@@ -1,6 +1,7 @@
 #include "CommandLine.h"
 #include "ProgressionLibrary.h"
 #include "RecipeCard.h"
+#include "Arranger.h"
 #include "BuiltInSynth.h"
 #include "Diagnostics.h"
 #include "Analysis.h"
@@ -83,6 +84,11 @@ juce::String cliHelpText()
       << "  --sweep-keep-arps         don't skip presets that pulse while held\n"
       << "  --sweep-no-probes         don't save each preset's test sound to _Preset_Probes\n"
       << "  --export-presets <dir>    save every preset the plugin lists as a .vstpreset file\n\n"
+      << "Progressions (write a progression + keys / bass / pad / lead / drums, export MIDI + loops):\n"
+      << "  --song <preset>           e.g. quiet-storm, philly-soul, neo-soul (see --list-song-presets)\n"
+      << "  --key <C..B|random> --bars <4|8|16> --tempo <bpm> --swing <0-1> --seed <n>\n"
+      << "  --chords \"ii:m9 V:13 I:maj9 vi:m9\"   your own progression (numerals or chord symbols, *2 = 2 beats)\n"
+      << "  --no-loop                 MIDI only (no audio loop / stems)\n\n"
       << "Render queue (set it up in the app with \"Add to Queue\"):\n"
       << "  --queue [file.json]       render every waiting batch of the queue, one after another\n"
       << "                            (default: the app's own queue, " << defaultQueueFile().getFullPathName() << ")\n\n"
@@ -129,7 +135,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue", "--song", "--list-song-presets" })
         if (args.contains (a))
             return true;
     return false;
@@ -155,6 +161,63 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
     if (args.contains ("--help") || args.contains ("-h"))
     {
         out (cliHelpText());
+        return onDone (0);
+    }
+
+    if (args.contains ("--list-song-presets"))
+    {
+        for (auto& p : songPresets())
+        {
+            out (p.id.paddedRight (' ', 14) + p.name);
+            out ("    keys " + p.keysRecipe + ", bass " + p.bassRecipe + ", pad " + p.padRecipe + ", lead " + p.leadRecipe
+                 + ", drums " + p.drumPattern + "  |  " + juce::String (p.tempoLow, 0) + "-" + juce::String (p.tempoHigh, 0) + " BPM");
+        }
+        return onDone (0);
+    }
+
+    if (args.contains ("--song"))
+    {
+        auto* preset = findSongPreset (option (args, "--song"));
+        if (preset == nullptr) return fail ("unknown --song preset (see --list-song-presets)");
+        Arrangement arr;
+        arr.presetId = preset->id;
+        arr.scale = preset->scale;
+        arr.seed = args.contains ("--seed") ? option (args, "--seed").getLargeIntValue() : juce::Random::getSystemRandom().nextInt (999999);
+        juce::Random rng (arr.seed);
+        auto key = option (args, "--key", "random");
+        arr.tonic = key.equalsIgnoreCase ("random") ? parsePitchClass (preset->keys[rng.nextInt (preset->keys.size())]) : parsePitchClass (key);
+        if (arr.tonic < 0) return fail ("bad --key");
+        arr.tempo = args.contains ("--tempo") ? juce::jlimit (40.0, 200.0, option (args, "--tempo").getDoubleValue())
+                                              : std::round (preset->tempoLow + rng.nextDouble() * (preset->tempoHigh - preset->tempoLow));
+        arr.swing = args.contains ("--swing") ? juce::jlimit (0.0, 1.0, option (args, "--swing").getDoubleValue()) : preset->swing;
+        if (args.contains ("--chords"))
+        {
+            juce::String err;
+            if (! parseProgression (option (args, "--chords"), arr.tonic, arr.blocks, err)) return fail ("--chords: " + err);
+        }
+        else arr.blocks = generateProgression (*preset, arr.tonic, juce::jlimit (4, 16, option (args, "--bars", "8").getIntValue()), arr.seed);
+        generateParts (arr, *preset);
+
+        auto name = safeFileName (preset->name.removeCharacters ("/()") + "_" + pitchClassName (arr.tonic) + "_" + juce::String (juce::roundToInt (arr.tempo)) + "bpm_" + juce::String (arr.seed));
+        auto folder = args.contains ("--out") ? juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--out"))
+                                              : juce::File::getSpecialLocation (juce::File::userHomeDirectory).getChildFile ("MPC Sample Forge").getChildFile ("Progressions").getChildFile (name);
+        juce::StringArray numerals;
+        for (auto& b : arr.blocks) numerals.add (b.roman (arr.tonic));
+        out (preset->name + " in " + pitchClassName (arr.tonic) + " " + arr.scale + ", " + juce::String (arr.tempo, 0) + " BPM, seed " + juce::String (arr.seed));
+        out ("Chords:   " + arr.progressionText());
+        out ("Numerals: " + numerals.joinIntoString (" "));
+        for (auto& p : arr.parts) out ("  " + p.name.paddedRight (' ', 14) + juce::String ((int) p.notes.size()).paddedLeft (' ', 4) + " notes  " + p.recipeId);
+        if (args.contains ("--plan-only")) return onDone (0);
+        auto midi = writeArrangementMidi (arr, folder, name);
+        out ("MIDI: " + midi.joinIntoString (", "));
+        if (! args.contains ("--no-loop"))
+        {
+            juce::String err;
+            auto wavs = writeArrangementLoops (arr, folder, name, option (args, "--rate", "44100").getDoubleValue(), option (args, "--bits", "24").getIntValue(), err);
+            if (wavs.isEmpty()) return fail ("loop: " + err);
+            out ("Loops: " + wavs.joinIntoString (", "));
+        }
+        out ("-> " + folder.getFullPathName());
         return onDone (0);
     }
 

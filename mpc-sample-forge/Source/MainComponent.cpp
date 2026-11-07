@@ -159,10 +159,10 @@ MainComponent::MainComponent()
             { "Progressions & chord sets", "trap-progressions soul-chords ninth-chords screw-rnb gospel-rnb-90s smooth-jazz-chords rnb-80s-chords vaporwave chillwave phonkwave" },
             { "Keys, electric piano & organ", "wiz-ep gfunk-ep jetlife-ep-bell wurli-keys clav-funk zaytoven-organ memphis-organ organ-stabs" },
             { "Bells & music box", "bell-tines phonk-cowbell horror-musicbox" },
-            { "Strings, brass & horns", "ross-lux-strings ross-lux-brass jeezy-strings jeezy-brass trap-brass trap-brass-stabs trap-pizz pizz-strings luxury-harp smooth-jazz-sax" },
-            { "Synths & leads", "gucci-synth shawty-redd-synth juicyj-strip-synth lead-synth gfunk-lead talkbox-lead detuned-synth plucks polyester-pluck" },
+            { "Strings, brass & horns", "philly-strings soul-horns ross-lux-strings ross-lux-brass jeezy-strings jeezy-brass trap-brass trap-brass-stabs trap-pizz pizz-strings luxury-harp smooth-jazz-sax" },
+            { "Synths & leads", "njs-stabs gucci-synth shawty-redd-synth juicyj-strip-synth lead-synth gfunk-lead talkbox-lead detuned-synth plucks polyester-pluck" },
             { "Pads, choirs & textures", "smooth-jazz-pad sade-pad choir screwed-choir mellotron-flute" },
-            { "Bass & 808", "808-bass bassline moog-bass rhodes-bass log-drum" },
+            { "Bass & 808", "soul-bass quiet-storm-bass neo-soul-bass upright-bass njs-bass 808-bass bassline moog-bass rhodes-bass log-drum" },
             { "Scale banks (every pad in key)", "scale-notes trap-scale" } };
         auto all = builtInStyles();
         juce::StringArray used;

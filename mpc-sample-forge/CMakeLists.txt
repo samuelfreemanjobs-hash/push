@@ -40,7 +40,8 @@ set(FORGE_ENGINE_SOURCES
     Source/ProgressionLibrary.cpp
     Source/PresetSweep.cpp
     Source/RenderQueue.cpp
-    Source/RecipeCard.cpp)
+    Source/RecipeCard.cpp
+    Source/Arranger.cpp)
 
 set(FORGE_DEFINITIONS
     FORGE_VERSION_STRING="${PROJECT_VERSION}"
