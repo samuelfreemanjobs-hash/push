@@ -1,0 +1,7 @@
+build/
+build-*/
+renders/
+.DS_Store
+*.user
+.vs/
+.idea/

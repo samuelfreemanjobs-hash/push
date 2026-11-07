@@ -1,0 +1,48 @@
+name: KitForge build
+
+on:
+  push:
+    paths: [ "drum-machine/**", ".github/workflows/kitforge.yml" ]
+  pull_request:
+    paths: [ "drum-machine/**", ".github/workflows/kitforge.yml" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: drum-machine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxext-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Run render test
+        shell: bash
+        run: |
+          exe=$(find build/KitForgeRenderTest_artefacts -type f \( -name KitForgeRenderTest -o -name KitForgeRenderTest.exe \) | head -1)
+          "$exe" renders
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: KitForge-${{ runner.os }}
+          path: |
+            drum-machine/build/KitForge_artefacts/Release/VST3
+            drum-machine/build/KitForge_artefacts/Release/Standalone
