@@ -9,10 +9,17 @@ namespace kf
 // A full sound design for one voice, in real parameter units (indexed by VP).
 using VoiceDef = std::array<float, NumVP>;
 
+using BusDef = std::array<float, NumBP>;
+
 struct Kit
 {
     juce::String name;
     std::array<VoiceDef, numTracks> voices;
+    std::array<juce::String, numTracks> voiceNames;   // e.g. "Jazz Sub Kick"
+
+    // Vintage-bus settings. Forged kits leave the current bus alone (hasBus = false).
+    bool hasBus = false;
+    BusDef bus {};
 };
 
 // The Kit Factory: builds drum kits out of the synth engine.
@@ -27,11 +34,17 @@ namespace KitFactory
     const juce::StringArray& factoryKitNames();
     Kit factoryKit (int index);
 
+    BusDef defaultBus();
+    BusDef machineBus (int machineIndex);
+
     VoiceDef forgeVoice (VoiceType type, juce::Random& rng);
+    juce::String forgeVoiceName (VoiceType type, juce::Random& rng);
     Kit forgeKit (juce::Random& rng);
 
     // Read / write the kit currently loaded in the processor's parameters.
-    Kit captureKit (juce::AudioProcessorValueTreeState& apvts, const juce::String& name);
+    Kit captureKit (juce::AudioProcessorValueTreeState& apvts, const juce::String& name,
+                    const std::array<juce::String, numTracks>& voiceNames);
+    void applyBus (juce::AudioProcessorValueTreeState& apvts, const BusDef& bus, bool machineParamsOnly = false);
     void applyKit (juce::AudioProcessorValueTreeState& apvts, const Kit& kit);
     void applyVoice (juce::AudioProcessorValueTreeState& apvts, int track, const VoiceDef& voice);
 

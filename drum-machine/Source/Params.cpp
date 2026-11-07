@@ -40,6 +40,7 @@ const VoiceParamSpec& voiceSpec (int vp)
         { "tlevel",     "Tone Level",  Kind::Float,  0,      1,       1,      0,      0,       "",    nullptr },
         { "fm",         "FM Amount",   Kind::Float,  0,      10,      0,      0,      0,       "",    nullptr },
         { "ratio",      "FM Ratio",    Kind::Float,  0.25f,  12,      1.5f,   2,      0,       "",    nullptr },
+        { "fmdecay",    "FM Decay",    Kind::Float,  5,      4000,    4000,   300,    0,       "ms",  nullptr },
         { "ntype",      "Noise Type",  Kind::Choice, 0,      1,       0,      0,      1,       "",    &noiseTypeNames() },
         { "nlevel",     "Noise Level", Kind::Float,  0,      1,       0,      0,      0,       "",    nullptr },
         { "ndecay",     "Noise Decay", Kind::Float,  5,      4000,    150,    300,    0,       "ms",  nullptr },
@@ -53,11 +54,54 @@ const VoiceParamSpec& voiceSpec (int vp)
         { "level",      "Level",       Kind::Float,  0,      1,       0.8f,   0,      0,       "",    nullptr },
         { "pan",        "Pan",         Kind::Float,  -1,     1,       0,      0,      0,       "",    nullptr },
         { "choke",      "Choke Group", Kind::Float,  0,      4,       0,      0,      1,       "",    nullptr },
+        { "lofi",       "Lo-Fi Send",  Kind::Float,  0,      1,       1,      0,      0,       "",    nullptr },
         { "mute",       "Mute",        Kind::Bool,   0,      1,       0,      0,      1,       "",    nullptr },
         { "solo",       "Solo",        Kind::Bool,   0,      1,       0,      0,      1,       "",    nullptr },
     };
     jassert (vp >= 0 && vp < NumVP);
     return specs[vp];
+}
+
+const VoiceParamSpec& busSpec (int bp)
+{
+    static const VoiceParamSpec specs[NumBP] = {
+        { "lf_drive",   "Bus Drive",   Kind::Float,  0,      1,       0,      0,      0,       "",    nullptr },
+        { "lf_bits",    "Bit Depth",   Kind::Float,  4,      16,      16,     0,      0,       "bit", nullptr },
+        { "lf_rate",    "Sample Rate", Kind::Float,  4000,   48000,   48000,  20000,  0,       "Hz",  nullptr },
+        { "lf_pitch",   "Pitch Hack",  Kind::Float,  0,      12,      0,      0,      0,       "st",  nullptr },
+        { "lf_lpf",     "Bus Low-pass",Kind::Float,  1000,   20000,   20000,  8000,   0,       "Hz",  nullptr },
+        { "lf_lowkeep", "Low Keep",    Kind::Float,  0,      250,     0,      0,      0,       "Hz",  nullptr },
+        { "lf_punch",   "Punch",       Kind::Float,  -1,     1,       0,      0,      0,       "",    nullptr },
+        { "lf_tail",    "Tail",        Kind::Float,  -1,     1,       0,      0,      0,       "",    nullptr },
+        { "lf_vinyl",   "Vinyl",       Kind::Float,  0,      1,       0,      0,      0,       "",    nullptr },
+    };
+    jassert (bp >= 0 && bp < NumBP);
+    return specs[bp];
+}
+
+juce::String busParamID (int bp)
+{
+    return busSpec (bp).id;
+}
+
+const juce::StringArray& machineNames()
+{
+    static const juce::StringArray names { "Clean (bypass)", "SP-1200 style  26k/12-bit", "MPC60 style  40k/12-bit",
+                                           "DR-660 phonk  32k/12-bit", "SP-808 / Lofi-12 style  22k" };
+    return names;
+}
+
+std::array<float, NumBP> machinePreset (int index)
+{
+    //                       drive   bits   rate      pitch  lpf      lowkeep punch tail vinyl
+    switch (index)
+    {
+        case 1:  return { 0.25f, 12.0f, 26040.0f, 5.0f, 11000.0f, 90.0f,  0, 0, 0.08f };
+        case 2:  return { 0.35f, 12.0f, 40000.0f, 0.0f, 15000.0f, 0.0f,   0, 0, 0.03f };
+        case 3:  return { 0.60f, 12.0f, 32000.0f, 0.0f, 12000.0f, 0.0f,   0, 0, 0.05f };
+        case 4:  return { 0.50f, 12.0f, 22050.0f, 3.0f, 10000.0f, 80.0f,  0, 0, 0.25f };
+        default: return { 0.0f,  16.0f, 48000.0f, 0.0f, 20000.0f, 0.0f,   0, 0, 0.0f };
+    }
 }
 
 juce::String voiceParamID (int track, int vp)
@@ -68,6 +112,8 @@ juce::String voiceParamID (int track, int vp)
 static juce::String formatValue (float v, const char* unit)
 {
     const juce::String u (unit);
+    if (u == "bit")
+        return juce::String (v, 1) + " bit";
     if (u == "Hz")
         return v >= 1000.0f ? juce::String (v / 1000.0f, 2) + " kHz" : juce::String (v, 1) + " Hz";
     if (u == "ms")
@@ -105,6 +151,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         juce::ParameterID { ids::master, 1 }, "Master",
         juce::NormalisableRange<float> (-60.0f, 6.0f, 0.1f), -3.0f,
         juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    // ---- Vintage sampler bus ----
+    {
+        auto group = std::make_unique<juce::AudioProcessorParameterGroup> ("bus", "Vintage Bus", " | ");
+        for (int bp = 0; bp < NumBP; ++bp)
+        {
+            const auto& s = busSpec (bp);
+            juce::NormalisableRange<float> range (s.min, s.max, s.interval);
+            if (s.centre > 0.0f)
+                range.setSkewForCentre (s.centre);
+
+            const char* unit = s.unit;
+            const juce::String id (s.id);
+            auto attrs = juce::AudioParameterFloatAttributes()
+                             .withLabel (unit)
+                             .withStringFromValueFunction ([unit, id] (float v, int)
+                             {
+                                 if (id == "lf_lowkeep" && v < 20.0f) return juce::String ("Off");
+                                 if (id == "lf_lpf" && v >= 19999.0f) return juce::String ("Off");
+                                 if (id == "lf_pitch" && v < 0.05f) return juce::String ("Off");
+                                 return formatValue (v, unit);
+                             });
+            group->addChild (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { s.id, 1 }, s.name, range, s.def, attrs));
+        }
+        layout.add (std::move (group));
+    }
 
     // ---- Voices ----
     for (int t = 0; t < numTracks; ++t)

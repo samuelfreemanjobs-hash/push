@@ -5,6 +5,7 @@
 #include "Pattern.h"
 #include "DrumVoice.h"
 #include "KitFactory.h"
+#include "VintageBus.h"
 
 class KitForgeProcessor : public juce::AudioProcessor
 {
@@ -52,6 +53,12 @@ public:
     juce::String getKitName() const { return kitName; }
     void setKitName (const juce::String& n) { kitName = n; }
 
+    // Per-pad names (message thread only)
+    juce::String getVoiceName (int t) const { return voiceNames[(size_t) t]; }
+    void setVoiceName (int t, const juce::String& n) { voiceNames[(size_t) t] = n; }
+    const std::array<juce::String, kf::numTracks>& getVoiceNames() const { return voiceNames; }
+    kf::Kit captureCurrentKit() { return kf::KitFactory::captureKit (apvts, kitName, voiceNames); }
+
     juce::AudioProcessorValueTreeState apvts;
     kf::PatternBank patterns;
 
@@ -76,6 +83,11 @@ private:
     std::atomic<float>* lengthParam = nullptr;
     std::atomic<float>* patternParam = nullptr;
     std::atomic<float>* masterParam = nullptr;
+    std::array<std::atomic<float>*, kf::NumBP> busRaw {};
+
+    kf::VintageCrusher crusher;
+    kf::TransientShaper shaper;
+    kf::VinylNoise vinyl;
 
     double sampleRate = 44100.0;
     double internalPpq = 0.0;
@@ -92,6 +104,7 @@ private:
     std::vector<Event> events;
 
     juce::String kitName { "Boom Analog" };
+    std::array<juce::String, kf::numTracks> voiceNames;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KitForgeProcessor)
 };

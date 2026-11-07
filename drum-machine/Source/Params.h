@@ -26,11 +26,11 @@ enum VP
 {
     Type,
     // Tone oscillator
-    Wave, Pitch, PEnvAmt, PEnvDecay, ToneDecay, ToneLevel, FmAmt, FmRatio,
+    Wave, Pitch, PEnvAmt, PEnvDecay, ToneDecay, ToneLevel, FmAmt, FmRatio, FmDecay,
     // Noise generator
     NoiseType, NoiseLevel, NoiseDecay, FilterMode, Cutoff, Reso, Burst,
     // Shaping / output
-    Click, Attack, Drive, Level, Pan, Choke,
+    Click, Attack, Drive, Level, Pan, Choke, LoFiSend,
     // Mixer (not part of a kit)
     Mute, Solo,
     NumVP
@@ -51,6 +51,25 @@ struct VoiceParamSpec
 };
 
 const VoiceParamSpec& voiceSpec (int vp);
+
+// Vintage Sampler Bus parameters (global). The drum send of every track runs
+// through: drive -> bit reduction -> decimation (with the pitch-up/down alias
+// trick) -> 2-pole low-pass, with a crossover that keeps the lows clean. The
+// whole mix then gets a transient shaper (punch / tail) and a vinyl layer.
+enum BP
+{
+    BDrive, BBits, BRate, BPitch, BLpf, BLowKeep, BPunch, BTail, BVinyl,
+    NumBP
+};
+
+const VoiceParamSpec& busSpec (int bp);
+juce::String busParamID (int bp);
+
+// Machine presets for the bus ("SP-1200 style" etc.)
+const juce::StringArray& machineNames();
+std::array<float, NumBP> machinePreset (int index); // punch / tail are left at 0
+// Which bus params a machine preset sets (punch / tail are left alone).
+inline bool isMachineParam (int bp) { return bp != BPunch && bp != BTail; }
 
 // Mute and solo are mixer state, not part of a sound design / kit.
 inline bool isKitParam (int vp) { return vp != Mute && vp != Solo; }

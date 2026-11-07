@@ -29,6 +29,8 @@ KitForgeProcessor::KitForgeProcessor()
     lengthParam  = apvts.getRawParameterValue (ids::length);
     patternParam = apvts.getRawParameterValue (ids::pattern);
     masterParam  = apvts.getRawParameterValue (ids::master);
+    for (int bp = 0; bp < NumBP; ++bp)
+        busRaw[(size_t) bp] = apvts.getRawParameterValue (busParamID (bp));
 
     for (auto& c : triggerCount) c.store (0);
     for (auto& p : previewRequests) p.store (0.0f);
@@ -52,6 +54,9 @@ void KitForgeProcessor::prepareToPlay (double sr, int)
     sampleRate = sr;
     for (auto& v : voices)
         v.prepare (sr);
+    crusher.prepare (sr);
+    shaper.prepare (sr);
+    vinyl.prepare (sr);
 
     masterGain.reset (sr, 0.02);
     masterGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (masterParam->load()));
@@ -81,6 +86,7 @@ void KitForgeProcessor::loadKit (const Kit& kit)
 {
     KitFactory::applyKit (apvts, kit);
     kitName = kit.name;
+    voiceNames = kit.voiceNames;
 }
 
 //==============================================================================
@@ -89,29 +95,12 @@ void KitForgeProcessor::readVoiceParams()
     for (int t = 0; t < numTracks; ++t)
     {
         const auto& r = raw[(size_t) t];
-        auto& p = voiceParams[(size_t) t];
+        std::array<float, NumVP> values;
+        for (size_t vp = 0; vp < (size_t) NumVP; ++vp)
+            values[vp] = r[vp]->load();
 
-        p.wave         = (int) r[Wave]->load();
-        p.pitch        = r[Pitch]->load();
-        p.pEnvAmt      = r[PEnvAmt]->load();
-        p.pEnvDecayMs  = r[PEnvDecay]->load();
-        p.toneDecayMs  = r[ToneDecay]->load();
-        p.toneLevel    = r[ToneLevel]->load();
-        p.fmAmt        = r[FmAmt]->load();
-        p.fmRatio      = r[FmRatio]->load();
-        p.noiseType    = (int) r[NoiseType]->load();
-        p.noiseLevel   = r[NoiseLevel]->load();
-        p.noiseDecayMs = r[NoiseDecay]->load();
-        p.filterMode   = (int) r[FilterMode]->load();
-        p.cutoff       = r[Cutoff]->load();
-        p.reso         = r[Reso]->load();
-        p.bursts       = (int) std::round (r[Burst]->load());
-        p.click        = r[Click]->load();
-        p.attackMs     = r[Attack]->load();
-        p.drive        = r[Drive]->load();
-        p.level        = r[Level]->load();
-        p.pan          = r[Pan]->load();
-        p.choke        = (int) std::round (r[Choke]->load());
+        auto& p = voiceParams[(size_t) t];
+        p = VoiceParams::fromValues (values);
 
         voices[(size_t) t].setParams (p);
 
@@ -120,6 +109,14 @@ void KitForgeProcessor::readVoiceParams()
         panL[(size_t) t] = std::cos (angle) * juce::MathConstants<float>::sqrt2;
         panR[(size_t) t] = std::sin (angle) * juce::MathConstants<float>::sqrt2;
     }
+
+    std::array<float, NumBP> busValues;
+    for (size_t bp = 0; bp < (size_t) NumBP; ++bp)
+        busValues[bp] = busRaw[bp]->load();
+    const auto bus = BusParams::fromValues (busValues);
+    crusher.setParams (bus);
+    shaper.setAmounts (bus.punch, bus.tail);
+    vinyl.setAmount (bus.vinyl);
 }
 
 void KitForgeProcessor::fire (int track, float velocity)
@@ -261,16 +258,30 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             ++ev;
         }
 
-        float l = 0.0f, r = 0.0f;
+        float cleanL = 0.0f, cleanR = 0.0f, sendL = 0.0f, sendR = 0.0f;
+        bool anyActive = false;
         for (int t = 0; t < numTracks; ++t)
         {
             auto& voice = voices[(size_t) t];
             if (! voice.isActive())
                 continue;
+            anyActive = true;
             const float x = voice.process();
-            l += x * panL[(size_t) t];
-            r += x * panR[(size_t) t];
+            const float send = voiceParams[(size_t) t].lofiSend;
+            const float xl = x * panL[(size_t) t], xr = x * panR[(size_t) t];
+            sendL  += xl * send;
+            sendR  += xr * send;
+            cleanL += xl * (1.0f - send);
+            cleanR += xr * (1.0f - send);
         }
+
+        // Vinyl surface plays while the machine is running or ringing out.
+        if (running || anyActive)
+            vinyl.process (sendL, sendR);
+
+        crusher.process (sendL, sendR);
+        float l = cleanL + sendL, r = cleanR + sendR;
+        shaper.process (l, r);
 
         const float g = masterGain.getNextValue();
         if (right != nullptr)
@@ -292,6 +303,10 @@ void KitForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     xml->setAttribute ("kitName", kitName);
 
+    auto* names = xml->createNewChildElement ("VoiceNames");
+    for (int t = 0; t < numTracks; ++t)
+        names->setAttribute ("t" + juce::String (t + 1), voiceNames[(size_t) t]);
+
     auto* pats = xml->createNewChildElement ("Patterns");
     for (int p = 0; p < numPatterns; ++p)
     {
@@ -311,6 +326,13 @@ void KitForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
         return;
 
     kitName = xml->getStringAttribute ("kitName", kitName);
+
+    if (auto* names = xml->getChildByName ("VoiceNames"))
+    {
+        for (int t = 0; t < numTracks; ++t)
+            voiceNames[(size_t) t] = names->getStringAttribute ("t" + juce::String (t + 1), voiceNames[(size_t) t]);
+        xml->removeChildElement (names, true);
+    }
 
     if (auto* pats = xml->getChildByName ("Patterns"))
     {

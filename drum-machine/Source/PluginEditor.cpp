@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "Exporter.h"
 
 using namespace kf;
 
@@ -242,10 +243,16 @@ void TrackHeader::paint (juce::Graphics& g)
     g.setColour (dimText);
     g.setFont (uiFont (11.0f, true));
     g.drawText (juce::String (track + 1), r.withTrimmedLeft (10.0f).withWidth (16.0f), juce::Justification::centredLeft);
+
+    auto text = r.withTrimmedLeft (28.0f).withTrimmedRight (22.0f);
+    auto name = proc.getVoiceName (track);
+    if (name.isEmpty()) name = voiceTypeNames()[typeIndex];
     g.setColour (textColour);
-    g.setFont (uiFont (13.5f, true));
-    g.drawText (voiceTypeNames()[typeIndex].toUpperCase(), r.withTrimmedLeft (28.0f).withTrimmedRight (22.0f),
-                juce::Justification::centredLeft);
+    g.setFont (uiFont (12.5f, true));
+    g.drawText (name, text.removeFromTop (text.getHeight() * 0.58f), juce::Justification::bottomLeft, true);
+    g.setColour (dimText);
+    g.setFont (uiFont (9.5f, true));
+    g.drawText (voiceTypeNames()[typeIndex].toUpperCase(), text, juce::Justification::topLeft);
 }
 
 void TrackHeader::mouseDown (const juce::MouseEvent&)
@@ -262,10 +269,20 @@ VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p)
 {
     for (auto* c : std::initializer_list<juce::Component*> {
              &type, &forgeButton, &previewButton,
-             &wave, &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio,
+             &wave, &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio, &fmDecay, &nameLabel,
              &noiseType, &filterMode, &nLevel, &nDecay, &cutoff, &reso, &burst,
-             &click, &attack, &drive, &level, &pan, &choke })
+             &click, &attack, &drive, &level, &pan, &choke, &lofiSend })
         addAndMakeVisible (c);
+
+    nameLabel.setEditable (false, true, false);
+    nameLabel.setFont (uiFont (16.0f, true));
+    nameLabel.setColour (juce::Label::textColourId, textColour);
+    nameLabel.setTooltip ("Double-click to rename this pad (used for sample export)");
+    nameLabel.onTextChange = [this]
+    {
+        proc.setVoiceName (track, nameLabel.getText());
+        if (onNameChanged) onNameChanged();
+    };
 
     forgeButton.setTooltip ("Generate a new sound for this track based on its drum type");
     forgeButton.onClick = [this]
@@ -275,6 +292,8 @@ VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p)
         voice[Pan] = getParamValue (proc.apvts, voiceParamID (track, Pan));
         voice[Choke] = getParamValue (proc.apvts, voiceParamID (track, Choke));
         KitFactory::applyVoice (proc.apvts, track, voice);
+        proc.setVoiceName (track, KitFactory::forgeVoiceName (t, rng));
+        refreshName();
         proc.previewTrack (track);
         if (onVoiceForged) onVoiceForged();
     };
@@ -295,9 +314,10 @@ void VoicePanel::setTrack (int t)
 
     const std::pair<Knob*, VP> knobs[] = {
         { &pitch, Pitch }, { &pEnv, PEnvAmt }, { &pDecay, PEnvDecay }, { &tDecay, ToneDecay },
-        { &tLevel, ToneLevel }, { &fm, FmAmt }, { &ratio, FmRatio },
+        { &tLevel, ToneLevel }, { &fm, FmAmt }, { &ratio, FmRatio }, { &fmDecay, FmDecay },
         { &nLevel, NoiseLevel }, { &nDecay, NoiseDecay }, { &cutoff, Cutoff }, { &reso, Reso }, { &burst, Burst },
         { &click, Click }, { &attack, Attack }, { &drive, Drive }, { &level, Level }, { &pan, Pan }, { &choke, Choke },
+        { &lofiSend, LoFiSend },
     };
 
     for (auto& [knob, vp] : knobs)
@@ -307,6 +327,13 @@ void VoicePanel::setTrack (int t)
     }
 
     forgeButton.setColour (juce::TextButton::buttonColourId, trackColour (t).withMultipliedBrightness (0.55f));
+    refreshName();
+    repaint();
+}
+
+void VoicePanel::refreshName()
+{
+    nameLabel.setText (proc.getVoiceName (track), juce::dontSendNotification);
     repaint();
 }
 
@@ -324,10 +351,10 @@ void VoicePanel::paint (juce::Graphics& g)
     g.setColour (colour);
     g.setFont (uiFont (20.0f, true));
     g.drawText ("TRACK " + juce::String (track + 1), headerArea.withWidth (120), juce::Justification::centredLeft);
-    g.setColour (textColour);
-    g.setFont (uiFont (14.0f));
-    g.drawText ("Synth engine  /  " + voiceTypeNames()[typeIndex],
-                headerArea.withTrimmedLeft (120).withWidth (260), juce::Justification::centredLeft);
+    g.setColour (dimText);
+    g.setFont (uiFont (12.0f));
+    g.drawText ("synth engine  /  " + voiceTypeNames()[typeIndex] + "  /  pad A" + juce::String (track + 1).paddedLeft ('0', 2),
+                headerArea.withTrimmedLeft (380).withWidth (260), juce::Justification::centredLeft);
 
     auto section = [&] (juce::Rectangle<int> area, const juce::String& title)
     {
@@ -350,6 +377,7 @@ void VoicePanel::resized()
     auto r = getLocalBounds().reduced (14, 10);
 
     headerArea = r.removeFromTop (44);
+    nameLabel.setBounds (headerArea.withTrimmedLeft (116).withWidth (256).withSizeKeepingCentre (256, 28));
     {
         auto h = headerArea;
         previewButton.setBounds (h.removeFromRight (70).withSizeKeepingCentre (70, 30));
@@ -385,26 +413,107 @@ void VoicePanel::resized()
     row2.removeFromLeft (8);
     outArea = row2;
 
-    layoutSection (toneArea, { &wave }, { &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio });
+    layoutSection (toneArea, { &wave }, { &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio, &fmDecay });
     layoutSection (noiseArea, { &noiseType, &filterMode }, { &nLevel, &nDecay, &cutoff, &reso, &burst });
-    layoutSection (outArea, {}, { &click, &attack, &drive, &level, &pan, &choke });
+    layoutSection (outArea, {}, { &click, &attack, &drive, &level, &pan, &choke, &lofiSend });
+}
+
+//==============================================================================
+// Bus panel
+//==============================================================================
+BusPanel::BusPanel (KitForgeProcessor& p) : proc (p)
+{
+    addAndMakeVisible (machine);
+    machine.box.addItemList (machineNames(), 1);
+    machine.box.setTextWhenNothingSelected ("Preset...");
+    machine.box.onChange = [this]
+    {
+        const int idx = machine.box.getSelectedItemIndex();
+        if (idx >= 0)
+            KitFactory::applyBus (proc.apvts, KitFactory::machineBus (idx), true);
+    };
+
+    const std::pair<Knob*, BP> knobs[] = {
+        { &drive, BDrive }, { &bits, BBits }, { &rate, BRate }, { &pitch, BPitch }, { &lpf, BLpf },
+        { &lowKeep, BLowKeep }, { &punch, BPunch }, { &tail, BTail }, { &vinyl, BVinyl },
+    };
+    for (auto& [k, bp] : knobs)
+    {
+        addAndMakeVisible (k);
+        k->attach (proc.apvts, busParamID (bp));
+        k->setColour (accentColour);
+    }
+
+    drive.slider.setTooltip ("Analog-style pre-gain into the converter");
+    bits.slider.setTooltip ("Bit depth: 12 = SP-1200 / MPC60 grit");
+    rate.slider.setTooltip ("Sampling rate of the emulated converter (zero-order hold, no interpolation)");
+    pitch.slider.setTooltip ("Sampler trick: pitch up before sampling, down on playback. Lowers the effective rate so highs alias and ring.");
+    lpf.slider.setTooltip ("2-pole 12 dB/oct output smoothing filter");
+    lowKeep.slider.setTooltip ("Below this frequency the signal bypasses the crusher, keeping kicks and 808 subs clean");
+    punch.slider.setTooltip ("Transient shaper: boost or soften the attack of every hit");
+    tail.slider.setTooltip ("Transient shaper: lengthen or tighten the decay of every hit");
+    vinyl.slider.setTooltip ("Vinyl surface hiss, crackle and pops (through the 12-bit converter)");
+}
+
+void BusPanel::paint (juce::Graphics& g)
+{
+    g.setColour (panelColour);
+    g.fillRoundedRectangle (getLocalBounds().toFloat(), 8.0f);
+    g.setColour (accentColour.withAlpha (0.5f));
+    g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 8.0f, 1.0f);
+
+    g.setColour (accentColour);
+    g.setFont (uiFont (13.0f, true));
+    g.drawText ("VINTAGE SAMPLER BUS", getLocalBounds().reduced (14, 8).removeFromTop (16), juce::Justification::centredLeft);
+
+    // Effective converter rate after the pitch trick
+    const float rateHz = getParamValue (proc.apvts, busParamID (BRate));
+    const float st = getParamValue (proc.apvts, busParamID (BPitch));
+    const float bitsV = getParamValue (proc.apvts, busParamID (BBits));
+    const double eff = rateHz / std::pow (2.0, st / 12.0);
+
+    g.setColour (dimText);
+    g.setFont (uiFont (11.0f));
+    auto info = infoArea;
+    g.drawText ("Effective rate", info.removeFromTop (16), juce::Justification::centredLeft);
+    g.setColour (textColour);
+    g.setFont (uiFont (15.0f, true));
+    g.drawText (juce::String (eff / 1000.0, 1) + " kHz", info.removeFromTop (20), juce::Justification::centredLeft);
+    g.setColour (dimText);
+    g.setFont (uiFont (11.0f));
+    g.drawText ("alias above " + juce::String (eff / 2000.0, 1) + " kHz", info.removeFromTop (16), juce::Justification::centredLeft);
+    g.drawText (juce::String (juce::jmin (16.0f, bitsV), 1) + " bit  /  per-pad Lo-Fi Send", info.removeFromTop (16), juce::Justification::centredLeft);
+}
+
+void BusPanel::resized()
+{
+    auto r = getLocalBounds().reduced (14, 8);
+    r.removeFromTop (18);
+    machine.setBounds (r.removeFromLeft (190).withHeight (choiceH).withY (r.getY() + 14));
+    r.removeFromLeft (12);
+    infoArea = r.removeFromRight (170).withTrimmedTop (12);
+    const int step = juce::jmin (knobW + 10, r.getWidth() / 9);
+    for (auto* k : { &drive, &bits, &rate, &pitch, &lpf, &lowKeep, &punch, &tail, &vinyl })
+        k->setBounds (r.removeFromLeft (step).withSizeKeepingCentre (knobW, knobH));
 }
 
 //==============================================================================
 // Editor
 //==============================================================================
 KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), voicePanel (p)
+    : AudioProcessorEditor (&p), proc (p), grid (p), voicePanel (p), busPanel (p)
 {
     setLookAndFeel (&lnf);
+    addAndMakeVisible (content);
+    content.painter = [this] (juce::Graphics& g) { paintContent (g); };
 
     // ---- Transport ----
     playButton.setClickingTogglesState (false);
     playButton.onClick = [this] { proc.setInternalPlaying (! proc.isInternalPlaying()); };
-    addAndMakeVisible (playButton);
+    content.addAndMakeVisible (playButton);
 
     for (auto* k : { &tempo, &swing, &length, &master })
-        addAndMakeVisible (k);
+        content.addAndMakeVisible (k);
     tempo.attach (proc.apvts, ids::tempo);
     swing.attach (proc.apvts, ids::swing);
     length.attach (proc.apvts, ids::length);
@@ -420,17 +529,18 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         {
             proc.loadKit (KitFactory::factoryKit (idx));
             refreshKitName();
+            busPanel.resetMachineBox();
         }
         kitBox.setSelectedId (0, juce::dontSendNotification);
     };
-    addAndMakeVisible (kitBox);
+    content.addAndMakeVisible (kitBox);
 
     kitName.setEditable (false, true, false);
     kitName.setFont (uiFont (18.0f, true));
     kitName.setColour (juce::Label::textColourId, accentColour);
     kitName.setTooltip ("Double-click to rename the kit");
     kitName.onTextChange = [this] { proc.setKitName (kitName.getText()); };
-    addAndMakeVisible (kitName);
+    content.addAndMakeVisible (kitName);
 
     forgeKitButton.setColour (juce::TextButton::buttonColourId, accentColour.withMultipliedBrightness (0.6f));
     forgeKitButton.onClick = [this]
@@ -447,8 +557,10 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     };
     saveButton.onClick = [this] { saveKit(); };
     loadButton.onClick = [this] { loadKitFromFile(); };
-    for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton })
-        addAndMakeVisible (b);
+    exportButton.onClick = [this] { exportPack(); };
+    exportButton.setTooltip ("Render every pad through the vintage bus to WAV + SFZ: a ready-to-use sample pack");
+    for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton })
+        content.addAndMakeVisible (b);
 
     // ---- Patterns ----
     for (int i = 0; i < numPatterns; ++i)
@@ -456,7 +568,7 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         auto& b = patternButtons[(size_t) i];
         b.setButtonText (juce::String::charToString ((juce::juce_wchar) ('A' + i)));
         b.onClick = [this, i] { setParamValue (proc.apvts, ids::pattern, (float) i); };
-        addAndMakeVisible (b);
+        content.addAndMakeVisible (b);
     }
 
     copyButton.onClick = [this]
@@ -483,14 +595,14 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         grid.repaint();
     };
     for (auto* b : { &copyButton, &pasteButton, &clearButton, &generateButton })
-        addAndMakeVisible (b);
+        content.addAndMakeVisible (b);
 
     // ---- Tracks ----
     for (int t = 0; t < numTracks; ++t)
     {
         headers[(size_t) t] = std::make_unique<TrackHeader> (proc, t);
         headers[(size_t) t]->onSelect = [this] (int tr) { selectTrack (tr); };
-        addAndMakeVisible (*headers[(size_t) t]);
+        content.addAndMakeVisible (*headers[(size_t) t]);
 
         auto& m = muteButtons[(size_t) t];
         auto& s = soloButtons[(size_t) t];
@@ -500,8 +612,8 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         s.setClickingTogglesState (true);
         m.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffe0b23a));
         s.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff47c0ff));
-        addAndMakeVisible (m);
-        addAndMakeVisible (s);
+        content.addAndMakeVisible (m);
+        content.addAndMakeVisible (s);
         buttonAttachments.push_back (std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
             proc.apvts, voiceParamID (t, Mute), m));
         buttonAttachments.push_back (std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
@@ -509,7 +621,7 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     }
 
     grid.onTrackClicked = [this] (int t) { selectTrack (t); };
-    addAndMakeVisible (grid);
+    content.addAndMakeVisible (grid);
 
     voicePanel.onVoiceForged = [this]
     {
@@ -517,12 +629,22 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
             proc.setKitName (proc.getKitName() + "*");
         refreshKitName();
     };
-    addAndMakeVisible (voicePanel);
+    voicePanel.onNameChanged = [this] { for (auto& h : headers) h->repaint(); };
+    content.addAndMakeVisible (voicePanel);
+    content.addAndMakeVisible (busPanel);
 
     selectTrack (0);
     refreshKitName();
 
-    setSize (1180, 800);
+    content.setBounds (0, 0, baseWidth, baseHeight);
+    layoutContent();
+
+    // The UI is designed at a fixed size and scaled to the window.
+    setResizable (true, true);
+    setResizeLimits (baseWidth / 2, baseHeight / 2, baseWidth * 2, baseHeight * 2);
+    if (auto* c = getConstrainer())
+        c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+    setSize ((int) (baseWidth * 0.9), (int) (baseHeight * 0.9));
     startTimerHz (30);
 }
 
@@ -547,6 +669,9 @@ void KitForgeEditor::selectTrack (int t)
 void KitForgeEditor::refreshKitName()
 {
     kitName.setText (proc.getKitName(), juce::dontSendNotification);
+    voicePanel.refreshName();
+    for (auto& h : headers)
+        h->repaint();
 }
 
 void KitForgeEditor::saveKit()
@@ -568,7 +693,7 @@ void KitForgeEditor::saveKit()
                               auto kitNameToSave = name;
                               if (kitNameToSave.isEmpty()) kitNameToSave = file.getFileNameWithoutExtension();
 
-                              auto kit = KitFactory::captureKit (proc.apvts, kitNameToSave);
+                              auto kit = KitFactory::captureKit (proc.apvts, kitNameToSave, proc.getVoiceNames());
                               if (auto xml = KitFactory::kitToXml (kit); xml->writeTo (file))
                               {
                                   proc.setKitName (kitNameToSave);
@@ -592,6 +717,7 @@ void KitForgeEditor::loadKitFromFile()
                               {
                                   proc.loadKit (kit);
                                   refreshKitName();
+                                  busPanel.resetMachineBox();
                               }
                               else
                               {
@@ -599,6 +725,43 @@ void KitForgeEditor::loadKitFromFile()
                                                                           "KitForge", "That file isn't a KitForge kit.");
                               }
                           });
+}
+
+void KitForgeEditor::exportPack()
+{
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("Export sample pack (WAV 24-bit / 44.1 kHz + SFZ)");
+    menu.addItem (1, "As pads A01 - A08");
+    menu.addItem (9, "As pads A09 - A16");
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (exportButton), [this] (int firstPad)
+    {
+        if (firstPad == 0)
+            return;
+
+        auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("KitForge Packs");
+        dir.createDirectory();
+        chooser = std::make_unique<juce::FileChooser> ("Choose a folder for the sample pack", dir);
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                              [this, firstPad] (const juce::FileChooser& fc)
+                              {
+                                  const auto parent = fc.getResult();
+                                  if (parent == juce::File()) return;
+
+                                  const auto kit = proc.captureCurrentKit();
+                                  Exporter::Options opt;
+                                  opt.firstPad = firstPad;
+                                  opt.prefix = kit.name.trimCharactersAtEnd ("*");
+                                  const auto folder = parent.getChildFile (Exporter::sanitise (opt.prefix.upToFirstOccurrenceOf (" (", false, false)));
+                                  const auto result = Exporter::exportKit (kit, folder, opt);
+
+                                  juce::AlertWindow::showMessageBoxAsync (
+                                      result.ok() ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon,
+                                      "KitForge export",
+                                      result.ok() ? "Wrote " + juce::String (result.files.size()) + " files to\n" + folder.getFullPathName()
+                                                  : result.error);
+                              });
+    });
 }
 
 void KitForgeEditor::timerCallback()
@@ -616,9 +779,15 @@ void KitForgeEditor::timerCallback()
         h->update();
 
     grid.repaint();
+    busPanel.repaint();
 }
 
 void KitForgeEditor::paint (juce::Graphics& g)
+{
+    g.fillAll (bgColour);
+}
+
+void KitForgeEditor::paintContent (juce::Graphics& g)
 {
     g.fillAll (bgColour);
 
@@ -626,7 +795,7 @@ void KitForgeEditor::paint (juce::Graphics& g)
     g.setColour (panelColour);
     g.fillRect (headerArea);
     g.setColour (outlineColour);
-    g.drawHorizontalLine (headerArea.getBottom(), 0.0f, (float) getWidth());
+    g.drawHorizontalLine (headerArea.getBottom(), 0.0f, (float) baseWidth);
 
     auto logo = headerArea.reduced (18, 0).removeFromLeft (190);
     g.setColour (accentColour);
@@ -670,7 +839,13 @@ void KitForgeEditor::paint (juce::Graphics& g)
 
 void KitForgeEditor::resized()
 {
-    auto r = getLocalBounds();
+    const float scale = (float) getWidth() / (float) baseWidth;
+    content.setTransform (juce::AffineTransform::scale (scale));
+}
+
+void KitForgeEditor::layoutContent()
+{
+    auto r = content.getLocalBounds();
 
     // ---- Header ----
     headerArea = r.removeFromTop (106);
@@ -692,11 +867,11 @@ void KitForgeEditor::resized()
         kitBox.setBounds (top.withSizeKeepingCentre (top.getWidth(), 26));
         f.removeFromTop (8);
         auto bottom = f.removeFromTop (30);
-        const int bw = (bottom.getWidth() - 3 * 8) / 4;
-        for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton })
+        const int bw = (bottom.getWidth() - 4 * 6) / 5;
+        for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton })
         {
             b->setBounds (bottom.removeFromLeft (bw));
-            bottom.removeFromLeft (8);
+            bottom.removeFromLeft (6);
         }
     }
 
@@ -743,5 +918,7 @@ void KitForgeEditor::resized()
     }
 
     r.removeFromTop (14);
-    voicePanel.setBounds (r.removeFromTop (r.getHeight() - 12));
+    voicePanel.setBounds (r.removeFromTop (306));
+    r.removeFromTop (10);
+    busPanel.setBounds (r.removeFromTop (r.getHeight() - 12));
 }

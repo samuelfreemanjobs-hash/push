@@ -39,7 +39,8 @@ VoiceDef defaultVoice()
 const juce::StringArray& factoryKitNames()
 {
     static const juce::StringArray names { "Boom Analog", "Punch Machine", "Electro Steel",
-                                           "Dusty Lo-Fi", "Industrial Forge", "Minimal Tick" };
+                                           "Dusty Lo-Fi", "Industrial Forge", "Minimal Tick",
+                                           "Jazz Phonk A (pads 1-8)", "Jazz Phonk B (pads 9-16)" };
     return names;
 }
 
@@ -48,6 +49,8 @@ Kit factoryKit (int index)
     using VT = VoiceType;
     Kit k;
     k.name = factoryKitNames()[juce::jlimit (0, factoryKitNames().size() - 1, index)];
+    k.hasBus = true;
+    k.bus = defaultBus();
 
     switch (index)
     {
@@ -185,8 +188,116 @@ Kit factoryKit (int index)
                                        { Click, 0 }, { Level, 0.35f }, { Pan, -0.1f } }),
             };
             break;
+
+        //----------------------------------------------------------------------
+        // Jazz x Phonk x Trap: a 16-pad 12-bit lo-fi kit in two banks of 8.
+        // Both banks run through an SP-1200 style bus with the lows kept clean.
+        //----------------------------------------------------------------------
+        case 6: // Jazz Phonk A -- pads A01..A08
+            k.voices = {
+                // A01 acoustic jazz kick thud layered over an 808-style sub, mild crush
+                make (VT::Kick,      { { Wave, sine }, { Pitch, 45 }, { PEnvAmt, 24 }, { PEnvDecay, 30 }, { ToneDecay, 900 },
+                                       { NoiseLevel, 0.12f }, { NoiseDecay, 60 }, { FilterMode, LP }, { Cutoff, 2500 },
+                                       { Click, 0.35f }, { Drive, 0.2f }, { Level, 0.95f }, { LoFiSend, 0.5f } }),
+                // A02 hollow, mid-biting DR-style snare with a hard attack
+                make (VT::Snare,     { { Wave, tri }, { Pitch, 200 }, { PEnvAmt, 10 }, { PEnvDecay, 15 }, { ToneDecay, 90 }, { ToneLevel, 0.55f },
+                                       { NoiseLevel, 1 }, { NoiseDecay, 180 }, { FilterMode, BP }, { Cutoff, 2200 }, { Reso, 1.2f },
+                                       { Click, 0.45f }, { Drive, 0.55f }, { Level, 0.85f } }),
+                // A03 maple rimshot with a short FM "wood" strike and a roomy noise tail
+                make (VT::Rim,       { { Wave, tri }, { Pitch, 1250 }, { PEnvAmt, 4 }, { PEnvDecay, 4 }, { ToneDecay, 40 }, { ToneLevel, 0.8f },
+                                       { FmAmt, 1.2f }, { FmRatio, 2.3f }, { FmDecay, 30 },
+                                       { NoiseLevel, 0.3f }, { NoiseDecay, 60 }, { FilterMode, BP }, { Cutoff, 3500 }, { Reso, 1.5f },
+                                       { Click, 0.5f }, { Level, 0.6f }, { Pan, -0.15f } }),
+                // A04 808-style metallic hat pitched up +4 st, tight
+                make (VT::ClosedHat, { { ToneLevel, 0 }, { NoiseType, metal }, { Pitch, 504 }, { NoiseLevel, 1 }, { NoiseDecay, 35 },
+                                       { FilterMode, HP }, { Cutoff, 8500 }, { Reso, 1.2f }, { Click, 0 }, { Level, 0.55f }, { Pan, 0.2f }, { Choke, 1 } }),
+                // A05 brushed open hat: a slow "chiff" swell into a soft wash
+                make (VT::OpenHat,   { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 380 },
+                                       { FilterMode, BP }, { Cutoff, 7000 }, { Reso, 0.7f }, { Click, 0 }, { Attack, 6 },
+                                       { Drive, 0.2f }, { Level, 0.45f }, { Pan, 0.2f }, { Choke, 1 } }),
+                // A06 Memphis cowbell on F#: square, +12 st snap over 15 ms, +7 cent detune, driven hard
+                make (VT::Cowbell,   { { Wave, square }, { Pitch, 739.99f }, { PEnvAmt, 12 }, { PEnvDecay, 15 }, { ToneDecay, 220 },
+                                       { ToneLevel, 0.7f }, { FmAmt, 0.15f }, { FmRatio, 1.004f }, { Click, 0 },
+                                       { Drive, 0.7f }, { Level, 0.4f }, { Pan, 0.3f } }),
+                // A07 brush ghost: soft swirl, slow attack, rolled-off top
+                make (VT::Snare,     { { Wave, tri }, { Pitch, 180 }, { PEnvAmt, 2 }, { ToneDecay, 40 }, { ToneLevel, 0.15f },
+                                       { NoiseLevel, 1 }, { NoiseDecay, 220 }, { FilterMode, LP }, { Cutoff, 4500 }, { Reso, 0.6f },
+                                       { Click, 0 }, { Attack, 15 }, { Level, 0.5f }, { Pan, -0.2f } }),
+                // A08 three stacked claps with MPC-style crunch
+                make (VT::Clap,      { { ToneLevel, 0 }, { NoiseLevel, 1 }, { NoiseDecay, 260 }, { FilterMode, BP }, { Cutoff, 1300 },
+                                       { Reso, 1.4f }, { Burst, 3 }, { Click, 0 }, { Drive, 0.4f }, { Level, 0.8f } }),
+            };
+            k.voiceNames = { "Jazz Sub Kick", "Memphis Bite Snare", "Silk Rim Stab", "Rage Trap Hat Closed",
+                             "Chiff Hat Open", "Phonk Cowbell F#", "Jazz Brush Ghost", "Trap Clap Stack" };
+            k.bus = machineBus (1);
+            k.bus[BLowKeep] = 100.0f;
+            k.bus[BPunch] = 0.25f;   // about +1.5 dB on the attack
+            k.bus[BVinyl] = 0.12f;
+            break;
+
+        case 7: // Jazz Phonk B -- pads A09..A16
+            k.voices = {
+                // A09 deep tom with body resonance, driven
+                make (VT::Tom,       { { Wave, sine }, { Pitch, 82 }, { PEnvAmt, 9 }, { PEnvDecay, 80 }, { ToneDecay, 650 },
+                                       { NoiseLevel, 0.08f }, { NoiseDecay, 50 }, { Click, 0.15f }, { Drive, 0.45f }, { Level, 0.85f }, { Pan, -0.25f } }),
+                // A10 drum-machine mid tom with a snappy attack
+                make (VT::Tom,       { { Wave, tri }, { Pitch, 165 }, { PEnvAmt, 8 }, { PEnvDecay, 40 }, { ToneDecay, 260 },
+                                       { Click, 0.4f }, { Drive, 0.3f }, { Level, 0.75f }, { Pan, 0.2f } }),
+                // A11 vocal-ish stab: buzzy saw through a resonant "ah" formant (synth stand-in for a vocal chop)
+                make (VT::Perc,      { { Wave, saw }, { Pitch, 185 }, { PEnvAmt, 0 }, { ToneDecay, 220 }, { ToneLevel, 0.6f },
+                                       { FmAmt, 1.5f }, { FmRatio, 2.0f }, { FmDecay, 120 },
+                                       { NoiseLevel, 0.6f }, { NoiseDecay, 200 }, { FilterMode, BP }, { Cutoff, 850 }, { Reso, 5 },
+                                       { Click, 0 }, { Attack, 4 }, { Drive, 0.5f }, { Level, 0.5f } }),
+                // A12 smooth-jazz FM chime: carrier 1x, modulator 1.414x, 300 ms index decay into a pure sine tail
+                make (VT::Perc,      { { Wave, sine }, { Pitch, 1046.5f }, { PEnvAmt, 0 }, { ToneDecay, 1800 }, { ToneLevel, 0.8f },
+                                       { FmAmt, 3 }, { FmRatio, 1.414f }, { FmDecay, 300 }, { Click, 0 },
+                                       { Level, 0.4f }, { Pan, 0.25f }, { LoFiSend, 0.4f } }),
+                // A13 808 sub with a downward glide, saturated, no crush at all
+                make (VT::Kick,      { { Wave, sine }, { Pitch, 43.65f }, { PEnvAmt, 7 }, { PEnvDecay, 180 }, { ToneDecay, 1800 },
+                                       { Click, 0.05f }, { Drive, 0.25f }, { Level, 0.9f }, { LoFiSend, 0 } }),
+                // A14 vinyl crackle hit: high-passed noise bursts
+                make (VT::Perc,      { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 900 },
+                                       { FilterMode, HP }, { Cutoff, 3000 }, { Reso, 0.7f }, { Burst, 6 }, { Click, 0.3f },
+                                       { Level, 0.3f } }),
+                // A15 hand-dampened jazz crash
+                make (VT::Cymbal,    { { ToneLevel, 0 }, { NoiseType, metal }, { Pitch, 470 }, { NoiseLevel, 1 }, { NoiseDecay, 650 },
+                                       { FilterMode, HP }, { Cutoff, 4500 }, { Reso, 0.8f }, { Click, 0 }, { Level, 0.45f }, { Pan, -0.2f } }),
+                // A16 egg shaker: soft swell, double grain
+                make (VT::Perc,      { { ToneLevel, 0 }, { NoiseType, white }, { NoiseLevel, 1 }, { NoiseDecay, 70 },
+                                       { FilterMode, HP }, { Cutoff, 6000 }, { Reso, 0.7f }, { Burst, 2 }, { Click, 0 },
+                                       { Attack, 12 }, { Level, 0.45f }, { Pan, 0.3f }, { LoFiSend, 0.6f } }),
+            };
+            k.voiceNames = { "Low Tom Drive", "Mid Tom Bite", "Phonk Vox Stab", "Smooth Chime Perc",
+                             "Sub Glide 808", "Vinyl Crackle", "Crash Jazz Muted", "Shaker LoFi Groove" };
+            k.bus = machineBus (1);
+            k.bus[BLowKeep] = 100.0f;
+            k.bus[BPunch] = 0.25f;
+            k.bus[BVinyl] = 0.12f;
+            break;
     }
+
+    for (int t = 0; t < numTracks; ++t)
+        if (k.voiceNames[(size_t) t].isEmpty())
+            k.voiceNames[(size_t) t] = voiceTypeNames()[(int) k.voices[(size_t) t][Type]];
+
     return k;
+}
+
+BusDef defaultBus()
+{
+    BusDef b {};
+    for (int i = 0; i < NumBP; ++i)
+        b[(size_t) i] = busSpec (i).def;
+    return b;
+}
+
+BusDef machineBus (int machineIndex)
+{
+    auto b = machinePreset (machineIndex);
+    BusDef out {};
+    for (int i = 0; i < NumBP; ++i)
+        out[(size_t) i] = b[(size_t) i];
+    return out;
 }
 
 //==============================================================================
@@ -219,6 +330,7 @@ VoiceDef forgeVoice (VoiceType type, juce::Random& r)
             v[Drive] = chance (r, 0.6f) ? uni (r, 0, 0.7f) : 0;
             v[Level] = uni (r, 0.85f, 1.0f);
             v[Pan] = 0;
+            v[LoFiSend] = uni (r, 0.3f, 0.8f); // keep kicks fairly clean
             break;
 
         case VoiceType::Snare:
@@ -297,6 +409,7 @@ VoiceDef forgeVoice (VoiceType type, juce::Random& r)
             v[ToneLevel] = uni (r, 0.5f, 0.9f);
             v[FmAmt] = chance (r, 0.4f) ? uni (r, 0, 3) : 0;
             v[FmRatio] = uni (r, 1.5f, 4.0f);
+            v[FmDecay] = logu (r, 10, 80);
             v[NoiseLevel] = uni (r, 0.15f, 0.5f);
             v[NoiseDecay] = logu (r, 8, 30);
             v[FilterMode] = chance (r, 0.5f) ? HP : BP;
@@ -344,6 +457,7 @@ VoiceDef forgeVoice (VoiceType type, juce::Random& r)
             v[ToneLevel] = uni (r, 0.4f, 1.0f);
             v[FmAmt] = chance (r, 0.6f) ? uni (r, 0, 8) : 0;
             v[FmRatio] = logu (r, 0.5f, 8.0f);
+            v[FmDecay] = logu (r, 30, 4000);
             v[NoiseType] = chance (r, 0.5f) ? metal : white;
             v[NoiseLevel] = chance (r, 0.5f) ? uni (r, 0, 0.5f) : 0;
             v[NoiseDecay] = logu (r, 10, 400);
@@ -356,6 +470,13 @@ VoiceDef forgeVoice (VoiceType type, juce::Random& r)
             break;
     }
     return v;
+}
+
+juce::String forgeVoiceName (VoiceType type, juce::Random& r)
+{
+    static const char* words[] = { "Dusty", "Smoky", "Velvet", "Rusty", "Gritty", "Silk", "Tape", "Hollow",
+                                   "Neon", "Basement", "Midnight", "Cassette", "Bitter", "Glass", "Murky", "Warm" };
+    return juce::String (words[r.nextInt ((int) std::size (words))]) + " " + voiceTypeNames()[(int) type];
 }
 
 Kit forgeKit (juce::Random& r)
@@ -380,19 +501,33 @@ Kit forgeKit (juce::Random& r)
         if (t == 5 && chance (r, 0.3f)) type = VT::Perc;
         if (t == 6 && chance (r, 0.4f)) type = chance (r, 0.5f) ? VT::Cowbell : VT::Perc;
         k.voices[(size_t) t] = forgeVoice (type, r);
+        k.voiceNames[(size_t) t] = forgeVoiceName (type, r);
     }
     return k;
 }
 
 //==============================================================================
-Kit captureKit (juce::AudioProcessorValueTreeState& apvts, const juce::String& name)
+Kit captureKit (juce::AudioProcessorValueTreeState& apvts, const juce::String& name,
+                const std::array<juce::String, numTracks>& voiceNames)
 {
     Kit k;
     k.name = name;
+    k.voiceNames = voiceNames;
     for (int t = 0; t < numTracks; ++t)
         for (int vp = 0; vp < NumVP; ++vp)
             k.voices[(size_t) t][(size_t) vp] = getParamValue (apvts, voiceParamID (t, vp));
+
+    k.hasBus = true;
+    for (int bp = 0; bp < NumBP; ++bp)
+        k.bus[(size_t) bp] = getParamValue (apvts, busParamID (bp));
     return k;
+}
+
+void applyBus (juce::AudioProcessorValueTreeState& apvts, const BusDef& bus, bool machineParamsOnly)
+{
+    for (int bp = 0; bp < NumBP; ++bp)
+        if (! machineParamsOnly || isMachineParam (bp))
+            setParamValue (apvts, busParamID (bp), bus[(size_t) bp]);
 }
 
 void applyVoice (juce::AudioProcessorValueTreeState& apvts, int track, const VoiceDef& voice)
@@ -406,6 +541,8 @@ void applyKit (juce::AudioProcessorValueTreeState& apvts, const Kit& kit)
 {
     for (int t = 0; t < numTracks; ++t)
         applyVoice (apvts, t, kit.voices[(size_t) t]);
+    if (kit.hasBus)
+        applyBus (apvts, kit.bus);
 }
 
 void mutateKit (juce::AudioProcessorValueTreeState& apvts, juce::Random& r, float amount)
@@ -448,9 +585,17 @@ std::unique_ptr<juce::XmlElement> kitToXml (const Kit& kit)
     {
         auto* voice = xml->createNewChildElement ("Voice");
         voice->setAttribute ("index", t);
+        voice->setAttribute ("name", kit.voiceNames[(size_t) t]);
         for (int vp = 0; vp < NumVP; ++vp)
             if (isKitParam (vp))
                 voice->setAttribute (voiceSpec (vp).id, (double) kit.voices[(size_t) t][(size_t) vp]);
+    }
+
+    if (kit.hasBus)
+    {
+        auto* bus = xml->createNewChildElement ("Bus");
+        for (int bp = 0; bp < NumBP; ++bp)
+            bus->setAttribute (busSpec (bp).id, (double) kit.bus[(size_t) bp]);
     }
     return xml;
 }
@@ -463,12 +608,28 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
     kit.name = xml.getStringAttribute ("name", "Untitled Kit");
     for (auto& v : kit.voices)
         v = defaultVoice();
+    for (auto& n : kit.voiceNames)
+        n = {};
+    kit.hasBus = false;
+    kit.bus = defaultBus();
+
+    if (auto* bus = xml.getChildByName ("Bus"))
+    {
+        kit.hasBus = true;
+        for (int bp = 0; bp < NumBP; ++bp)
+        {
+            const auto& s = busSpec (bp);
+            if (bus->hasAttribute (s.id))
+                kit.bus[(size_t) bp] = juce::jlimit (s.min, s.max, (float) bus->getDoubleAttribute (s.id));
+        }
+    }
 
     for (auto* voice : xml.getChildWithTagNameIterator ("Voice"))
     {
         const int t = voice->getIntAttribute ("index", -1);
         if (t < 0 || t >= numTracks)
             continue;
+        kit.voiceNames[(size_t) t] = voice->getStringAttribute ("name");
 
         for (int vp = 0; vp < NumVP; ++vp)
         {
@@ -477,6 +638,9 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
                 kit.voices[(size_t) t][(size_t) vp] = juce::jlimit (s.min, s.max, (float) voice->getDoubleAttribute (s.id));
         }
     }
+    for (int t = 0; t < numTracks; ++t)
+        if (kit.voiceNames[(size_t) t].isEmpty())
+            kit.voiceNames[(size_t) t] = voiceTypeNames()[(int) kit.voices[(size_t) t][Type]];
     return true;
 }
 

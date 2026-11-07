@@ -48,6 +48,8 @@ juce_add_plugin(KitForge
 set(KITFORGE_SOURCES
     Source/Params.cpp
     Source/DrumVoice.cpp
+    Source/VintageBus.cpp
+    Source/Exporter.cpp
     Source/KitFactory.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
@@ -81,6 +83,27 @@ if(KITFORGE_BUILD_TESTS)
         JUCE_USE_CURL=0
         KITFORGE_NO_PLUGIN_ENTRY=1)
     target_link_libraries(KitForgeRenderTest
+        PRIVATE
+            juce::juce_audio_utils
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags)
+endif()
+
+# ------------------------------------------------------------------------------
+# KitForgeFactory: command-line drum kit factory. Forges kits (or takes the
+# factory kits), runs them through a vintage machine and writes sample packs.
+# ------------------------------------------------------------------------------
+option(KITFORGE_BUILD_FACTORY_CLI "Build the KitForgeFactory command-line tool" ON)
+if(KITFORGE_BUILD_FACTORY_CLI)
+    juce_add_console_app(KitForgeFactory PRODUCT_NAME "KitForgeFactory")
+    target_sources(KitForgeFactory PRIVATE Tools/FactoryCLI.cpp ${KITFORGE_SOURCES})
+    target_include_directories(KitForgeFactory PRIVATE Source)
+    target_compile_definitions(KitForgeFactory PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        KITFORGE_NO_PLUGIN_ENTRY=1)
+    target_link_libraries(KitForgeFactory
         PRIVATE
             juce::juce_audio_utils
         PUBLIC

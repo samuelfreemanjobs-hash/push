@@ -21,15 +21,74 @@ There are no samples. Every sound comes from a built-in **drum synthesizer engin
 | Noise / Metal | White noise or a six-oscillator metallic generator, an SVF filter (LP/BP/HP) with cutoff and resonance, Level, Decay, and clap-style **Bursts** |
 | Shape / Output | Transient Click, Attack, Drive (saturation), Volume, Pan, Choke group (e.g. the open hat is choked by the closed hat) |
 
-The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS.
+It also has **FM Decay** (the FM index envelope, for DX-style chimes that strike metallic and fade to a pure sine)
+and a per-pad **Lo-Fi Send** (how much of the pad goes through the vintage bus; 0 keeps an 808 sub fully clean).
+
+### Vintage Sampler Bus (12-bit lo-fi)
+The drum sends run through an emulation of a classic 12-bit sampler:
+
+```
+[Low Keep crossover] -> lows below the crossover bypass everything (kicks / 808 subs stay clean)
+        | highs
+        v
+Drive (preamp saturation) -> Bit depth (4-16, continuous) -> Sample rate (zero-order hold, no interpolation)
+        -> 2-pole 12 dB/oct low-pass  -> + lows -> Transient shaper (Punch / Tail) -> master
+```
+
+- **Pitch Hack** is the classic sampler trick (pitch up +N semitones before sampling, back down on playback).
+  On a sampler with no interpolation, that is the same as sampling at `rate / 2^(N/12)` with a zero-order hold.
+  A 26.04 kHz converter with +5 st works out to about 19.5 kHz, so the highs fold back as ringing alias tones.
+  The panel shows the effective rate live.
+- **Machine presets**: Clean, SP-1200 style (26.04 kHz / 12-bit / +5 st / 11 kHz LP), MPC60 style (40 kHz / 12-bit),
+  DR-660 phonk (32 kHz / 12-bit, driven), SP-808 / Lofi-12 style (22.05 kHz, heavy vinyl). These are character
+  approximations of those units, not circuit models.
+- **Vinyl** adds hiss, crackle and pops. They go through the converter too, and only play while the machine is
+  running or ringing out.
+
+The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS. The editor window can be resized
+(the UI scales).
 
 ### Kit Factory
-- **6 factory kits**: Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick
+- **8 factory kits**: Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick,
+  plus **Jazz Phonk A + B**: a 16-pad jazz × phonk × trap 12-bit kit split into two banks (see below)
 - **FORGE KIT** builds a complete new kit (with a generated name) from per-drum-type "recipes"
 - **FORGE VOICE** regenerates only the selected track, using its *Drum Type* (Kick, Snare, Clap, Closed/Open Hat, Tom, Rim, Cymbal, Cowbell, Perc)
 - **MUTATE** nudges every parameter of the current kit in a random direction, for variations
 - **SAVE / LOAD** stores kits as `.kitforge` XML files (by default in `Documents/KitForge Kits`). Double-click the kit name to rename it
-- Kits, patterns and mixer state are all saved with your DAW project
+- **EXPORT** renders every pad through the vintage bus into a **sample pack**: 24-bit / 44.1 kHz WAVs, an `.sfz`
+  keymap (with hat choke groups), the `.kitforge` file and, if Vinyl is up, a 4-second vinyl texture loop.
+  Files are named `<Kit>_<Type>_<Name>_A<pad>_<bits>bit.wav` (e.g. `JazzPhonkA_Kick_JazzSubKick_A01_12bit.wav`).
+  They are normalised by type: kicks / snares / claps to -1 dBFS, toms / rims -2, percussion -3, hats / cymbals -4.
+- Each pad has a name. Double-click the name in the voice editor to change it; export uses it in the file names.
+- Kits (including bus settings and pad names), patterns and mixer state are all saved with your DAW project
+
+### Jazz × Phonk × Trap 16-pad kit
+| Pad | Jazz Phonk A | Pad | Jazz Phonk B |
+|---|---|---|---|
+| A01 | Jazz Sub Kick: thud over sub, half send (mild crush) | A09 | Low Tom Drive: deep, saturated body |
+| A02 | Memphis Bite Snare: hollow mid-range bite, hard attack | A10 | Mid Tom Bite: snappy drum-machine tom |
+| A03 | Silk Rim Stab: FM wood strike + room tail | A11 | Phonk Vox Stab: saw through a resonant "ah" formant (a synth stand-in for a vocal chop) |
+| A04 | Rage Trap Hat Closed: metallic hat pitched +4 st | A12 | Smooth Chime Perc: 2-op FM, ratio 1.414, 300 ms index decay |
+| A05 | Chiff Hat Open: brushed swell (choked by A04) | A13 | Sub Glide 808: F1 sine gliding down, saturated, **no crush** |
+| A06 | Phonk Cowbell F#: square, +12 st snap over 15 ms, +7 ct detune, driven | A14 | Vinyl Crackle: high-passed noise bursts |
+| A07 | Jazz Brush Ghost: soft swirl, rolled-off top | A15 | Crash Jazz Muted: dampened metallic crash |
+| A08 | Trap Clap Stack: 3 stacked claps, crunchy | A16 | Shaker LoFi Groove: soft double-grain shaker |
+
+Both banks use the SP-1200 style bus with Low Keep 100 Hz, Punch 0.25 (about +1.5 dB on attacks) and light vinyl.
+Export bank A as pads A01-A08 and bank B as A09-A16, and the two SFZ files together cover MIDI notes 36-51.
+
+Not covered by the synth engine: real acoustic or vocal recordings, chorus, and reverb. Layer those in your sampler or DAW.
+
+### KitForgeFactory (command-line kit factory)
+This tool generates sample packs in batches using the same engine and bus:
+```bash
+./build/KitForgeFactory_artefacts/Release/KitForgeFactory --factory                       # all factory kits
+./build/KitForgeFactory_artefacts/Release/KitForgeFactory --kits 20 --machine 1 --seed 42 # 20 SP-1200 style kits
+./build/KitForgeFactory_artefacts/Release/KitForgeFactory --kits 10 --random-machine --low-keep 100 --out packs
+./build/KitForgeFactory_artefacts/Release/KitForgeFactory --help
+```
+Each kit gets its own folder of WAVs + SFZ + `.kitforge`, which you can load back into the plugin. The same seed
+always produces the same batch.
 
 ## Building
 
@@ -64,8 +123,9 @@ binaries and uploads them as downloadable artifacts.
 
 ### Test
 `KitForgeRenderTest` renders every factory kit and a few forged kits for 4 bars and checks that the output is
-finite, not silent, and never above 0 dBFS. It also checks parameter ranges, MIDI triggering, and the
-save/restore round trips. It writes WAV files you can listen to:
+finite, not silent, and never above 0 dBFS. It also checks parameter ranges, MIDI triggering, the
+save/restore round trips, the vintage bus (12-bit quantisation, decimation, the pitch-hack rate, Low Keep
+protecting a 45 Hz sub, Punch) and the sample-pack exporter (naming, levels, SFZ). It writes WAV files you can listen to:
 ```bash
 ./build/KitForgeRenderTest_artefacts/Release/KitForgeRenderTest renders
 ```
@@ -75,10 +135,13 @@ save/restore round trips. It writes WAV files you can listen to:
 Source/
   Params.*          parameter definitions (global + 24 per track)
   DrumVoice.*       the synthesis engine (oscillator, FM, noise/metal, SVF, envelopes, drive)
+  VintageBus.*      12-bit sampler emulation, transient shaper, vinyl noise
+  Exporter.*        sample pack rendering (WAV / SFZ / kit file)
   Pattern.h         lock-free pattern storage
   KitFactory.*      factory kits, forging, mutation, kit files, pattern generator
   PluginProcessor.* sequencer clock (host-synced / internal), MIDI, voice mixing, state
   PluginEditor.*    UI: transport, Kit Factory, track headers, voice editor
   SequencerGrid.*   the step grid
 Tests/RenderTest.cpp
+Tools/FactoryCLI.cpp  KitForgeFactory command-line tool
 ```

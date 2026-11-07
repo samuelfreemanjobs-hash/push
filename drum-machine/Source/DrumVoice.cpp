@@ -72,6 +72,7 @@ void DrumVoice::setParams (const VoiceParams& p)
     toneCoef  = decayCoef (p.toneDecayMs, sr);
     noiseCoef = decayCoef (p.noiseDecayMs, sr);
     pitchCoef = decayCoef (p.pEnvDecayMs, sr);
+    fmCoef    = decayCoef (p.fmDecayMs, sr);
     attackSamples = (int) (p.attackMs * 0.001f * (float) sr);
 
     noiseFilter.setCoefficients (p.cutoff, p.reso, sr);
@@ -94,6 +95,7 @@ void DrumVoice::trigger (float vel)
     toneEnv = 1.0f;
     pitchEnv = 1.0f;
     clickEnv = 1.0f;
+    fmEnv = 1.0f;
     sampleCount = 0;
 
     phase = 0.0f;
@@ -159,7 +161,7 @@ float DrumVoice::process() noexcept
         if (params.fmAmt > 0.0f)
         {
             modPhase = wrap (modPhase + std::min (freq * params.fmRatio / fs, 0.45f));
-            pm = std::sin (twoPi * modPhase) * params.fmAmt * toneEnv * (1.0f / twoPi);
+            pm = std::sin (twoPi * modPhase) * params.fmAmt * fmEnv * toneEnv * (1.0f / twoPi);
         }
 
         phase = wrap (phase + freq / fs);
@@ -167,6 +169,7 @@ float DrumVoice::process() noexcept
     }
     toneEnv *= toneCoef;
     pitchEnv *= pitchCoef;
+    fmEnv *= fmCoef;
 
     // --- Noise / metallic generator ---
     float noise = 0.0f;

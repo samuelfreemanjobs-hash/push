@@ -39,6 +39,17 @@ jobs:
           exe=$(find build/KitForgeRenderTest_artefacts -type f \( -name KitForgeRenderTest -o -name KitForgeRenderTest.exe \) | head -1)
           "$exe" renders
 
+      - name: Generate factory sample packs
+        if: runner.os == 'Linux'
+        run: ./build/KitForgeFactory_artefacts/Release/KitForgeFactory --factory --out packs
+
+      - name: Upload sample packs
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KitForge-Factory-Sample-Packs
+          path: drum-machine/packs
+
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:

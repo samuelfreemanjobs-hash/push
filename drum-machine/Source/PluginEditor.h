@@ -85,6 +85,8 @@ public:
     void resized() override;
 
     std::function<void()> onVoiceForged;
+    std::function<void()> onNameChanged;
+    void refreshName();
 
 private:
     KitForgeProcessor& proc;
@@ -95,16 +97,43 @@ private:
 
     Choice wave { "Wave" };
     Knob pitch { "Pitch" }, pEnv { "Pitch Env" }, pDecay { "P.Decay" }, tDecay { "Decay" },
-         tLevel { "Level" }, fm { "FM" }, ratio { "FM Ratio" };
+         tLevel { "Level" }, fm { "FM" }, ratio { "FM Ratio" }, fmDecay { "FM Decay" };
 
     Choice noiseType { "Noise" }, filterMode { "Filter" };
     Knob nLevel { "Level" }, nDecay { "Decay" }, cutoff { "Cutoff" }, reso { "Reso" }, burst { "Bursts" };
 
     Knob click { "Click" }, attack { "Attack" }, drive { "Drive" }, level { "Volume" },
-         pan { "Pan", true }, choke { "Choke" };
+         pan { "Pan", true }, choke { "Choke" }, lofiSend { "Lo-Fi Send" };
+    juce::Label nameLabel;
 
     juce::Rectangle<int> toneArea, noiseArea, outArea, headerArea;
     juce::Random rng;
+};
+
+//==============================================================================
+// The 12-bit "Vintage Sampler Bus" controls.
+class BusPanel : public juce::Component
+{
+public:
+    explicit BusPanel (KitForgeProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void resetMachineBox() { machine.box.setSelectedId (0, juce::dontSendNotification); }
+
+private:
+    KitForgeProcessor& proc;
+    Choice machine { "Machine" };
+    Knob drive { "Drive" }, bits { "Bits" }, rate { "Rate" }, pitch { "Pitch Hack" }, lpf { "Low-pass" },
+         lowKeep { "Low Keep" }, punch { "Punch", true }, tail { "Tail", true }, vinyl { "Vinyl" };
+    juce::Rectangle<int> infoArea;
+};
+
+// Holds the whole UI at its design size; the editor scales it.
+class ContentView : public juce::Component
+{
+public:
+    std::function<void (juce::Graphics&)> painter;
+    void paint (juce::Graphics& g) override { if (painter) painter (g); }
 };
 
 //==============================================================================
@@ -123,6 +152,12 @@ private:
     void saveKit();
     void loadKitFromFile();
     void refreshKitName();
+    void exportPack();
+    void paintContent (juce::Graphics&);
+    void layoutContent();
+
+    static constexpr int baseWidth = 1180, baseHeight = 920;
+    ContentView content;
 
     KitForgeProcessor& proc;
     KitForgeLookAndFeel lnf;
@@ -135,7 +170,7 @@ private:
     juce::ComboBox kitBox;
     juce::Label kitName;
     juce::TextButton forgeKitButton { "FORGE KIT" }, mutateButton { "MUTATE" },
-                     saveButton { "SAVE" }, loadButton { "LOAD" };
+                     saveButton { "SAVE" }, loadButton { "LOAD" }, exportButton { "EXPORT" };
 
     // Patterns
     std::array<juce::TextButton, kf::numPatterns> patternButtons;
@@ -151,8 +186,10 @@ private:
     SequencerGrid grid;
 
     VoicePanel voicePanel;
+    BusPanel busPanel;
 
     std::unique_ptr<juce::FileChooser> chooser;
+    juce::TooltipWindow tooltipWindow { this, 600 };
     juce::Random rng;
 
     juce::Rectangle<int> headerArea, factoryArea, patternArea, gridArea;

@@ -6,6 +6,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "PluginProcessor.h"
+#include "Exporter.h"
 
 namespace
 {
@@ -172,6 +173,131 @@ int main (int argc, char* argv[])
                 if (kf::isKitParam (vp) && std::abs (back.voices[(size_t) t][(size_t) vp] - kit.voices[(size_t) t][(size_t) vp]) > 1.0e-3f)
                     same = false;
         check (same, "kit XML round trip is lossless");
+    }
+
+
+    // ---- Vintage bus: 12-bit quantisation ----
+    {
+        kf::BusParams bp;
+        bp.bits = 12.0f;
+        kf::VintageCrusher c;
+        c.prepare (sr);
+        c.setParams (bp);
+        bool onGrid = true;
+        for (int i = 0; i < 2000; ++i)
+        {
+            float l = 0.7f * std::sin ((float) i * 0.013f), r = l;
+            c.process (l, r);
+            const float steps = l * 2048.0f;
+            onGrid &= std::abs (steps - std::round (steps)) < 1.0e-3f;
+        }
+        check (onGrid, "12-bit mode quantises to 4096 levels");
+    }
+
+    // ---- Vintage bus: decimation + pitch trick ----
+    {
+        kf::BusParams bp;
+        bp.rate = 12000.0f;
+        kf::VintageCrusher c;
+        c.prepare (sr);
+        c.setParams (bp);
+        int changes = 0;
+        float prev = 0.0f;
+        for (int i = 0; i < 4800; ++i)
+        {
+            float l = std::sin ((float) i * 0.05f), r = l;
+            c.process (l, r);
+            if (std::abs (l - prev) > 0.0f) ++changes;
+            prev = l;
+        }
+        check (std::abs (changes - 1200) <= 2, "12 kHz decimation holds each sample for 4 output samples");
+
+        bp.rate = 26040.0f;
+        bp.pitch = 5.0f;
+        c.setParams (bp);
+        check (std::abs (c.getEffectiveRate() - 26040.0 / std::pow (2.0, 5.0 / 12.0)) < 1.0,
+               "pitch trick lowers the effective rate (26.04 kHz, +5 st -> " + juce::String (c.getEffectiveRate() / 1000.0, 2) + " kHz)");
+    }
+
+    // ---- Vintage bus: Low Keep protects the sub ----
+    {
+        auto crushError = [&] (float lowKeep)
+        {
+            kf::BusParams harsh;
+            harsh.bits = 12.0f;
+            harsh.rate = 8000.0f;
+            harsh.lowKeep = lowKeep;
+            kf::BusParams clean;
+            clean.lowKeep = lowKeep;
+
+            kf::VintageCrusher a, b;
+            a.prepare (sr); a.setParams (harsh);
+            b.prepare (sr); b.setParams (clean);
+            double err = 0.0, sig = 0.0;
+            for (int i = 0; i < (int) sr; ++i)
+            {
+                const float x = 0.8f * std::sin (2.0f * juce::MathConstants<float>::pi * 45.0f * (float) i / (float) sr);
+                float l1 = x, r1 = x, l2 = x, r2 = x;
+                a.process (l1, r1);
+                b.process (l2, r2);
+                if (i > (int) (0.1 * sr)) { err += (l1 - l2) * (l1 - l2); sig += l2 * l2; }
+            }
+            return 10.0 * std::log10 (err / sig);
+        };
+        const double without = crushError (0.0f), with = crushError (100.0f);
+        std::cout << "  45 Hz sub through 12-bit/8 kHz: distortion " << without << " dB (Low Keep off), "
+                  << with << " dB (Low Keep 100 Hz)" << std::endl;
+        check (with < without - 20.0, "Low Keep keeps the sub clean");
+    }
+
+    // ---- Transient shaper boosts attacks ----
+    {
+        auto peakWith = [&] (float punch)
+        {
+            kf::TransientShaper ts;
+            ts.prepare (sr);
+            ts.setAmounts (punch, 0.0f);
+            float peak = 0.0f;
+            for (int i = 0; i < 4800; ++i)
+            {
+                float x = 0.5f * std::exp (-(float) i / 2000.0f) * std::sin ((float) i * 0.05f), y = x;
+                ts.process (x, y);
+                if (i < 480) peak = std::max (peak, std::abs (x));
+            }
+            return peak;
+        };
+        check (peakWith (1.0f) > peakWith (0.0f) * 1.1f, "Punch raises the attack");
+    }
+
+    // ---- Sample pack export ----
+    {
+        const auto dir = outDir.getChildFile ("pack_test");
+        dir.deleteRecursively();
+        auto kit = kf::KitFactory::factoryKit (kf::KitFactory::factoryKitNames().indexOf ("Jazz Phonk A (pads 1-8)"));
+        check (kit.voiceNames[0] == "Jazz Sub Kick", "Jazz Phonk A kit is available");
+        kf::Exporter::Options opt;
+        const auto result = kf::Exporter::exportKit (kit, dir, opt);
+        check (result.ok(), "export succeeds");
+        int wavs = 0;
+        bool levelsOk = true;
+        juce::AudioFormatManager fm;
+        fm.registerBasicFormats();
+        for (auto& f : result.files)
+        {
+            std::cout << "    " << f << std::endl;
+            if (! f.endsWith (".wav") || f.contains ("Texture")) continue;
+            ++wavs;
+            std::unique_ptr<juce::AudioFormatReader> reader (fm.createReaderFor (dir.getChildFile (f)));
+            if (reader == nullptr) { levelsOk = false; continue; }
+            juce::AudioBuffer<float> b ((int) reader->numChannels, (int) reader->lengthInSamples);
+            reader->read (&b, 0, (int) reader->lengthInSamples, 0, true, true);
+            const float peakDb = juce::Decibels::gainToDecibels (b.getMagnitude (0, b.getNumSamples()));
+            levelsOk &= peakDb <= -0.9f && peakDb >= -4.1f && juce::approximatelyEqual (reader->sampleRate, 44100.0) && reader->bitsPerSample == 24;
+        }
+        check (wavs == kf::numTracks, "one WAV per pad");
+        check (levelsOk, "WAVs are 24-bit/44.1 kHz, normalised to -1..-4 dBFS");
+        check (result.files.contains ("JazzPhonkA_Kick_JazzSubKick_A01_12bit.wav"), "files follow the naming convention");
+        check (dir.getChildFile ("JazzPhonkA.sfz").loadFileAsString().contains ("off_by=1"), "SFZ keymap with hat choke");
     }
 
     std::cout << (failures == 0 ? "ALL TESTS PASSED" : juce::String (failures) + " TEST(S) FAILED")
