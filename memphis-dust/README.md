@@ -30,6 +30,14 @@ The 808 clipper runs *before* the compressor so the bus pumps against the knock.
 `Memphis '94 Bus` (default) · `Portastudio Slam` · `SP Crunch (26k/12)` · `8-Bit Basement` · `808 Car Knock` · `Parallel Smash` · **`Portastudio 424`** (your RC-20 / stock-chain recipe: no digital stage, 45 Hz–11.5 kHz, +2 dB @ 250 Hz, −1.5 dB @ 3.5 kHz, flutter 40 / wow 25 / dropouts 15 %, ducked hiss, 4:1 / 3 ms / 120 ms comp) · **`dbx Breather (mistracked)`** · **`Dubbed Tape Master`** (gentle, for the master bus) · **`Memphis Master Bus`** (the 6-step master chain: HPF 32 Hz + mono < 120 Hz → +3 dB tape → 12 kHz LPF, wide +1.75 dB @ 300 Hz, narrow −1.5 dB @ 3.5 kHz → VCA 4:1 / 10 ms / 150 ms → 0.6 Hz wow → brickwall at −0.3 dBFS) · **`Pitch-Down Resample`** (22.05 kHz with a +7 st trick ≈ 14.7 kHz effective, export-style filtered, + texture) · **`Companded 12-bit (MPC-ish)`** · `Clean (Init)`
 All presets are gain-staged to land within about ±2 dB of the input loudness.
 
+## Windows download
+
+Every push that touches `memphis-dust/` is built on GitHub Actions (MSVC, `windows-latest`) by `.github/workflows/memphis-dust-windows.yml`. The DSP tests and a VST3 host test run against the Windows binary, and the run uploads the **`MemphisDust-Windows-x64`** artifact:
+- `MemphisDust-<ver>-Windows-Setup.exe`: an installer that puts the VST3 in `C:\Program Files\Common Files\VST3` and, optionally, installs the Standalone app
+- `MemphisDust-<ver>-Windows.zip`: the same files for manual install (see `docs/INSTALL-WINDOWS.txt`)
+
+You can also start it by hand under *Actions → Memphis Dust - Windows build → Run workflow*.
+
 ## Build
 
 You need CMake ≥ 3.22 and a C++17 compiler (Xcode on macOS, Visual Studio 2022 on Windows, gcc/clang on Linux).
