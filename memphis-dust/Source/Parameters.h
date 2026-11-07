@@ -44,12 +44,19 @@ inline constexpr auto compAttack  = "compAttack";
 inline constexpr auto compRelease = "compRelease";
 inline constexpr auto compMakeup  = "compMakeup";
 inline constexpr auto compMix     = "compMix";
+inline constexpr auto compMode    = "compMode";
 // 05 808 clip
 inline constexpr auto subOn    = "subOn";
 inline constexpr auto subFreq  = "subFreq";
 inline constexpr auto subDrive = "subDrive";
 inline constexpr auto subHard  = "subHard";
 inline constexpr auto subLevel = "subLevel";
+// 07 Master
+inline constexpr auto monoOn       = "monoOn";
+inline constexpr auto monoFreq     = "monoFreq";
+inline constexpr auto limitOn      = "limitOn";
+inline constexpr auto limitDrive   = "limitDrive";
+inline constexpr auto limitCeiling = "limitCeiling";
 } // namespace md::pid
 
 namespace md

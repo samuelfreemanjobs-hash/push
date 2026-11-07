@@ -8,6 +8,8 @@
 #include "dsp/FetCompressor.h"
 #include "dsp/DbxNR.h"
 #include "dsp/TapeDropouts.h"
+#include "dsp/MonoBass.h"
+#include "dsp/BrickwallLimiter.h"
 
 #include <cstdio>
 #include <set>
@@ -180,6 +182,37 @@ int main()
         auto a = sine (3500, 0.5f, N), b = a; run (eq, a, b);
         const float g = gainToDb (rms (a, 4800) / (0.5f / std::sqrt (2.0f)));
         CHECK (std::abs (g + 1.5f) < 0.3f, "presence dip at 3.5 kHz = %.2f dB (expect -1.5)", g);
+    }
+
+    { // master: mono bass
+        MonoBass m; m.prepare (fs); m.setFrequency (120);
+        auto a = sine (50, 0.5f, N), b = sine (50, -0.5f, N); float* c[2] = { a.data(), b.data() }; m.process (c, 2, N);
+        std::vector<float> side (a.size()); for (size_t i = 0; i < a.size(); ++i) side[i] = 0.5f * (a[i] - b[i]);
+        const float sideDb = gainToDb (rms (side, 9600) / 0.3536f);
+        CHECK (sideDb < -25.0f, "mono bass: 50 Hz stereo-difference removed (%.1f dB)", sideDb);
+        MonoBass m2; m2.prepare (fs); m2.setFrequency (120);
+        auto h = sine (2000, 0.5f, N), h2 = sine (2000, -0.5f, N), ref = h; float* c2[2] = { h.data(), h2.data() }; m2.process (c2, 2, N);
+        CHECK (std::abs (gainToDb (rms (h, 9600) / rms (ref, 9600))) < 0.1f, "mono bass leaves 2 kHz stereo intact");
+    }
+    { // master: brickwall limiter
+        BrickwallLimiter l; l.prepare (fs); l.setParams (true, 6.0f, -0.3f);
+        Rng r (7);
+        std::vector<float> a ((size_t) N), b;
+        for (int i = 0; i < N; ++i) a[(size_t) i] = 0.9f * r.next() * ((i % 24000) < 2000 ? 1.0f : 0.3f); // loud bursts
+        b = a; float* c[2] = { a.data(), b.data() };
+        for (int pos = 0; pos < N; pos += 256) { float* cc[2] = { c[0] + pos, c[1] + pos }; l.process (cc, 2, std::min (256, N - pos)); }
+        float pk = 0; for (float x : a) pk = std::max (pk, std::abs (x));
+        CHECK (finite (a) && pk <= dbToGain (-0.3f) + 1e-6f, "limiter holds the -0.3 dBFS ceiling with +6 dB drive (peak %.2f dBFS)", gainToDb (pk));
+        CHECK (l.getAndResetPeakGr() < -3.0f, "limiter reports gain reduction");
+        BrickwallLimiter z; z.prepare (fs); z.setParams (false, 0, -0.3f);
+        std::vector<float> d ((size_t) N, 0.0f), e = d; d[100] = 0.7f; float* cz[2] = { d.data(), e.data() }; z.process (cz, 2, N);
+        CHECK (std::abs (d[100 + (size_t) z.getLatencySamples()] - 0.7f) < 1e-6f, "limiter bypassed = clean %d-sample delay", z.getLatencySamples());
+    }
+    { // VCA comp mode
+        FetCompressor f; f.prepare (fs); f.setParams (-18, 0, 10, 150, 0, 1, true);
+        auto a = sine (100, 0.25f, N), b = a, ref = a; run (f, a, b);
+        const float gr = gainToDb (rms (a, N / 2) / rms (ref, N / 2));
+        CHECK (gr < -2.0f && gr > -7.0f, "VCA 4:1 glue on a -12 dBFS sine: %.1f dB GR (3-5 dB territory)", gr);
     }
 
     std::printf ("\n%s (%d failure%s)\n", failures ? "FAILED" : "ALL PASSED", failures, failures == 1 ? "" : "s");

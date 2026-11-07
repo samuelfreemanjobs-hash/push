@@ -13,6 +13,8 @@
 #include "dsp/FetCompressor.h"
 #include "dsp/DbxNR.h"
 #include "dsp/TapeDropouts.h"
+#include "dsp/MonoBass.h"
+#include "dsp/BrickwallLimiter.h"
 
 class MemphisDustProcessor final : public juce::AudioProcessor
 {
@@ -51,6 +53,7 @@ public:
     float getOutputPeak() noexcept      { return outPeak.exchange (0.0f); }
     float getTapeInputPeak() noexcept   { return tapeInPeak.exchange (0.0f); } // level hitting the "tape" (post input gain)
     float getAutoLevelDb() const noexcept { return autoLevelDb.load(); }
+    float getLimiterGrDb() noexcept     { return limiter.getAndResetPeakGr(); }
 
 private:
     void updateParameters();
@@ -63,7 +66,9 @@ private:
         std::atomic<float>* outClip {}; std::atomic<float>* autoLevel {}; std::atomic<float>* presence {};
         std::atomic<float>* hissDuck {}; std::atomic<float>* dropouts {};
         std::atomic<float>* dbxOn {}; std::atomic<float>* dbxBreath {}; std::atomic<float>* dbxRelease {};
-        std::atomic<float>* dbxTilt {};
+        std::atomic<float>* dbxTilt {}; std::atomic<float>* compMode {};
+        std::atomic<float>* monoOn {}; std::atomic<float>* monoFreq {}; std::atomic<float>* limitOn {};
+        std::atomic<float>* limitDrive {}; std::atomic<float>* limitCeiling {};
         std::atomic<float>* crushOn {}; std::atomic<float>* crushRate {}; std::atomic<float>* crushBits {};
         std::atomic<float>* crushAA {};
         std::atomic<float>* eqOn {}; std::atomic<float>* lowCut {}; std::atomic<float>* boxFreq {};
@@ -86,12 +91,14 @@ private:
     md::FetCompressor compressor;
     md::DbxNR dbx;
     md::TapeDropouts dropouts;
+    md::MonoBass monoBass;
+    md::BrickwallLimiter limiter;
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::dsp::DryWetMixer<float> dryWet { 8192 };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> inGain, outGain;
 
-    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true, dbxOn = true, autoOn = false;
+    bool crushOn = true, eqOn = true, tapeOn = true, subOn = true, compOn = true, clipOn = true, dbxOn = true, autoOn = false, monoOn = false;
 
     // Auto level: slow loudness match of wet output to the dry input (pre input-gain)
     double sampleRateHz = 44100.0;

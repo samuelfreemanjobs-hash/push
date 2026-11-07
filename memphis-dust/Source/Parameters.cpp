@@ -96,6 +96,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::compRelease, "Release", skewed (20.0f, 1100.0f, 150.0f, 1.0f), 60.0f, msText));
     layout.add (fp (pid::compMakeup,  "Makeup",  { 0.0f, 24.0f, 0.1f }, 9.0f, dbText));
     layout.add (fp (pid::compMix,     "Comp Mix", { 0.0f, 1.0f, 0.01f }, 1.0f, pctText));
+    layout.add (std::make_unique<APC> (juce::ParameterID { pid::compMode, 1 }, "Comp Mode",
+                                       juce::StringArray { "FET", "VCA" }, 0));
 
     // 05 808 clip
     layout.add (bp (pid::subOn, "808 Clip On", true));
@@ -103,6 +105,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (fp (pid::subDrive, "Sub Drive", { 0.0f, 30.0f, 0.1f }, 12.0f, dbText));
     layout.add (fp (pid::subHard,  "Hardness",  { 0.0f, 1.0f, 0.01f }, 0.6f, pctText));
     layout.add (fp (pid::subLevel, "Sub Level", { -24.0f, 12.0f, 0.1f }, 0.0f, dbText));
+
+    // 07 Master
+    layout.add (bp (pid::monoOn, "Mono Bass", false));
+    layout.add (fp (pid::monoFreq, "Mono Below", skewed (40.0f, 300.0f, 120.0f, 1.0f), 120.0f, hzText));
+    layout.add (bp (pid::limitOn, "Limiter", false));
+    layout.add (fp (pid::limitDrive, "Limit Drive", { 0.0f, 12.0f, 0.1f }, 3.0f, dbText));
+    layout.add (fp (pid::limitCeiling, "Ceiling", { -3.0f, 0.0f, 0.1f }, -0.3f, dbText));
 
     return layout;
 }
@@ -158,7 +167,18 @@ const std::vector<Preset>& getFactoryPresets()
             { pid::tapeBias, 0.25f }, { pid::wow, 0.12f }, { pid::flutter, 0.2f }, { pid::dropouts, 0.03f },
             { pid::hiss, -60 }, { pid::hissDuck, 0.3f }, { pid::dbxBreath, 0.15f }, { pid::dbxTilt, 0.2f },
             { pid::compRatio, 0 }, { pid::compAttack, 5 }, { pid::compRelease, 150 }, { pid::compThresh, -12 },
-            { pid::compMakeup, 2 }, { pid::subOn, 0 }, { pid::autoLevel, 1 } } },
+            { pid::compMakeup, 2 }, { pid::compMode, 1 }, { pid::subOn, 0 }, { pid::monoOn, 1 }, { pid::autoLevel, 1 } } },
+        // The 6-step master bus chain: HPF 32 Hz + mono < 120 Hz -> gentle tape (+3 dB) -> 12 kHz LPF,
+        // wide +1.75 dB @ 300 Hz, narrow -1.5 dB @ 3.5 kHz -> VCA 4:1 / 10 ms / 150 ms for 3-5 dB ->
+        // 0.6 Hz wow -> brickwall limiter at -0.3 dBFS shaving 3-6 dB.
+        { "Memphis Master Bus", {
+            { pid::crushOn, 0 }, { pid::monoOn, 1 }, { pid::monoFreq, 120 }, { pid::lowCut, 32 },
+            { pid::tapeDrive, 3 }, { pid::tapeBias, 0.25f }, { pid::highCut, 12000 }, { pid::boxFreq, 300 },
+            { pid::boxGain, 1.75f }, { pid::boxQ, 0.7f }, { pid::presence, -1.5f }, { pid::wow, 0.3f },
+            { pid::flutter, 0.08f }, { pid::dropouts, 0.0f }, { pid::hiss, -72 }, { pid::dbxOn, 0 },
+            { pid::subOn, 0 }, { pid::compMode, 1 }, { pid::compRatio, 0 }, { pid::compThresh, -16 },
+            { pid::compAttack, 10 }, { pid::compRelease, 150 }, { pid::compMakeup, 3 }, { pid::outClip, 0 },
+            { pid::limitOn, 1 }, { pid::limitDrive, 5 }, { pid::limitCeiling, -0.3f } } },
         { "Clean (Init)", {
             { pid::crushOn, 0 }, { pid::eqOn, 0 }, { pid::tapeOn, 0 }, { pid::dbxOn, 0 }, { pid::compOn, 0 },
             { pid::subOn, 0 }, { pid::outClip, 0 }, { pid::outputGain, 0 } } },

@@ -69,7 +69,7 @@ private:
     void refreshEnabled();
 
     juce::String number, title, subtitle;
-    Toggle power;
+    std::unique_ptr<Toggle> power;  // null for sections without an enable switch
     std::vector<std::unique_ptr<juce::Component>> items;
 };
 
@@ -77,10 +77,12 @@ class GrMeter final : public juce::Component
 {
 public:
     void setGr (float db);
+    void setLimiterGr (float db, bool active);
     void paint (juce::Graphics&) override;
 
 private:
-    float display = 0.0f, hold = 0.0f;
+    float display = 0.0f, hold = 0.0f, limDisplay = 0.0f;
+    bool limActive = false;
     int holdCounter = 0;
 };
 
@@ -98,11 +100,13 @@ private:
 };
 } // namespace md::ui
 
-class MemphisDustEditor final : public juce::AudioProcessorEditor, private juce::Timer
+// Everything visible lives here at a fixed design size; the editor scales it.
+class MemphisDustPanel final : public juce::Component, private juce::Timer
 {
 public:
-    explicit MemphisDustEditor (MemphisDustProcessor&);
-    ~MemphisDustEditor() override;
+    static constexpr int designWidth = 1440, designHeight = 720;
+
+    explicit MemphisDustPanel (MemphisDustProcessor&);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -113,10 +117,9 @@ private:
     void refreshPresetBox();
 
     MemphisDustProcessor& processor;
-    md::ui::DustLookAndFeel lnf;
 
     juce::ComboBox presetBox;
-    md::ui::Section sampler, cassetteEq, tapeSec, dbxSec, sub, comp;
+    md::ui::Section sampler, cassetteEq, tapeSec, dbxSec, sub, comp, master;
     md::ui::Knob inputKnob, mixKnob, outputKnob;
     md::ui::Toggle clipToggle, autoToggle;
     md::ui::GrMeter grMeter;
@@ -124,6 +127,22 @@ private:
 
     juce::Rectangle<int> reelArea;
     float reelAngle = 0.0f, activity = 0.0f;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MemphisDustPanel)
+};
+
+class MemphisDustEditor final : public juce::AudioProcessorEditor
+{
+public:
+    explicit MemphisDustEditor (MemphisDustProcessor&);
+    ~MemphisDustEditor() override;
+
+    void resized() override;
+
+private:
+    MemphisDustProcessor& processor;
+    md::ui::DustLookAndFeel lnf;   // must outlive the panel
+    MemphisDustPanel panel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MemphisDustEditor)
 };

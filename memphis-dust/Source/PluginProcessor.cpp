@@ -13,7 +13,9 @@ MemphisDustProcessor::MemphisDustProcessor()
     p.outClip = get (pid::outClip);       p.autoLevel = get (pid::autoLevel);   p.presence = get (pid::presence);
     p.hissDuck = get (pid::hissDuck);     p.dropouts = get (pid::dropouts);
     p.dbxOn = get (pid::dbxOn);           p.dbxBreath = get (pid::dbxBreath);   p.dbxRelease = get (pid::dbxRelease);
-    p.dbxTilt = get (pid::dbxTilt);
+    p.dbxTilt = get (pid::dbxTilt);       p.compMode = get (pid::compMode);
+    p.monoOn = get (pid::monoOn);         p.monoFreq = get (pid::monoFreq);     p.limitOn = get (pid::limitOn);
+    p.limitDrive = get (pid::limitDrive); p.limitCeiling = get (pid::limitCeiling);
     p.crushOn = get (pid::crushOn);       p.crushRate = get (pid::crushRate);   p.crushBits = get (pid::crushBits);
     p.crushAA = get (pid::crushAA);
     p.eqOn = get (pid::eqOn);             p.lowCut = get (pid::lowCut);         p.boxFreq = get (pid::boxFreq);
@@ -53,13 +55,16 @@ void MemphisDustProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     compressor.prepare (sampleRate);
     dbx.prepare (sampleRate);
     dropouts.prepare (sampleRate);
+    monoBass.prepare (sampleRate);
+    limiter.prepare (sampleRate);
     sampleRateHz = sampleRate;
     alInPow = alOutPow = 0.0f;
     alGainDb.reset (sampleRate, 0.25);
     alGainDb.setCurrentAndTargetValue (0.0f);
 
+    // dry/wet only has to compensate the wet chain; the limiter sits after the mix
     const int latency = (int) oversampler->getLatencyInSamples() + wowFlutter.getLatencySamples();
-    setLatencySamples (latency);
+    setLatencySamples (latency + limiter.getLatencySamples());
 
     dryWet.prepare ({ sampleRate, (juce::uint32) maxBlock, (juce::uint32) numCh });
     dryWet.setMixingRule (juce::dsp::DryWetMixingRule::linear);
@@ -79,7 +84,9 @@ void MemphisDustProcessor::updateParameters()
 
     crushOn = on (p.crushOn); eqOn = on (p.eqOn); tapeOn = on (p.tapeOn);
     subOn = on (p.subOn);     compOn = on (p.compOn); clipOn = on (p.outClip);
-    dbxOn = on (p.dbxOn);     autoOn = on (p.autoLevel);
+    dbxOn = on (p.dbxOn);     autoOn = on (p.autoLevel); monoOn = on (p.monoOn);
+    monoBass.setFrequency (p.monoFreq->load());
+    limiter.setParams (on (p.limitOn), p.limitDrive->load(), p.limitCeiling->load());
 
     inGain.setTargetValue (juce::Decibels::decibelsToGain (p.inputGain->load()));
     outGain.setTargetValue (juce::Decibels::decibelsToGain (p.outputGain->load()));
@@ -97,7 +104,7 @@ void MemphisDustProcessor::updateParameters()
     hiss.setLevelDb (p.hiss->load());
     subClip.setParams (p.subFreq->load(), p.subDrive->load(), p.subHard->load(), p.subLevel->load());
     compressor.setParams (p.compThresh->load(), (int) p.compRatio->load(), p.compAttack->load(),
-                          p.compRelease->load(), p.compMakeup->load(), p.compMix->load());
+                          p.compRelease->load(), p.compMakeup->load(), p.compMix->load(), p.compMode->load() > 0.5f);
 }
 
 void MemphisDustProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -151,6 +158,9 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
         }
     }
     if (inPeak > tapeInPeak.load()) tapeInPeak.store (inPeak);
+
+    // 07a — master utility: true-mono low end (first, before anything eats headroom)
+    if (monoOn) monoBass.process (ch, chans, n);
 
     // 01 — 12-bit sampler
     if (crushOn) crusher.process (ch, chans, n);
@@ -227,6 +237,9 @@ void MemphisDustProcessor::processChunk (juce::dsp::AudioBlock<float> block)
             ch[c][i] = clipOn ? md::softClip (y, 0.7f) : y;
         }
     }
+
+    // 07b — brickwall limiter, always the very last thing (runs bypassed too: constant latency)
+    limiter.process (ch, chans, n);
 }
 
 //==============================================================================

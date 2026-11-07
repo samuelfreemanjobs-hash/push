@@ -6,6 +6,7 @@
 //   which is what makes the bus "breathe" and pump the hiss.
 // * "ALL" mode emulates all-buttons-in: near-limiting ratio, overshoot and extra colour.
 // * Gain-reduction-dependent FET colour (odd + a touch of even harmonics).
+// * VCA mode: SSL-style bus glue - RMS-ish detector, wide soft knee, clean (no colour).
 
 #include "DspUtils.h"
 #include <atomic>
@@ -18,17 +19,19 @@ public:
     static constexpr int kMaxCh = 2;
 
     void prepare (double fs) { sampleRate = fs; makeup.prepare (fs, 0.03, 1.0f); mix.prepare (fs, 0.03, 1.0f); reset(); }
-    void reset() { envDb = 0.0f; }
+    void reset() { envDb = 0.0f; rmsPow = 0.0f; }
 
     // ratioIndex: 0=4, 1=8, 2=12, 3=20, 4=ALL
-    void setParams (float thresholdDb, int ratioIndex, float attackMs, float releaseMs, float makeupDb, float mix01)
+    void setParams (float thresholdDb, int ratioIndex, float attackMs, float releaseMs, float makeupDb, float mix01,
+                    bool vcaMode = false)
     {
+        vca = vcaMode;
         threshold = thresholdDb;
         static constexpr float ratios[] = { 4.0f, 8.0f, 12.0f, 20.0f, 40.0f };
         ratioIndex = std::clamp (ratioIndex, 0, 4);
         allButtons = ratioIndex == 4;
         slope = 1.0f / ratios[ratioIndex] - 1.0f;
-        knee = allButtons ? 2.0f : 6.0f;
+        knee = vca ? 10.0f : (allButtons ? 2.0f : 6.0f);
         atkCoeff = (float) std::exp (-1.0 / (std::max (attackMs, 0.005f) * 0.001 * sampleRate));
         relMs = std::max (releaseMs, 5.0f);
         makeup.setTarget (dbToGain (makeupDb));
@@ -41,15 +44,26 @@ public:
     {
         numCh = std::min (numCh, kMaxCh);
         float blockMinGr = 0.0f;
-        const float overshoot = allButtons ? 1.25f : 1.0f;
-        const float colourMax = allButtons ? 0.7f : 0.35f;
+        const float overshoot = (allButtons && ! vca) ? 1.25f : 1.0f;
+        const float colourMax = vca ? 0.0f : (allButtons ? 0.7f : 0.35f);
+        const float rmsCoeff = std::exp (-1.0f / (0.005f * (float) sampleRate)); // 5 ms RMS window (VCA)
 
         for (int i = 0; i < n; ++i)
         {
             float peak = 0.0f;
             for (int c = 0; c < numCh; ++c) peak = std::max (peak, std::abs (ch[c][i]));
 
-            const float target = computeGr (gainToDb (peak)) * overshoot;
+            float levelDb;
+            if (vca)
+            {
+                const float sq = peak * peak;
+                rmsPow = sq + rmsCoeff * (rmsPow - sq);
+                levelDb = 10.0f * std::log10 (rmsPow + 1.0e-12f) + 3.0103f;
+            }
+            else
+                levelDb = gainToDb (peak);
+
+            const float target = computeGr (levelDb) * overshoot;
 
             if (target < envDb)
                 envDb = target + atkCoeff * (envDb - target);
@@ -72,7 +86,7 @@ public:
                 const float dry = ch[c][i];
                 float y = dry * g;
                 const float sat = std::tanh (y * 1.4f + 0.08f) - 0.0798298f; // tanh(0.08)
-                y += colour * (sat / 1.4f - y);
+                if (colour > 0.0f) y += colour * (sat / 1.4f - y);
                 ch[c][i] = dry + m * (y - dry);
             }
         }
@@ -97,8 +111,8 @@ private:
 
     double sampleRate = 44100.0;
     float threshold = -18.0f, slope = -0.875f, knee = 6.0f, atkCoeff = 0.0f, relMs = 60.0f;
-    float envDb = 0.0f;
-    bool allButtons = false;
+    float envDb = 0.0f, rmsPow = 0.0f;
+    bool allButtons = false, vca = false;
     Smoother makeup, mix;
     std::atomic<float> peakGr { 0.0f };
 };

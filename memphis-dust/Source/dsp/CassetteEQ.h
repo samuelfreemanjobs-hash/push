@@ -31,7 +31,7 @@ public:
 
         const auto hpC  = BiquadCoeffs::highpass (sampleRate, lc, 0.70710678);
         const auto boxC = BiquadCoeffs::peak (sampleRate, bf, bq, bg);
-        const auto prC  = BiquadCoeffs::peak (sampleRate, 3500.0, 0.9, pr);
+        const auto prC  = BiquadCoeffs::peak (sampleRate, 3500.0, 1.4, pr);
         const auto l1   = BiquadCoeffs::lowpass (sampleRate, hc, 0.54119610);
         const auto l2   = BiquadCoeffs::lowpass (sampleRate, hc, 1.30656296);
 

@@ -66,17 +66,22 @@ void Toggle::resized() { button.setBounds (getLocalBounds()); }
 //==============================================================================
 Section::Section (juce::AudioProcessorValueTreeState& state, juce::String num, juce::String t,
                   juce::String sub, const juce::String& enableParamId)
-    : number (std::move (num)), title (std::move (t)), subtitle (std::move (sub)), power (state, enableParamId, "ON")
+    : number (std::move (num)), title (std::move (t)), subtitle (std::move (sub))
 {
-    addAndMakeVisible (power);
-    power.button.addListener (this);
+    // Sections without their own enable (e.g. MASTER) hold per-item toggles instead.
+    if (enableParamId.isNotEmpty())
+    {
+        power = std::make_unique<Toggle> (state, enableParamId, "ON");
+        addAndMakeVisible (*power);
+        power->button.addListener (this);
+    }
 }
 
-Section::~Section() { power.button.removeListener (this); }
+Section::~Section() { if (power) power->button.removeListener (this); }
 
 void Section::refreshEnabled()
 {
-    const bool on = power.button.getToggleState();
+    const bool on = power == nullptr || power->button.getToggleState();
     for (auto& c : items) { c->setEnabled (on); c->setAlpha (on ? 1.0f : 0.4f); }
     repaint();
 }
@@ -90,7 +95,7 @@ void Section::paint (juce::Graphics& g)
     g.drawRoundedRectangle (r.reduced (0.5f), 8.0f, 1.0f);
 
     // "tape label" stripe
-    const bool on = power.button.getToggleState();
+    const bool on = power == nullptr || power->button.getToggleState();
     g.setColour ((on ? colours::red : colours::outline).withAlpha (0.85f));
     g.fillRect (r.getX() + 12.0f, 50.0f, r.getWidth() - 24.0f, 2.0f);
 
@@ -108,7 +113,7 @@ void Section::paint (juce::Graphics& g)
 
 void Section::resized()
 {
-    power.setBounds (getWidth() - 50, 10, 38, 18);
+    if (power) power->setBounds (getWidth() - 50, 10, 38, 18);
 
     auto area = getLocalBounds().reduced (8, 0).withTrimmedTop (60).withTrimmedBottom (8);
     const int cols = 2;
@@ -138,12 +143,25 @@ void GrMeter::setGr (float db)
     repaint();
 }
 
+void GrMeter::setLimiterGr (float db, bool active)
+{
+    limActive = active;
+    const float v = juce::jlimit (0.0f, 30.0f, -db);
+    limDisplay = v > limDisplay ? v : limDisplay + (v - limDisplay) * 0.15f;
+}
+
 void GrMeter::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat();
     g.setColour (colours::text);
     g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-    g.drawText ("GAIN REDUCTION", r.removeFromTop (16), juce::Justification::centredLeft);
+    auto title = r.removeFromTop (16);
+    g.drawText ("COMP GAIN REDUCTION", title, juce::Justification::centredLeft);
+    if (limActive)
+    {
+        g.setColour (limDisplay > 6.0f ? colours::red : colours::amber);
+        g.drawText ("LIMITER -" + juce::String (limDisplay, 1) + " dB", title, juce::Justification::centredRight);
+    }
 
     r = r.withTrimmedRight (60.0f); // room for the numeric readout
     auto bar = r.removeFromTop (18);
@@ -234,21 +252,21 @@ void TapeLevelMeter::paint (juce::Graphics& g)
 //==============================================================================
 using namespace md;
 
-MemphisDustEditor::MemphisDustEditor (MemphisDustProcessor& proc)
-    : AudioProcessorEditor (&proc), processor (proc),
+MemphisDustPanel::MemphisDustPanel (MemphisDustProcessor& proc)
+    : processor (proc),
       sampler    (proc.apvts, "01", "SAMPLER",     "12-bit / low-rate grit",    pid::crushOn),
       cassetteEq (proc.apvts, "02", "CASSETTE EQ", "roll highs, boxy low-mids", pid::eqOn),
       tapeSec    (proc.apvts, "03", "TAPE",        "heads, transport, hiss",    pid::tapeOn),
       dbxSec     (proc.apvts, "04", "dbx II NR",   "2:1 / 1:2 compander pump",  pid::dbxOn),
       sub        (proc.apvts, "05", "808 CLIP",    "mono sub, clipped + LPF",   pid::subOn),
-      comp       (proc.apvts, "06", "FET COMP",    "slam the bus",              pid::compOn),
+      comp       (proc.apvts, "06", "BUS COMP",    "FET slam / VCA glue",       pid::compOn),
+      master     (proc.apvts, "07", "MASTER",      "mono lows + brickwall",     {}),
       inputKnob  (proc.apvts, pid::inputGain, "Input"),
       mixKnob    (proc.apvts, pid::mix, "Dry/Wet"),
       outputKnob (proc.apvts, pid::outputGain, "Output"),
       clipToggle (proc.apvts, pid::outClip, "CLIP"),
       autoToggle (proc.apvts, pid::autoLevel, "AUTO LEVEL")
 {
-    setLookAndFeel (&lnf);
     auto& s = proc.apvts;
 
     sampler.add<ui::Knob> (s, pid::crushRate, "Rate");
@@ -280,13 +298,20 @@ MemphisDustEditor::MemphisDustEditor (MemphisDustProcessor& proc)
     comp.add<ui::Knob>   (s, pid::compRelease, "Release");
     comp.add<ui::Knob>   (s, pid::compMakeup,  "Makeup");
     comp.add<ui::Knob>   (s, pid::compMix,     "Mix");
+    comp.add<ui::Choice> (s, pid::compMode,    "Mode");
+
+    master.add<ui::Toggle> (s, pid::monoOn,       "MONO BASS");
+    master.add<ui::Knob>   (s, pid::monoFreq,     "Mono Below");
+    master.add<ui::Toggle> (s, pid::limitOn,      "LIMITER");
+    master.add<ui::Knob>   (s, pid::limitDrive,   "Push");
+    master.add<ui::Knob>   (s, pid::limitCeiling, "Ceiling");
 
     sub.add<ui::Knob> (s, pid::subFreq,  "Freq");
     sub.add<ui::Knob> (s, pid::subDrive, "Drive");
     sub.add<ui::Knob> (s, pid::subHard,  "Hardness");
     sub.add<ui::Knob> (s, pid::subLevel, "Level");
 
-    for (auto* c : std::initializer_list<juce::Component*> { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp,
+    for (auto* c : std::initializer_list<juce::Component*> { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &master,
                                                              &inputKnob, &mixKnob, &outputKnob, &clipToggle, &autoToggle,
                                                              &grMeter, &tapeMeter })
         addAndMakeVisible (c);
@@ -299,13 +324,11 @@ MemphisDustEditor::MemphisDustEditor (MemphisDustProcessor& proc)
     };
     addAndMakeVisible (presetBox);
 
-    setSize (1330, 720);
+    setSize (designWidth, designHeight);
     startTimerHz (30);
 }
 
-MemphisDustEditor::~MemphisDustEditor() { setLookAndFeel (nullptr); }
-
-void MemphisDustEditor::refreshPresetBox()
+void MemphisDustPanel::refreshPresetBox()
 {
     presetBox.clear (juce::dontSendNotification);
     for (int i = 0; i < processor.getNumPrograms(); ++i)
@@ -313,9 +336,11 @@ void MemphisDustEditor::refreshPresetBox()
     presetBox.setSelectedId (processor.getCurrentProgram() + 1, juce::dontSendNotification);
 }
 
-void MemphisDustEditor::timerCallback()
+void MemphisDustPanel::timerCallback()
 {
     grMeter.setGr (processor.getGainReductionDb());
+    grMeter.setLimiterGr (processor.getLimiterGrDb(),
+                          processor.apvts.getRawParameterValue (pid::limitOn)->load() > 0.5f);
     tapeMeter.setPeak (processor.getTapeInputPeak());
     tapeMeter.setAutoLevelDb (processor.getAutoLevelDb());
 
@@ -331,7 +356,7 @@ void MemphisDustEditor::timerCallback()
         presetBox.setSelectedId (processor.getCurrentProgram() + 1, juce::dontSendNotification);
 }
 
-void MemphisDustEditor::drawReel (juce::Graphics& g, juce::Point<float> c, float radius, float angle) const
+void MemphisDustPanel::drawReel (juce::Graphics& g, juce::Point<float> c, float radius, float angle) const
 {
     g.setColour (ui::colours::knobDark);
     g.fillEllipse (juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (c));
@@ -351,7 +376,7 @@ void MemphisDustEditor::drawReel (juce::Graphics& g, juce::Point<float> c, float
     g.fillEllipse (juce::Rectangle<float> (radius * 0.28f, radius * 0.28f).withCentre (c));
 }
 
-void MemphisDustEditor::paint (juce::Graphics& g)
+void MemphisDustPanel::paint (juce::Graphics& g)
 {
     using namespace ui;
     g.fillAll (colours::bg);
@@ -375,9 +400,9 @@ void MemphisDustEditor::paint (juce::Graphics& g)
     // Signal-flow hint between sections
     g.setColour (colours::textDim);
     g.setFont (juce::FontOptions (10.5f));
-    g.drawText ("FLOW:  IN > 01 > 02 > [ 04 encode > 03 tape > 04 decode ] > 05 > 06 > OUT     "
+    g.drawText ("FLOW:  IN > 07 mono > 01 > 02 > [ 04 encode > 03 tape > 04 decode ] > 05 > 06 > out gain > clip > 07 limiter     "
                 "hiss + dropouts live between dbx encode/decode, so they breathe like a real 424",
-                22, sampler.getBottom() + 4, 900, 14, juce::Justification::centredLeft);
+                22, sampler.getBottom() + 4, 1200, 14, juce::Justification::centredLeft);
 
     // Cassette window in footer
     auto win = reelArea.toFloat();
@@ -409,7 +434,7 @@ void MemphisDustEditor::paint (juce::Graphics& g)
     drawReel (g, rc, r, reelAngle * 1.3f);
 }
 
-void MemphisDustEditor::resized()
+void MemphisDustPanel::resized()
 {
     auto area = getLocalBounds().reduced (16, 0);
 
@@ -418,8 +443,8 @@ void MemphisDustEditor::resized()
 
     auto body = area.removeFromTop (450);
     const int gap = 10;
-    const int w = (body.getWidth() - gap * 5) / 6;
-    for (auto* s : { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp })
+    const int w = (body.getWidth() - gap * 6) / 7;
+    for (auto* s : { &sampler, &cassetteEq, &tapeSec, &dbxSec, &sub, &comp, &master })
     {
         s->setBounds (body.removeFromLeft (w));
         body.removeFromLeft (gap);
@@ -444,4 +469,31 @@ void MemphisDustEditor::resized()
     right.removeFromTop (8);
     tapeMeter.setBounds (right.removeFromTop (54));
     grMeter.setBounds (right.removeFromTop (54));
+}
+
+//==============================================================================
+MemphisDustEditor::MemphisDustEditor (MemphisDustProcessor& proc)
+    : AudioProcessorEditor (&proc), processor (proc), panel (proc)
+{
+    setLookAndFeel (&lnf);
+    addAndMakeVisible (panel);
+
+    constexpr int W = MemphisDustPanel::designWidth, H = MemphisDustPanel::designHeight;
+    setResizable (true, true);
+    setResizeLimits (W / 2, H / 2, W * 3 / 2, H * 3 / 2);
+    getConstrainer()->setFixedAspectRatio ((double) W / (double) H);
+
+    // remember the window size with the session
+    const int savedW = processor.apvts.state.getProperty ("uiWidth", (int) (W * 0.9));
+    setSize (savedW, juce::roundToInt (savedW * (double) H / W));
+}
+
+MemphisDustEditor::~MemphisDustEditor() { setLookAndFeel (nullptr); }
+
+void MemphisDustEditor::resized()
+{
+    const float scale = (float) getWidth() / (float) MemphisDustPanel::designWidth;
+    panel.setTransform (juce::AffineTransform::scale (scale));
+    panel.setBounds (0, 0, MemphisDustPanel::designWidth, MemphisDustPanel::designHeight);
+    processor.apvts.state.setProperty ("uiWidth", getWidth(), nullptr);
 }
