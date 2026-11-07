@@ -37,7 +37,7 @@ juce_add_plugin(KitForge
     NEEDS_MIDI_INPUT            TRUE
     NEEDS_MIDI_OUTPUT           FALSE
     IS_MIDI_EFFECT              FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD     FALSE
     PLUGIN_MANUFACTURER_CODE    Kfrg
     PLUGIN_CODE                 Kfdm
@@ -50,6 +50,7 @@ set(KITFORGE_SOURCES
     Source/DrumVoice.cpp
     Source/VintageBus.cpp
     Source/Exporter.cpp
+    Source/VoicePresets.cpp
     Source/KitFactory.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp

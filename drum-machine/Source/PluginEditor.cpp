@@ -264,15 +264,150 @@ void TrackHeader::mouseDown (const juce::MouseEvent&)
 }
 
 //==============================================================================
+// Waveform / transient view
+//==============================================================================
+WaveformView::WaveformView (KitForgeProcessor& p) : proc (p)
+{
+    setTooltip ("Click to play. Drag out to drop this sound as a WAV into your DAW, sampler or a folder.");
+    setMouseCursor (juce::MouseCursor::DraggingHandCursor);
+}
+
+void WaveformView::setVoice (const VoiceDef& v, const BusDef& b, const juce::String& voiceName, int t, juce::Colour c)
+{
+    voice = v;
+    bus = b;
+    name = voiceName;
+    track = t;
+    colour = c;
+
+    constexpr double sr = 22050.0;
+    const auto audio = Exporter::renderVoice (voice, bus, sr);
+    lengthSeconds = audio.getNumSamples() / sr;
+
+    // 600 bins of peak level, normalised to the loudest bin
+    constexpr int bins = 600;
+    peaks.assign (bins, 0.0f);
+    const int n = audio.getNumSamples();
+    for (int i = 0; i < n; ++i)
+    {
+        const int bin = juce::jmin (bins - 1, (int) ((juce::int64) i * bins / juce::jmax (1, n)));
+        peaks[(size_t) bin] = juce::jmax (peaks[(size_t) bin], std::abs (audio.getSample (0, i)));
+    }
+    const float top = *std::max_element (peaks.begin(), peaks.end());
+    if (top > 0.0f)
+        for (auto& pk : peaks) pk /= top;
+    repaint();
+}
+
+void WaveformView::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (juce::Colour (0xff0f1115));
+    g.fillRoundedRectangle (r, 5.0f);
+    g.setColour (outlineColour);
+    g.drawRoundedRectangle (r.reduced (0.5f), 5.0f, 1.0f);
+
+    auto plot = r.reduced (8.0f, 18.0f);
+    const float mid = plot.getCentreY();
+    const float secondsToX = lengthSeconds > 0.0 ? plot.getWidth() / (float) lengthSeconds : 0.0f;
+
+    // Transient (punch) region and hold marker
+    if (std::abs (voice[Punch]) > 0.001f && secondsToX > 0.0f)
+    {
+        const float w = juce::jmin (plot.getWidth(), voice[PunchTime] * 0.001f * secondsToX);
+        g.setColour ((voice[Punch] > 0 ? juce::Colour (0xffffd25a) : juce::Colour (0xff6fb7ff)).withAlpha (0.18f));
+        g.fillRect (plot.withWidth (juce::jmax (2.0f, w)));
+    }
+    if (voice[Hold] > 0.0f && secondsToX > 0.0f)
+    {
+        const float x = plot.getX() + juce::jmin (plot.getWidth(), voice[Hold] * 0.001f * secondsToX);
+        g.setColour (juce::Colours::white.withAlpha (0.35f));
+        for (float y = plot.getY(); y < plot.getBottom(); y += 6.0f)
+            g.drawVerticalLine ((int) x, y, juce::jmin (plot.getBottom(), y + 3.0f));
+        g.setFont (uiFont (9.5f, true));
+        g.drawText ("HOLD", juce::Rectangle<float> (x + 3.0f, plot.getY(), 40.0f, 12.0f), juce::Justification::left);
+    }
+
+    // Waveform envelope
+    if (! peaks.empty())
+    {
+        juce::Path path;
+        const int w = (int) plot.getWidth();
+        path.startNewSubPath (plot.getX(), mid);
+        for (int x = 0; x < w; ++x)
+        {
+            const auto bin = (size_t) juce::jmin ((int) peaks.size() - 1, x * (int) peaks.size() / juce::jmax (1, w));
+            path.lineTo (plot.getX() + (float) x, mid - peaks[bin] * plot.getHeight() * 0.5f);
+        }
+        for (int x = w - 1; x >= 0; --x)
+        {
+            const auto bin = (size_t) juce::jmin ((int) peaks.size() - 1, x * (int) peaks.size() / juce::jmax (1, w));
+            path.lineTo (plot.getX() + (float) x, mid + peaks[bin] * plot.getHeight() * 0.5f);
+        }
+        path.closeSubPath();
+        g.setColour (colour.withAlpha (0.75f));
+        g.fillPath (path);
+    }
+    g.setColour (outlineColour.brighter (0.2f));
+    g.drawHorizontalLine ((int) mid, plot.getX(), plot.getRight());
+
+    // Labels
+    g.setColour (dimText);
+    g.setFont (uiFont (10.5f, true));
+    g.drawText (name.toUpperCase(), r.reduced (8.0f, 3.0f).removeFromTop (14.0f), juce::Justification::left, true);
+    g.drawText (lengthSeconds >= 1.0 ? juce::String (lengthSeconds, 2) + " s" : juce::String (juce::roundToInt (lengthSeconds * 1000.0)) + " ms",
+                r.reduced (8.0f, 3.0f).removeFromTop (14.0f), juce::Justification::right);
+    g.setFont (uiFont (9.5f));
+    g.drawText ("click: play    drag out: WAV", r.reduced (8.0f, 3.0f).removeFromBottom (13.0f), juce::Justification::right);
+}
+
+void WaveformView::mouseDown (const juce::MouseEvent&)
+{
+    dragStarted = false;
+    proc.previewTrack (track);
+}
+
+void WaveformView::mouseDrag (const juce::MouseEvent& e)
+{
+    if (dragStarted || e.getDistanceFromDragStart() < 8)
+        return;
+    dragStarted = true;
+
+    const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("KitForge Drag");
+    const auto file = dir.getChildFile (Exporter::padFileName (voice, name, bus));
+    if (Exporter::exportPad (voice, bus, file, {}))
+        juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, this);
+}
+
+//==============================================================================
 // Voice panel
 //==============================================================================
-VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p)
+namespace
+{
+    VoiceDef currentVoice (juce::AudioProcessorValueTreeState& apvts, int track)
+    {
+        VoiceDef v {};
+        for (int vp = 0; vp < NumVP; ++vp)
+            v[(size_t) vp] = getParamValue (apvts, voiceParamID (track, vp));
+        return v;
+    }
+
+    BusDef currentBus (juce::AudioProcessorValueTreeState& apvts)
+    {
+        BusDef b {};
+        for (int bp = 0; bp < NumBP; ++bp)
+            b[(size_t) bp] = getParamValue (apvts, busParamID (bp));
+        return b;
+    }
+}
+
+VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p), waveform (p)
 {
     for (auto* c : std::initializer_list<juce::Component*> {
-             &type, &forgeButton, &previewButton,
-             &wave, &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio, &fmDecay, &nameLabel,
+             &type, &forgeButton, &previewButton, &presetButton, &exportPadButton, &waveform,
+             &wave, &pitch, &pEnv, &pDecay, &tDecay, &hold, &glide, &tLevel, &fm, &ratio, &fmDecay, &nameLabel,
              &noiseType, &filterMode, &nLevel, &nDecay, &cutoff, &reso, &burst,
-             &click, &attack, &drive, &level, &pan, &choke, &lofiSend })
+             &click, &attack, &punch, &punchTime, &drive, &level, &pan, &choke, &lofiSend })
         addAndMakeVisible (c);
 
     nameLabel.setEditable (false, true, false);
@@ -283,9 +418,10 @@ VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p)
     {
         proc.setVoiceName (track, nameLabel.getText());
         if (onNameChanged) onNameChanged();
+        updateWaveform (true);
     };
 
-    forgeButton.setTooltip ("Generate a new sound for this track based on its drum type");
+    forgeButton.setTooltip ("Generate a new sound for this pad based on its drum type");
     forgeButton.onClick = [this]
     {
         const auto t = (VoiceType) (int) getParamValue (proc.apvts, voiceParamID (track, Type));
@@ -299,6 +435,16 @@ VoicePanel::VoicePanel (KitForgeProcessor& p) : proc (p)
         if (onVoiceForged) onVoiceForged();
     };
     previewButton.onClick = [this] { proc.previewTrack (track); };
+
+    presetButton.setTooltip ("Sound presets for this drum type (and every other type), your saved presets, and save");
+    presetButton.onClick = [this] { showPresetMenu(); };
+    exportPadButton.setTooltip ("Export just this drum as a WAV (through the vintage bus)");
+    exportPadButton.onClick = [this] { exportPad(); };
+
+    hold.slider.setTooltip ("Hold the body at full level before it decays. Long 808s: raise Hold and Decay.");
+    glide.slider.setTooltip ("When this pad is retriggered while ringing it slides from the old pitch (808 slides). Use with per-step pitch.");
+    punch.slider.setTooltip ("Transient shaper: right boosts the start of the hit, left softens it");
+    punchTime.slider.setTooltip ("Length of the transient section shaped by Punch");
 
     setTrack (0);
 }
@@ -314,11 +460,11 @@ void VoicePanel::setTrack (int t)
     filterMode.attach (a, voiceParamID (t, FilterMode));
 
     const std::pair<Knob*, VP> knobs[] = {
-        { &pitch, Pitch }, { &pEnv, PEnvAmt }, { &pDecay, PEnvDecay }, { &tDecay, ToneDecay },
+        { &pitch, Pitch }, { &pEnv, PEnvAmt }, { &pDecay, PEnvDecay }, { &tDecay, ToneDecay }, { &hold, Hold }, { &glide, Glide },
         { &tLevel, ToneLevel }, { &fm, FmAmt }, { &ratio, FmRatio }, { &fmDecay, FmDecay },
         { &nLevel, NoiseLevel }, { &nDecay, NoiseDecay }, { &cutoff, Cutoff }, { &reso, Reso }, { &burst, Burst },
-        { &click, Click }, { &attack, Attack }, { &drive, Drive }, { &level, Level }, { &pan, Pan }, { &choke, Choke },
-        { &lofiSend, LoFiSend },
+        { &click, Click }, { &attack, Attack }, { &punch, Punch }, { &punchTime, PunchTime }, { &drive, Drive },
+        { &level, Level }, { &pan, Pan }, { &choke, Choke }, { &lofiSend, LoFiSend },
     };
 
     for (auto& [knob, vp] : knobs)
@@ -329,6 +475,7 @@ void VoicePanel::setTrack (int t)
 
     forgeButton.setColour (juce::TextButton::buttonColourId, trackColour (t).withMultipliedBrightness (0.55f));
     refreshName();
+    updateWaveform (true);
     repaint();
 }
 
@@ -336,6 +483,130 @@ void VoicePanel::refreshName()
 {
     nameLabel.setText (proc.getVoiceName (track), juce::dontSendNotification);
     repaint();
+}
+
+void VoicePanel::updateWaveform (bool force)
+{
+    const auto v = currentVoice (proc.apvts, track);
+    const auto b = currentBus (proc.apvts);
+    if (! force && v == shownVoice && b == shownBus)
+        return;
+    shownVoice = v;
+    shownBus = b;
+    waveform.setVoice (v, b, proc.getVoiceName (track), track, trackColour (track));
+    repaint (headerArea);
+}
+
+void VoicePanel::applyPreset (const Presets::Preset& preset)
+{
+    auto v = preset.voice;
+    v[Pan] = getParamValue (proc.apvts, voiceParamID (track, Pan)); // keep the pad's place in the mix
+    KitFactory::applyVoice (proc.apvts, track, v);
+    proc.setVoiceName (track, preset.name);
+    refreshName();
+    proc.previewTrack (track);
+    if (onVoiceForged) onVoiceForged();
+}
+
+void VoicePanel::showPresetMenu()
+{
+    const auto currentType = (VoiceType) (int) getParamValue (proc.apvts, voiceParamID (track, Type));
+    auto list = std::make_shared<std::vector<Presets::Preset>>();
+
+    auto addItems = [list] (juce::PopupMenu& menu, const std::vector<Presets::Preset>& presets, bool showSource)
+    {
+        for (auto& pr : presets)
+        {
+            list->push_back (pr);
+            menu.addItem ((int) list->size(), showSource && pr.source != "Factory" ? pr.name + "   (" + pr.source + ")" : pr.name);
+        }
+    };
+
+    const auto factory = Presets::factory();
+    const auto kits = Presets::fromKits();
+    const auto user = Presets::user();
+
+    juce::PopupMenu menu;
+    menu.addSectionHeader (voiceTypeNames()[(int) currentType].toUpperCase() + " PRESETS");
+    addItems (menu, Presets::forType (factory, currentType), false);
+
+    if (auto mine = Presets::forType (user, currentType); ! mine.empty())
+    {
+        menu.addSectionHeader ("YOUR PRESETS");
+        addItems (menu, mine, false);
+    }
+
+    juce::PopupMenu fromKits;
+    addItems (fromKits, Presets::forType (kits, currentType), true);
+    menu.addSubMenu ("From the factory kits", fromKits);
+
+    juce::PopupMenu others;
+    for (int ty = 0; ty < voiceTypeNames().size(); ++ty)
+    {
+        if (ty == (int) currentType) continue;
+        juce::PopupMenu sub;
+        addItems (sub, Presets::forType (factory, (VoiceType) ty), false);
+        addItems (sub, Presets::forType (user, (VoiceType) ty), true);
+        others.addSubMenu (voiceTypeNames()[ty], sub);
+    }
+    menu.addSubMenu ("Other drum types", others);
+
+    menu.addSeparator();
+    constexpr int saveId = 100000, folderId = 100001;
+    menu.addItem (saveId, "Save this sound as a preset...");
+    menu.addItem (folderId, "Show presets folder");
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (presetButton), [this, list] (int id)
+    {
+        if (id == saveId)           savePreset();
+        else if (id == folderId)  { Presets::userFolder().createDirectory(); Presets::userFolder().startAsProcess(); }
+        else if (id > 0 && id <= (int) list->size())
+            applyPreset ((*list)[(size_t) id - 1]);
+    });
+}
+
+void VoicePanel::savePreset()
+{
+    auto* w = new juce::AlertWindow ("Save preset", "Name for this " + voiceTypeNames()[(int) getParamValue (proc.apvts, voiceParamID (track, Type))]
+                                                      + " preset:", juce::MessageBoxIconType::NoIcon);
+    w->addTextEditor ("name", proc.getVoiceName (track));
+    w->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    w->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    w->enterModalState (true, juce::ModalCallbackFunction::create ([this, w] (int result)
+    {
+        if (result != 1) return;
+        const auto name = w->getTextEditorContents ("name").trim();
+        if (name.isEmpty()) return;
+        if (Presets::saveUser (name, currentVoice (proc.apvts, track)))
+        {
+            proc.setVoiceName (track, name);
+            refreshName();
+            if (onNameChanged) onNameChanged();
+        }
+    }), true);
+}
+
+void VoicePanel::exportPad()
+{
+    const auto voice = currentVoice (proc.apvts, track);
+    const auto bus = currentBus (proc.apvts);
+    auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("KitForge Samples");
+    dir.createDirectory();
+
+    chooser = std::make_unique<juce::FileChooser> ("Export this drum as WAV",
+                                                   dir.getChildFile (Exporter::padFileName (voice, proc.getVoiceName (track), bus)),
+                                                   "*.wav");
+    chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles
+                              | juce::FileBrowserComponent::warnAboutOverwriting,
+                          [voice, bus] (const juce::FileChooser& fc)
+                          {
+                              auto file = fc.getResult();
+                              if (file == juce::File()) return;
+                              file = file.withFileExtension ("wav");
+                              if (! Exporter::exportPad (voice, bus, file, {}))
+                                  juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "KitForge",
+                                                                          "Couldn't write " + file.getFullPathName());
+                          });
 }
 
 void VoicePanel::paint (juce::Graphics& g)
@@ -347,15 +618,14 @@ void VoicePanel::paint (juce::Graphics& g)
     g.setColour (colour.withAlpha (0.6f));
     g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 8.0f, 1.0f);
 
-    // Title
     const int typeIndex = (int) getParamValue (proc.apvts, voiceParamID (track, Type));
     g.setColour (colour);
     g.setFont (uiFont (20.0f, true));
-    g.drawText ("TRACK " + juce::String (track + 1), headerArea.withWidth (120), juce::Justification::centredLeft);
+    g.drawText ("PAD " + juce::String (track + 1), headerArea.withWidth (100), juce::Justification::centredLeft);
     g.setColour (dimText);
     g.setFont (uiFont (12.0f));
-    g.drawText ("synth engine  /  " + voiceTypeNames()[typeIndex] + "  /  pad A" + juce::String (track + 1).paddedLeft ('0', 2),
-                headerArea.withTrimmedLeft (380).withWidth (260), juce::Justification::centredLeft);
+    g.drawText (voiceTypeNames()[typeIndex] + "  /  A" + juce::String (track + 1).paddedLeft ('0', 2),
+                headerArea.withTrimmedLeft (360).withWidth (160), juce::Justification::centredLeft);
 
     auto section = [&] (juce::Rectangle<int> area, const juce::String& title)
     {
@@ -368,55 +638,72 @@ void VoicePanel::paint (juce::Graphics& g)
         g.drawText (title, area.reduced (10, 4).removeFromTop (14), juce::Justification::centredLeft);
     };
 
-    section (toneArea, "TONE OSCILLATOR");
+    section (toneArea, "TONE OSCILLATOR  +  BODY");
     section (noiseArea, "NOISE / METAL");
-    section (outArea, "SHAPE / OUTPUT");
+    section (transArea, "TRANSIENT");
+    section (outArea, "OUTPUT");
 }
 
 void VoicePanel::resized()
 {
-    auto r = getLocalBounds().reduced (14, 10);
+    auto r = getLocalBounds().reduced (12, 10);
 
     headerArea = r.removeFromTop (44);
-    nameLabel.setBounds (headerArea.withTrimmedLeft (116).withWidth (256).withSizeKeepingCentre (256, 28));
+    nameLabel.setBounds (headerArea.withTrimmedLeft (96).withWidth (256).withSizeKeepingCentre (256, 28));
     {
         auto h = headerArea;
-        previewButton.setBounds (h.removeFromRight (70).withSizeKeepingCentre (70, 30));
+        previewButton.setBounds (h.removeFromRight (64).withSizeKeepingCentre (64, 30));
         h.removeFromRight (8);
-        forgeButton.setBounds (h.removeFromRight (130).withSizeKeepingCentre (130, 30));
-        h.removeFromRight (12);
+        forgeButton.setBounds (h.removeFromRight (80).withSizeKeepingCentre (80, 30));
+        h.removeFromRight (10);
         type.setBounds (h.removeFromRight (choiceW + 20).withTrimmedTop (2));
+        h.removeFromRight (16);
+        exportPadButton.setBounds (h.removeFromRight (104).withSizeKeepingCentre (104, 30));
+        h.removeFromRight (8);
+        presetButton.setBounds (h.removeFromRight (104).withSizeKeepingCentre (104, 30));
     }
     r.removeFromTop (6);
 
+    // Choices stack vertically in one column; knobs follow in a row.
     auto layoutSection = [] (juce::Rectangle<int> area, std::initializer_list<juce::Component*> choices,
                              std::initializer_list<Knob*> knobs)
     {
         auto inner = area.reduced (10, 6).withTrimmedTop (16);
-        for (auto* c : choices)
+        if (choices.size() > 0)
         {
             auto col = inner.removeFromLeft (choiceW);
-            c->setBounds (col.withHeight (choiceH).withY (col.getY() + 4));
-            inner.removeFromLeft (8);
+            int y = col.getY() + (choices.size() == 1 ? 14 : 0);
+            for (auto* c : choices)
+            {
+                c->setBounds (col.getX(), y, choiceW, choiceH);
+                y += choiceH + 4;
+            }
+            inner.removeFromLeft (10);
         }
-        auto knobCol = inner;
         const int n = (int) knobs.size();
-        const int step = juce::jmin (knobW + 8, knobCol.getWidth() / juce::jmax (1, n));
+        const int step = juce::jmin (knobW + 6, inner.getWidth() / juce::jmax (1, n));
         for (auto* k : knobs)
-            k->setBounds (knobCol.removeFromLeft (step).withSizeKeepingCentre (knobW, knobH));
+            k->setBounds (inner.removeFromLeft (step).withSizeKeepingCentre (knobW, knobH));
     };
 
     const int rowH = knobH + 30;
-    toneArea = r.removeFromTop (rowH);
+    auto row1 = r.removeFromTop (rowH);
+    toneArea = row1.removeFromLeft (10 + choiceW + 10 + 10 * (knobW + 6) + 10);
+    row1.removeFromLeft (8);
+    waveform.setBounds (row1);
+
     r.removeFromTop (8);
     auto row2 = r.removeFromTop (rowH);
-    noiseArea = row2.removeFromLeft ((int) (row2.getWidth() * 0.54f));
+    noiseArea = row2.removeFromLeft (10 + choiceW + 10 + 5 * (knobW + 6) + 10);
+    row2.removeFromLeft (8);
+    transArea = row2.removeFromLeft (20 + 4 * (knobW + 6));
     row2.removeFromLeft (8);
     outArea = row2;
 
-    layoutSection (toneArea, { &wave }, { &pitch, &pEnv, &pDecay, &tDecay, &tLevel, &fm, &ratio, &fmDecay });
+    layoutSection (toneArea, { &wave }, { &pitch, &pEnv, &pDecay, &tDecay, &hold, &glide, &tLevel, &fm, &ratio, &fmDecay });
     layoutSection (noiseArea, { &noiseType, &filterMode }, { &nLevel, &nDecay, &cutoff, &reso, &burst });
-    layoutSection (outArea, {}, { &click, &attack, &drive, &level, &pan, &choke, &lofiSend });
+    layoutSection (transArea, {}, { &click, &attack, &punch, &punchTime });
+    layoutSection (outArea, {}, { &drive, &level, &pan, &choke, &lofiSend });
 }
 
 //==============================================================================
@@ -510,7 +797,8 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
 
     // ---- Transport ----
     playButton.setClickingTogglesState (false);
-    playButton.onClick = [this] { proc.setInternalPlaying (! proc.isInternalPlaying()); };
+    playButton.onClick = [this] { togglePlay(); };
+    playButton.setTooltip ("Start / stop (space bar)");
     content.addAndMakeVisible (playButton);
 
     for (auto* k : { &tempo, &swing, &length, &master })
@@ -580,6 +868,7 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
             {
                 clipboard[(size_t) (t * numSteps + s)] = proc.patterns.get (pat, t, s);
                 clipboardRatchets[(size_t) (t * numSteps + s)] = (uint8_t) proc.patterns.getRatchet (pat, t, s);
+                clipboardPitches[(size_t) (t * numSteps + s)] = (int8_t) proc.patterns.getPitch (pat, t, s);
             }
         hasClipboard = true;
     };
@@ -592,15 +881,13 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
             {
                 proc.patterns.set (pat, t, s, clipboard[(size_t) (t * numSteps + s)]);
                 proc.patterns.setRatchet (pat, t, s, clipboardRatchets[(size_t) (t * numSteps + s)]);
+                proc.patterns.setPitch (pat, t, s, clipboardPitches[(size_t) (t * numSteps + s)]);
             }
         grid.repaint();
     };
     clearButton.onClick = [this] { proc.patterns.clear (proc.getCurrentPattern()); grid.repaint(); };
-    generateButton.onClick = [this]
-    {
-        KitFactory::generatePattern (proc.patterns, proc.getCurrentPattern(), proc.apvts, rng);
-        grid.repaint();
-    };
+    generateButton.setTooltip ("Write a groove for the current kit: Boom Bap, Four on the Floor, Trap, Memphis Phonk or Drift Phonk");
+    generateButton.onClick = [this] { showGenerateMenu(); };
     for (auto* b : { &copyButton, &pasteButton, &clearButton, &generateButton })
         content.addAndMakeVisible (b);
 
@@ -608,7 +895,22 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     rollButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff47c0ff));
     rollButton.setTooltip ("Roll edit mode: clicking a step cycles its ratchet x1 / x2 (1/32) / x3 (triplet roll) / x4 (1/64). "
                            "Ctrl/Cmd-click does the same in normal mode.");
-    rollButton.onClick = [this] { grid.setRollMode (rollButton.getToggleState()); };
+    rollButton.onClick = [this]
+    {
+        if (rollButton.getToggleState()) pitchButton.setToggleState (false, juce::sendNotification);
+        grid.setRollMode (rollButton.getToggleState());
+    };
+
+    pitchButton.setClickingTogglesState (true);
+    pitchButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffb98cff));
+    pitchButton.setTooltip ("Pitch edit mode: drag a step up / down to tune it (+/-24 semitones), right-click resets. "
+                            "Mouse wheel over a step works in any mode. Great for cowbell riffs and 808 notes.");
+    pitchButton.onClick = [this]
+    {
+        if (pitchButton.getToggleState()) rollButton.setToggleState (false, juce::sendNotification);
+        grid.setPitchMode (pitchButton.getToggleState());
+    };
+    content.addAndMakeVisible (pitchButton);
     content.addAndMakeVisible (rollButton);
 
     // ---- Tracks ----
@@ -662,6 +964,11 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
         scale = juce::jlimit (0.55f, 1.0f, (float) display->userArea.getHeight() * 0.88f / (float) baseHeight);
     setSize ((int) (baseWidth * scale), (int) (baseHeight * scale));
+    // Space bar: keep the editor holding keyboard focus (buttons must not take it).
+    setWantsKeyboardFocus (true);
+    stopButtonsStealingKeys (content);
+    content.addMouseListener (this, true);
+
     startTimerHz (30);
 }
 
@@ -769,6 +1076,88 @@ void KitForgeEditor::exportPack()
                           });
 }
 
+void KitForgeEditor::togglePlay()
+{
+    proc.setInternalPlaying (! proc.isInternalPlaying());
+}
+
+void KitForgeEditor::stopButtonsStealingKeys (juce::Component& parent)
+{
+    for (auto* c : parent.getChildren())
+    {
+        if (dynamic_cast<juce::TextEditor*> (c) == nullptr)
+        {
+            c->setWantsKeyboardFocus (false);
+            c->setMouseClickGrabsKeyboardFocus (false);
+        }
+        stopButtonsStealingKeys (*c);
+    }
+}
+
+void KitForgeEditor::visibilityChanged()
+{
+    if (isShowing())
+        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<KitForgeEditor> (this)]
+        {
+            if (safe != nullptr && safe->isShowing())
+                safe->grabKeyboardFocus();
+        });
+}
+
+void KitForgeEditor::mouseDown (const juce::MouseEvent&)
+{
+    // Clicking anywhere in the window gives keyboard focus back (unless typing in a text field).
+    if (dynamic_cast<juce::TextEditor*> (juce::Component::getCurrentlyFocusedComponent()) == nullptr && isShowing())
+        grabKeyboardFocus();
+}
+
+bool KitForgeEditor::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::spaceKey)
+    {
+        togglePlay();
+        return true;
+    }
+    // 1..8 select patterns A..H
+    const auto c = key.getTextCharacter();
+    if (c >= '1' && c <= '8' && ! key.getModifiers().isAnyModifierKeyDown())
+    {
+        setParamValue (proc.apvts, ids::pattern, (float) (c - '1'));
+        return true;
+    }
+    return false;
+}
+
+void KitForgeEditor::showGenerateMenu()
+{
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("GENERATE A GROOVE FOR THIS KIT");
+    for (int i = 0; i < KitFactory::grooveStyleNames().size(); ++i)
+    {
+        const auto style = (KitFactory::GrooveStyle) i;
+        const float bpm = KitFactory::grooveTempo (style);
+        menu.addItem (i + 1, KitFactory::grooveStyleNames()[i] + (bpm > 0 ? "   (" + juce::String ((int) bpm) + " BPM)" : juce::String()));
+    }
+    menu.addSeparator();
+    menu.addItem (100, "Tip: Memphis Drift kit + Drift Phonk = cowbell riffs, 808 slides, triplet hats", false, false);
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (generateButton), [this] (int id)
+    {
+        if (id <= 0 || id > KitFactory::grooveStyleNames().size())
+            return;
+        const auto style = (KitFactory::GrooveStyle) (id - 1);
+        KitFactory::generatePattern (proc.patterns, proc.getCurrentPattern(), proc.apvts, rng, style);
+
+        // Set the style's tempo and swing (the host tempo wins while the host is playing).
+        if (style != KitFactory::GrooveStyle::Auto)
+        {
+            setParamValue (proc.apvts, ids::tempo, KitFactory::grooveTempo (style));
+            setParamValue (proc.apvts, ids::swing, KitFactory::grooveSwing (style));
+        }
+        grid.repaint();
+    });
+}
+
 void KitForgeEditor::timerCallback()
 {
     const bool host = proc.isHostPlaying();
@@ -785,6 +1174,9 @@ void KitForgeEditor::timerCallback()
 
     grid.repaint();
     busPanel.repaint();
+
+    if (++timerTicks % 6 == 0)
+        voicePanel.updateWaveform();
 }
 
 void KitForgeEditor::paint (juce::Graphics& g)
@@ -838,8 +1230,8 @@ void KitForgeEditor::paintContent (juce::Graphics& g)
     // Help text
     g.setColour (dimText.withAlpha (0.7f));
     g.setFont (uiFont (11.0f));
-    g.drawText ("Right-click: velocity   Alt-drag: fine   Ctrl-click: roll   MIDI C1-D#2 = pads 1-16",
-                patternArea.withTrimmedLeft (patternArea.getWidth() - 400), juce::Justification::centredRight);
+    g.drawText ("Space: play/stop   Right-click: velocity   Ctrl-click: roll   Wheel: pitch   1-8: pattern   MIDI C1-D#2",
+                patternArea.withTrimmedLeft (patternArea.getWidth() - 470), juce::Justification::centredRight);
 }
 
 void KitForgeEditor::resized()
@@ -900,7 +1292,9 @@ void KitForgeEditor::layoutContent()
             p.removeFromLeft (4);
         }
         p.removeFromLeft (12);
-        rollButton.setBounds (p.removeFromLeft (64));
+        rollButton.setBounds (p.removeFromLeft (60));
+        p.removeFromLeft (4);
+        pitchButton.setBounds (p.removeFromLeft (60));
     }
 
     r.removeFromTop (24);

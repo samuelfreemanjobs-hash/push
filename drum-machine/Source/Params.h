@@ -8,7 +8,8 @@ constexpr int numTracks   = 16;  // pads A01..A16
 constexpr int numSteps    = 16;
 constexpr int numPatterns = 8;
 constexpr int midiBaseNote = 36; // C1 triggers pad 1 ... D#2 (51) pad 16
-constexpr int maxRatchet = 4;    // step repeats: 1 = normal, 2 = 1/32, 3 = 1/16 triplet-roll, 4 = 1/64
+constexpr int maxRatchet = 4;
+constexpr int maxStepPitch = 24; // per-step pitch offset range, +/- semitones    // step repeats: 1 = normal, 2 = 1/32, 3 = 1/16 triplet-roll, 4 = 1/64
 
 // What kind of drum a track is. Used by the Kit Factory to "forge" sounds and
 // by the pattern generator to write sensible rhythms.
@@ -27,11 +28,11 @@ enum VP
 {
     Type,
     // Tone oscillator
-    Wave, Pitch, PEnvAmt, PEnvDecay, ToneDecay, ToneLevel, FmAmt, FmRatio, FmDecay,
+    Wave, Pitch, PEnvAmt, PEnvDecay, ToneDecay, Hold, Glide, ToneLevel, FmAmt, FmRatio, FmDecay,
     // Noise generator
     NoiseType, NoiseLevel, NoiseDecay, FilterMode, Cutoff, Reso, Burst,
     // Shaping / output
-    Click, Attack, Drive, Level, Pan, Choke, LoFiSend,
+    Click, Attack, Punch, PunchTime, Drive, Level, Pan, Choke, LoFiSend,
     // Mixer (not part of a kit)
     Mute, Solo,
     NumVP

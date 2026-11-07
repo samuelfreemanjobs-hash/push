@@ -34,6 +34,7 @@ KitForgeProcessor::KitForgeProcessor()
 
     for (auto& c : triggerCount) c.store (0);
     for (auto& p : previewRequests) p.store (0.0f);
+    for (auto& p : previewPitches) p.store (0.0f);
 
     // Out of the box: the first factory kit and a couple of grooves.
     loadKit (KitFactory::factoryKit (0));
@@ -76,10 +77,13 @@ void KitForgeProcessor::setInternalPlaying (bool shouldPlay)
     internalPlaying.store (shouldPlay);
 }
 
-void KitForgeProcessor::previewTrack (int track, float velocity)
+void KitForgeProcessor::previewTrack (int track, float velocity, float semitones)
 {
     if (juce::isPositiveAndBelow (track, numTracks))
+    {
+        previewPitches[(size_t) track].store (semitones);
         previewRequests[(size_t) track].store (velocity);
+    }
 }
 
 void KitForgeProcessor::loadKit (const Kit& kit)
@@ -119,7 +123,7 @@ void KitForgeProcessor::readVoiceParams()
     vinyl.setAmount (bus.vinyl);
 }
 
-void KitForgeProcessor::fire (int track, float velocity)
+void KitForgeProcessor::fire (int track, float velocity, float semitones)
 {
     const int group = voiceParams[(size_t) track].choke;
     if (group > 0)
@@ -127,7 +131,7 @@ void KitForgeProcessor::fire (int track, float velocity)
             if (t != track && voiceParams[(size_t) t].choke == group)
                 voices[(size_t) t].choke();
 
-    voices[(size_t) track].trigger (velocity);
+    voices[(size_t) track].trigger (velocity, semitones);
     triggerCount[(size_t) track].fetch_add (1, std::memory_order_relaxed);
 }
 
@@ -238,7 +242,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                         continue;
                     // Repeats of a roll sit a little under the first hit.
                     const float v = (float) vel / 127.0f * (pos == 0 ? 1.0f : 0.8f);
-                    events.push_back ({ offset, tr, v });
+                    events.push_back ({ offset, tr, v, (float) patterns.getPitch (pattern, tr, step) });
                 }
             }
         }
@@ -255,7 +259,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // ---- Pad previews from the GUI ----
     for (int t = 0; t < numTracks; ++t)
         if (const float v = previewRequests[(size_t) t].exchange (0.0f); v > 0.0f)
-            events.push_back ({ 0, t, v });
+            events.push_back ({ 0, t, v, previewPitches[(size_t) t].load() });
 
     // ---- MIDI input: notes from C1 (36) upwards play tracks 1..8 ----
     for (const auto meta : midi)
@@ -265,7 +269,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         {
             const int track = msg.getNoteNumber() - midiBaseNote;
             if (juce::isPositiveAndBelow (track, numTracks))
-                events.push_back ({ juce::jlimit (0, numSamples - 1, meta.samplePosition), track, msg.getFloatVelocity() });
+                events.push_back ({ juce::jlimit (0, numSamples - 1, meta.samplePosition), track, msg.getFloatVelocity(), 0.0f });
         }
     }
     midi.clear();
@@ -283,7 +287,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     {
         while (ev < events.size() && events[ev].offset <= s)
         {
-            fire (events[ev].track, events[ev].velocity);
+            fire (events[ev].track, events[ev].velocity, events[ev].semitones);
             ++ev;
         }
 
@@ -345,6 +349,8 @@ void KitForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
         {
             pat->setAttribute ("t" + juce::String (t + 1), patterns.trackToString (p, t));
             pat->setAttribute ("r" + juce::String (t + 1), patterns.ratchetsToString (p, t));
+            if (auto pitches = patterns.pitchesToString (p, t); pitches.isNotEmpty())
+                pat->setAttribute ("p" + juce::String (t + 1), pitches);
         }
     }
 
@@ -378,6 +384,7 @@ void KitForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             {
                 patterns.trackFromString (p, t, pat->getStringAttribute ("t" + juce::String (t + 1)));
                 patterns.ratchetsFromString (p, t, pat->getStringAttribute ("r" + juce::String (t + 1)));
+                patterns.pitchesFromString (p, t, pat->getStringAttribute ("p" + juce::String (t + 1)));
             }
         }
         xml->removeChildElement (pats, true);

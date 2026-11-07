@@ -5,8 +5,10 @@
 //   KitForgeRenderTest [output-directory]
 
 #include <juce_audio_formats/juce_audio_formats.h>
+#include <set>
 #include "PluginProcessor.h"
 #include "Exporter.h"
+#include "VoicePresets.h"
 
 namespace
 {
@@ -401,6 +403,161 @@ int main (int argc, char* argv[])
         other.setStateInformation (state.getData(), (int) state.getSize());
         check (other.patterns.getRatchet (6, 11, 9) == 3 && other.patterns.get (6, 11, 9) == 90,
                "ratchets and pad 12 data survive save/restore");
+    }
+
+    // ---- Voice engine: hold, per-step pitch, punch, de-click ----
+    {
+        auto lengthOf = [&] (const kf::VoiceDef& v)
+        {
+            return kf::Exporter::renderVoice (v, kf::KitFactory::defaultBus(), sr).getNumSamples() / sr;
+        };
+        const auto* longSub = kf::Presets::findFactory ("808 Long Sub");
+        check (longSub != nullptr && lengthOf (longSub->voice) > 4.0, "'808 Long Sub' rings for more than 4 s ("
+               + juce::String (longSub != nullptr ? lengthOf (longSub->voice) : 0.0, 2) + " s)");
+
+        auto shortVoice = kf::KitFactory::makeVoice (kf::VoiceType::Sub808, { { kf::ToneDecay, 500 }, { kf::PEnvAmt, 0 } });
+        auto held = shortVoice;
+        held[kf::Hold] = 1500;
+        check (lengthOf (held) > lengthOf (shortVoice) + 1.4, "Hold lengthens the 808 by the hold time");
+
+        auto crossings = [&] (float semitones)
+        {
+            kf::DrumVoice v;
+            v.prepare (sr);
+            auto vp = kf::VoiceParams::fromValues (kf::KitFactory::makeVoice (kf::VoiceType::Sub808,
+                                                  { { kf::Pitch, 50 }, { kf::PEnvAmt, 0 }, { kf::ToneDecay, 5000 }, { kf::Click, 0 } }));
+            v.setParams (vp);
+            v.trigger (1.0f, semitones);
+            int count = 0;
+            float prev = 0.0f;
+            for (int i = 0; i < (int) sr; ++i)
+            {
+                const float x = v.process();
+                if (i > 0 && (prev < 0.0f) != (x < 0.0f)) ++count;
+                prev = x;
+            }
+            return count;
+        };
+        const int base = crossings (0.0f), octave = crossings (12.0f);
+        check (std::abs (octave - 2 * base) <= 4, "per-step pitch +12 st plays an octave up (" + juce::String (base / 2) + " Hz -> "
+               + juce::String (octave / 2) + " Hz)");
+
+        auto attackPeak = [&] (float punch)
+        {
+            auto v = kf::KitFactory::makeVoice (kf::VoiceType::Kick, { { kf::Punch, punch }, { kf::Drive, 0 }, { kf::Click, 0 } });
+            const auto a = kf::Exporter::renderVoice (v, kf::KitFactory::defaultBus(), sr);
+            return a.getMagnitude (0, 0, (int) (0.01 * sr)) / a.getMagnitude (0, (int) (0.05 * sr), (int) (0.05 * sr));
+        };
+        check (attackPeak (1.0f) > attackPeak (0.0f) * 1.5f && attackPeak (-1.0f) < attackPeak (0.0f),
+               "Punch boosts (and negative Punch softens) the transient");
+
+        // retriggering a ringing 808 must not click
+        kf::DrumVoice v;
+        v.prepare (sr);
+        auto noClick = longSub->voice;
+        noClick[kf::Click] = 0.0f; // the click transient is intentional noise; measure only the discontinuity
+        v.setParams (kf::VoiceParams::fromValues (noClick));
+        v.trigger (1.0f);
+        float prev = 0.0f, maxJump = 0.0f;
+        for (int i = 0; i < (int) (0.6 * sr); ++i)
+        {
+            if (i == (int) (0.3 * sr)) v.trigger (1.0f, 5.0f);
+            const float x = v.process();
+            if (i > (int) (0.25 * sr)) maxJump = std::max (maxJump, std::abs (x - prev));
+            prev = x;
+        }
+        check (maxJump < 0.05f, "retriggering a ringing 808 is click-free (max step " + juce::String (maxJump, 4) + ")");
+    }
+
+    // ---- Presets for every drum type ----
+    {
+        bool ok = true;
+        juce::String counts;
+        for (int ty = 0; ty < kf::voiceTypeNames().size(); ++ty)
+        {
+            const auto list = kf::Presets::forType (kf::Presets::factory(), (kf::VoiceType) ty);
+            counts << kf::voiceTypeNames()[ty] << " " << (int) list.size() << "  ";
+            ok &= list.size() >= 4;
+            for (auto& pr : list)
+            {
+                for (int vp = 0; vp < kf::NumVP; ++vp)
+                {
+                    const auto& sp = kf::voiceSpec (vp);
+                    ok &= pr.voice[(size_t) vp] >= sp.min && pr.voice[(size_t) vp] <= sp.max;
+                }
+                const auto a = kf::Exporter::renderVoice (pr.voice, kf::KitFactory::defaultBus(), 22050.0);
+                if (a.getMagnitude (0, a.getNumSamples()) < 0.01f) { ok = false; std::cout << "    silent preset: " << pr.name << std::endl; }
+            }
+        }
+        std::cout << "    " << counts << std::endl;
+        check (ok, "every drum type has 4+ factory presets, all in range and audible ("
+               + juce::String ((int) kf::Presets::factory().size()) + " total, "
+               + juce::String ((int) kf::Presets::fromKits().size()) + " more from kits)");
+
+        kf::Presets::Preset back;
+        const auto& pr = kf::Presets::factory().front();
+        check (kf::Presets::voiceFromXml (*kf::Presets::voiceToXml (pr.name, pr.voice), back) && back.voice == pr.voice,
+               "voice preset files round-trip");
+    }
+
+    // ---- Phonk generator ----
+    {
+        const int kitIndex = kf::KitFactory::factoryKitNames().indexOf ("Memphis Drift (phonk)");
+        check (kitIndex >= 0, "Memphis Drift phonk kit is available");
+        proc.loadKit (kf::KitFactory::factoryKit (kitIndex));
+
+        bool driftOk = true, memphisOk = true;
+        for (int run = 0; run < 20; ++run)
+        {
+            juce::Random r2 (run);
+            kf::KitFactory::generatePattern (proc.patterns, 6, proc.apvts, r2, kf::KitFactory::GrooveStyle::DriftPhonk);
+            std::set<int> bellPitches;
+            int bellHits = 0;
+            for (int st = 0; st < kf::numSteps; ++st)
+                if (proc.patterns.get (6, 5, st) > 0) { ++bellHits; bellPitches.insert (proc.patterns.getPitch (6, 5, st)); }
+            int subHits = 0;
+            for (int st = 0; st < kf::numSteps; ++st) subHits += proc.patterns.get (6, 12, st) > 0;
+            driftOk &= bellHits >= 5 && bellPitches.size() >= 2 && subHits >= 2
+                       && proc.patterns.get (6, 1, 4) > 0 && proc.patterns.get (6, 1, 12) > 0;
+
+            kf::KitFactory::generatePattern (proc.patterns, 6, proc.apvts, r2, kf::KitFactory::GrooveStyle::MemphisPhonk);
+            int hats = 0;
+            for (int st = 0; st < kf::numSteps; ++st) hats += proc.patterns.get (6, 3, st) > 0;
+            memphisOk &= proc.patterns.get (6, 1, 8) > 0 && hats >= 10 && proc.patterns.get (6, 0, 0) > 0;
+        }
+        check (driftOk, "Drift Phonk: pitched cowbell riff (2+ notes), 808 hits, claps on 2 and 4");
+        check (memphisOk, "Memphis Phonk: half-time snare on beat 3, running 16th hats, kick on 1");
+
+        // pitch data survives save / restore
+        proc.patterns.setPitch (6, 5, 3, -7);
+        proc.patterns.set (6, 5, 3, 100);
+        juce::MemoryBlock state;
+        proc.getStateInformation (state);
+        KitForgeProcessor other;
+        other.setStateInformation (state.getData(), (int) state.getSize());
+        check (other.patterns.getPitch (6, 5, 3) == -7, "per-step pitch survives save/restore");
+
+        // render the phonk groove to listen to
+        kf::setParamValue (proc.apvts, kf::ids::pattern, 6.0f);
+        kf::setParamValue (proc.apvts, kf::ids::tempo, 130.0f);
+        juce::Random r3 (11);
+        kf::KitFactory::generatePattern (proc.patterns, 6, proc.apvts, r3, kf::KitFactory::GrooveStyle::DriftPhonk);
+        proc.setInternalPlaying (false);
+        render (proc, sr, block, 3.0);
+        proc.setInternalPlaying (true);
+        auto out = render (proc, sr, block, 60.0 / 130.0 * 16.0);
+        proc.setInternalPlaying (false);
+        check (out.getRMSLevel (0, 0, out.getNumSamples()) > 0.02f, "Drift Phonk groove renders");
+        writeWav (out, sr, outDir.getChildFile ("drift_phonk.wav"));
+    }
+
+    // ---- Single pad export ----
+    {
+        const auto kit = kf::KitFactory::factoryKit (0);
+        const auto file = outDir.getChildFile ("single").getChildFile (kf::Exporter::padFileName (kit.voices[0], kit.voiceNames[0], kit.bus));
+        file.deleteFile();
+        check (kf::Exporter::exportPad (kit.voices[0], kit.bus, file, {}) && file.getSize() > 1000,
+               "single pad export writes " + file.getFileName());
     }
 
     std::cout << (failures == 0 ? "ALL TESTS PASSED" : juce::String (failures) + " TEST(S) FAILED")

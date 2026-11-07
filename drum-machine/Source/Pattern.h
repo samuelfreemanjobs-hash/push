@@ -33,6 +33,17 @@ public:
         ratchets[pattern][track][step].store ((uint8_t) juce::jlimit (1, maxRatchet, count), std::memory_order_relaxed);
     }
 
+    // Per-step pitch offset in semitones (-maxStepPitch..+maxStepPitch).
+    int getPitch (int pattern, int track, int step) const noexcept
+    {
+        return pitches[pattern][track][step].load (std::memory_order_relaxed);
+    }
+
+    void setPitch (int pattern, int track, int step, int semitones) noexcept
+    {
+        pitches[pattern][track][step].store ((int8_t) juce::jlimit (-maxStepPitch, maxStepPitch, semitones), std::memory_order_relaxed);
+    }
+
     void clear (int pattern) noexcept
     {
         for (int t = 0; t < numTracks; ++t)
@@ -40,6 +51,7 @@ public:
             {
                 set (pattern, t, s, 0);
                 setRatchet (pattern, t, s, 1);
+                setPitch (pattern, t, s, 0);
             }
     }
 
@@ -56,6 +68,7 @@ public:
             {
                 set (to, t, s, get (from, t, s));
                 setRatchet (to, t, s, getRatchet (from, t, s));
+                setPitch (to, t, s, getPitch (from, t, s));
             }
     }
 
@@ -92,7 +105,30 @@ public:
             setRatchet (pattern, track, i, i < s.length() ? (int) (s[i] - '0') : 1);
     }
 
+    // Pitches as comma-separated semitones; empty when the track has none.
+    juce::String pitchesToString (int pattern, int track) const
+    {
+        bool any = false;
+        juce::StringArray parts;
+        for (int i = 0; i < numSteps; ++i)
+        {
+            const int p = getPitch (pattern, track, i);
+            any |= p != 0;
+            parts.add (juce::String (p));
+        }
+        return any ? parts.joinIntoString (",") : juce::String();
+    }
+
+    void pitchesFromString (int pattern, int track, const juce::String& s)
+    {
+        juce::StringArray parts;
+        parts.addTokens (s, ",", {});
+        for (int i = 0; i < numSteps; ++i)
+            setPitch (pattern, track, i, i < parts.size() ? parts[i].getIntValue() : 0);
+    }
+
 private:
+    std::atomic<int8_t> pitches[numPatterns][numTracks][numSteps];
     std::atomic<uint8_t> steps[numPatterns][numTracks][numSteps];
     std::atomic<uint8_t> ratchets[numPatterns][numTracks][numSteps];
 };

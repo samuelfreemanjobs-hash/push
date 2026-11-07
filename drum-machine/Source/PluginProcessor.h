@@ -47,7 +47,7 @@ public:
     int getCurrentPattern() const noexcept;
     int getTriggerCount (int track) const noexcept { return triggerCount[(size_t) track].load(); }
 
-    void previewTrack (int track, float velocity = 0.9f);
+    void previewTrack (int track, float velocity = 0.9f, float semitones = 0.0f);
 
     void loadKit (const kf::Kit& kit);
     juce::String getKitName() const { return kitName; }
@@ -68,10 +68,11 @@ private:
         int offset;
         int track;
         float velocity;
+        float semitones = 0.0f;
     };
 
     void readVoiceParams();
-    void fire (int track, float velocity);
+    void fire (int track, float velocity, float semitones);
 
     std::array<kf::DrumVoice, kf::numTracks> voices;
     std::array<kf::VoiceParams, kf::numTracks> voiceParams;
@@ -100,7 +101,7 @@ private:
     std::atomic<bool> hostPlaying { false };
     std::atomic<int> currentStep { -1 };
     std::array<std::atomic<int>, kf::numTracks> triggerCount {};
-    std::array<std::atomic<float>, kf::numTracks> previewRequests {};
+    std::array<std::atomic<float>, kf::numTracks> previewRequests {}, previewPitches {};
 
     std::vector<Event> events;
 

@@ -30,6 +30,7 @@ struct Kit
 namespace KitFactory
 {
     VoiceDef defaultVoice();
+    VoiceDef makeVoice (VoiceType type, std::initializer_list<std::pair<VP, float>> overrides);
 
     const juce::StringArray& factoryKitNames();
     Kit factoryKit (int index);
@@ -54,6 +55,13 @@ namespace KitFactory
     bool kitFromXml (const juce::XmlElement& xml, Kit& kit);
 
     // Write a rhythm into one pattern that suits each track's drum type.
+    enum class GrooveStyle { Auto, BoomBap, FourOnFloor, Trap, MemphisPhonk, DriftPhonk };
+    const juce::StringArray& grooveStyleNames();          // indexed by GrooveStyle
+    float grooveTempo (GrooveStyle style);                // typical BPM (0 for Auto)
+    float grooveSwing (GrooveStyle style);                // swing % (0 for Auto)
+
+    void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueTreeState& apvts,
+                          juce::Random& rng, GrooveStyle style);
     void generatePattern (PatternBank& bank, int pattern,
                           juce::AudioProcessorValueTreeState& apvts, juce::Random& rng);
 

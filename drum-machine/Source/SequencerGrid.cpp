@@ -97,6 +97,14 @@ void SequencerGrid::paint (juce::Graphics& g)
                 g.drawText ("x1", cell.reduced (3.0f, 1.0f), juce::Justification::topRight);
             }
 
+            // Per-step pitch
+            if (const int st = proc.patterns.getPitch (pattern, t, s); vel > 0 && (st != 0 || pitchMode))
+            {
+                g.setColour (st != 0 ? juce::Colours::white : juce::Colours::white.withAlpha (0.45f));
+                g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+                g.drawText ((st > 0 ? "+" : "") + juce::String (st), cell.reduced (4.0f, 1.0f), juce::Justification::topLeft);
+            }
+
             if (s == playing)
             {
                 g.setColour (juce::Colours::white.withAlpha (vel > 0 ? 0.45f : 0.12f));
@@ -125,6 +133,26 @@ void SequencerGrid::mouseDown (const juce::MouseEvent& e)
 
     if (onTrackClicked)
         onTrackClicked (t);
+
+    if (pitchMode)
+    {
+        if (e.mods.isPopupMenu())
+        {
+            proc.patterns.setPitch (pattern, t, s, 0);
+            dragMode = DragMode::None;
+        }
+        else
+        {
+            if (current == 0)
+                proc.patterns.set (pattern, t, s, defaultVelocity);
+            dragMode = DragMode::Pitch;
+            velTrack = t;
+            velStep = s;
+            pitchStartValue = proc.patterns.getPitch (pattern, t, s);
+        }
+        repaint();
+        return;
+    }
 
     if (rollMode || e.mods.isCommandDown())
     {
@@ -171,7 +199,10 @@ void SequencerGrid::mouseDown (const juce::MouseEvent& e)
     paintValue = current > 0 ? 0 : defaultVelocity;
     proc.patterns.set (pattern, t, s, paintValue);
     if (paintValue == 0)
+    {
         proc.patterns.setRatchet (pattern, t, s, 1);
+        proc.patterns.setPitch (pattern, t, s, 0);
+    }
     dragMode = DragMode::Paint;
     lastTrack = t;
     lastStep = s;
@@ -190,6 +221,18 @@ void SequencerGrid::mouseDrag (const juce::MouseEvent& e)
         return;
     }
 
+    if (dragMode == DragMode::Pitch)
+    {
+        // 6 pixels per semitone
+        const int st = pitchStartValue - e.getDistanceFromDragStartY() / 6;
+        if (st != proc.patterns.getPitch (pattern, velTrack, velStep))
+        {
+            proc.patterns.setPitch (pattern, velTrack, velStep, st);
+            repaint();
+        }
+        return;
+    }
+
     if (dragMode != DragMode::Paint)
         return;
 
@@ -198,14 +241,32 @@ void SequencerGrid::mouseDrag (const juce::MouseEvent& e)
     {
         proc.patterns.set (pattern, t, s, paintValue);
         if (paintValue == 0)
+        {
             proc.patterns.setRatchet (pattern, t, s, 1);
+            proc.patterns.setPitch (pattern, t, s, 0);
+        }
         lastTrack = t;
         lastStep = s;
         repaint();
     }
 }
 
-void SequencerGrid::mouseUp (const juce::MouseEvent&)
+void SequencerGrid::mouseUp (const juce::MouseEvent& e)
 {
+    // In pitch mode, audition the new note when the drag ends.
+    if (dragMode == DragMode::Pitch && e.getDistanceFromDragStart() > 2)
+        proc.previewTrack (velTrack, 0.9f, (float) proc.patterns.getPitch (proc.getCurrentPattern(), velTrack, velStep));
     dragMode = DragMode::None;
+}
+
+void SequencerGrid::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+{
+    int t, s;
+    const int pattern = proc.getCurrentPattern();
+    if (! cellAt (e.getPosition(), t, s) || proc.patterns.get (pattern, t, s) == 0 || std::abs (wheel.deltaY) < 1.0e-4f)
+        return;
+    const int st = proc.patterns.getPitch (pattern, t, s) + (wheel.deltaY > 0 ? 1 : -1);
+    proc.patterns.setPitch (pattern, t, s, st);
+    proc.previewTrack (t, 0.9f, (float) proc.patterns.getPitch (pattern, t, s));
+    repaint();
 }

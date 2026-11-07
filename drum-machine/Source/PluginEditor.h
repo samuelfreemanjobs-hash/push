@@ -3,6 +3,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
 #include "SequencerGrid.h"
+#include "VoicePresets.h"
 
 //==============================================================================
 class KitForgeLookAndFeel : public juce::LookAndFeel_V4
@@ -73,6 +74,31 @@ private:
 };
 
 //==============================================================================
+// Shows the selected pad's rendered hit (through the vintage bus) with its
+// transient and hold regions. Click to audition; drag it out to drop the
+// sound as a WAV into a DAW, sampler or folder.
+class WaveformView : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    explicit WaveformView (KitForgeProcessor&);
+    void setVoice (const kf::VoiceDef& voice, const kf::BusDef& bus, const juce::String& name, int track, juce::Colour colour);
+    void paint (juce::Graphics&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+
+private:
+    KitForgeProcessor& proc;
+    kf::VoiceDef voice {};
+    kf::BusDef bus {};
+    juce::String name;
+    int track = 0;
+    juce::Colour colour;
+    std::vector<float> peaks;          // per-pixel peak (normalised)
+    double lengthSeconds = 0.0;
+    bool dragStarted = false;
+};
+
+//==============================================================================
 // Synth engine editor for the selected track.
 class VoicePanel : public juce::Component
 {
@@ -87,26 +113,38 @@ public:
     std::function<void()> onVoiceForged;
     std::function<void()> onNameChanged;
     void refreshName();
+    void updateWaveform (bool force = false);
 
 private:
     KitForgeProcessor& proc;
     int track = 0;
 
+    void showPresetMenu();
+    void applyPreset (const kf::Presets::Preset& preset);
+    void savePreset();
+    void exportPad();
+
     Choice type { "Drum Type" };
-    juce::TextButton forgeButton { "FORGE VOICE" }, previewButton { "PLAY" };
+    juce::TextButton forgeButton { "FORGE" }, previewButton { "PLAY" },
+                     presetButton { "PRESETS" }, exportPadButton { "EXPORT PAD" };
+    WaveformView waveform;
+    kf::VoiceDef shownVoice {};
+    kf::BusDef shownBus {};
+    std::unique_ptr<juce::FileChooser> chooser;
 
     Choice wave { "Wave" };
-    Knob pitch { "Pitch" }, pEnv { "Pitch Env" }, pDecay { "P.Decay" }, tDecay { "Decay" },
-         tLevel { "Level" }, fm { "FM" }, ratio { "FM Ratio" }, fmDecay { "FM Decay" };
+    Knob pitch { "Pitch" }, pEnv { "Pitch Env" }, pDecay { "P.Decay" }, tDecay { "Decay" }, hold { "Hold" },
+         glide { "Glide" }, tLevel { "Level" }, fm { "FM" }, ratio { "FM Ratio" }, fmDecay { "FM Decay" };
 
     Choice noiseType { "Noise" }, filterMode { "Filter" };
     Knob nLevel { "Level" }, nDecay { "Decay" }, cutoff { "Cutoff" }, reso { "Reso" }, burst { "Bursts" };
 
-    Knob click { "Click" }, attack { "Attack" }, drive { "Drive" }, level { "Volume" },
+    Knob click { "Click" }, attack { "Attack" }, punch { "Punch", true }, punchTime { "Punch Time" },
+         drive { "Drive" }, level { "Volume" },
          pan { "Pan", true }, choke { "Choke" }, lofiSend { "Lo-Fi Send" };
     juce::Label nameLabel;
 
-    juce::Rectangle<int> toneArea, noiseArea, outArea, headerArea;
+    juce::Rectangle<int> toneArea, noiseArea, transArea, outArea, headerArea;
     juce::Random rng;
 };
 
@@ -145,10 +183,16 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    bool keyPressed (const juce::KeyPress&) override;
+    void visibilityChanged() override;
+    void mouseDown (const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
     void selectTrack (int t);
+    void togglePlay();
+    void showGenerateMenu();
+    void stopButtonsStealingKeys (juce::Component&);
     void saveKit();
     void loadKitFromFile();
     void refreshKitName();
@@ -156,7 +200,7 @@ private:
     void paintContent (juce::Graphics&);
     void layoutContent();
 
-    static constexpr int baseWidth = 1180, baseHeight = 1040;
+    static constexpr int baseWidth = 1320, baseHeight = 1040;
     ContentView content;
 
     KitForgeProcessor& proc;
@@ -178,7 +222,9 @@ private:
                      clearButton { "CLEAR" }, generateButton { "GENERATE" };
     std::array<uint8_t, kf::numTracks * kf::numSteps> clipboard {};
     std::array<uint8_t, kf::numTracks * kf::numSteps> clipboardRatchets {};
-    juce::TextButton rollButton { "ROLL" };
+    std::array<int8_t, kf::numTracks * kf::numSteps> clipboardPitches {};
+    juce::TextButton rollButton { "ROLL" }, pitchButton { "PITCH" };
+    int timerTicks = 0;
     bool hasClipboard = false;
 
     // Tracks

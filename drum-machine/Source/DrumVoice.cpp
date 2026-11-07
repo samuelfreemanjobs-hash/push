@@ -62,6 +62,7 @@ void DrumVoice::prepare (double sampleRate)
     chokeCoef = decayCoef (25.0f, sr);
     burstCoef = decayCoef (25.0f, sr);
     burstInterval = (int) (0.009 * sr);
+    declickCoef = decayCoef (4.0f, sr);
     setParams (params);
 }
 
@@ -74,6 +75,9 @@ void DrumVoice::setParams (const VoiceParams& p)
     pitchCoef = decayCoef (p.pEnvDecayMs, sr);
     fmCoef    = decayCoef (p.fmDecayMs, sr);
     attackSamples = (int) (p.attackMs * 0.001f * (float) sr);
+    holdSamples = (int) (p.holdMs * 0.001f * (float) sr);
+    glideCoef = p.glideMs > 0.0f ? decayCoef (p.glideMs, sr) : 0.0f;
+    punchCoef = decayCoef (p.punchMs * 2.0f, sr);
 
     noiseFilter.setCoefficients (p.cutoff, p.reso, sr);
 
@@ -85,8 +89,31 @@ void DrumVoice::setParams (const VoiceParams& p)
     driveNorm = 1.0f / std::tanh (driveGain);
 }
 
-void DrumVoice::trigger (float vel)
+void DrumVoice::trigger (float vel, float semitones)
 {
+    const float newMul = std::exp2 (semitones * (1.0f / 12.0f));
+    const bool wasRinging = active && ! choking;
+
+    // Glide: slide from wherever the ringing note currently is to the new pitch.
+    if (wasRinging && params.glideMs > 0.0f)
+    {
+        const float currentMul = pitchMul * std::exp2 (glideRatio * glideEnv);
+        glideRatio = std::log2 (currentMul / newMul); // stored as octaves
+        glideEnv = 1.0f;
+    }
+    else
+    {
+        glideRatio = 0.0f;
+        glideEnv = 0.0f;
+        phase = 0.0f;
+        modPhase = 0.0f;
+    }
+
+    // Fade out what was playing instead of cutting it (no click).
+    if (active)
+        declick += lastOut;
+
+    pitchMul = newMul;
     velocity = std::clamp (vel, 0.0f, 1.0f);
     active = true;
     choking = false;
@@ -96,10 +123,8 @@ void DrumVoice::trigger (float vel)
     pitchEnv = 1.0f;
     clickEnv = 1.0f;
     fmEnv = 1.0f;
+    punchEnv = 1.0f;
     sampleCount = 0;
-
-    phase = 0.0f;
-    modPhase = 0.0f;
 
     burstsLeft = std::max (0, params.bursts - 1);
     burstCounter = 0;
@@ -126,7 +151,7 @@ float DrumVoice::nextMetal() noexcept
     float sum = 0.0f;
     for (int i = 0; i < 6; ++i)
     {
-        metalPhase[i] = wrap (metalPhase[i] + metalInc[i]);
+        metalPhase[i] = wrap (metalPhase[i] + std::min (0.45f, metalInc[i] * pitchMul));
         sum += metalPhase[i] < 0.5f ? 1.0f : -1.0f;
     }
     return sum * (1.0f / 6.0f);
@@ -149,12 +174,14 @@ float DrumVoice::process() noexcept
         return 0.0f;
 
     const float fs = (float) sr;
+    const bool holding = sampleCount < holdSamples;
 
     // --- Tone oscillator with pitch envelope and phase-modulation FM ---
     float tone = 0.0f;
     if (params.toneLevel > 0.0f && toneEnv > silence)
     {
-        float freq = params.pitch * std::exp2 (params.pEnvAmt * pitchEnv * (1.0f / 12.0f));
+        float freq = params.pitch * pitchMul
+                   * std::exp2 (params.pEnvAmt * pitchEnv * (1.0f / 12.0f) + glideRatio * glideEnv);
         freq = std::min (freq, fs * 0.45f);
 
         float pm = 0.0f;
@@ -167,9 +194,11 @@ float DrumVoice::process() noexcept
         phase = wrap (phase + freq / fs);
         tone = osc (wrap (phase + pm)) * toneEnv * params.toneLevel;
     }
-    toneEnv *= toneCoef;
+    if (! holding)
+        toneEnv *= toneCoef;
     pitchEnv *= pitchCoef;
     fmEnv *= fmCoef;
+    glideEnv *= glideCoef;
 
     // --- Noise / metallic generator ---
     float noise = 0.0f;
@@ -190,7 +219,7 @@ float DrumVoice::process() noexcept
             noiseEnv = 1.0f;
         }
     }
-    else
+    else if (! holding)
     {
         noiseEnv *= noiseCoef;
     }
@@ -212,6 +241,12 @@ float DrumVoice::process() noexcept
     if (params.drive > 0.001f)
         out = std::tanh (out * driveGain) * driveNorm;
 
+    // --- Transient shaper: boost (punch > 0) or soften (punch < 0) the start ---
+    if (std::abs (params.punch) > 0.001f)
+        out *= params.punch > 0.0f ? 1.0f + 3.0f * params.punch * punchEnv
+                                   : 1.0f + params.punch * punchEnv;
+    punchEnv *= punchCoef;
+
     out *= params.level * velocity;
 
     // --- Choke fade ---
@@ -220,11 +255,24 @@ float DrumVoice::process() noexcept
         chokeGain *= chokeCoef;
         out *= chokeGain;
         if (chokeGain < silence)
+        {
             active = false;
+            declick = lastOut = 0.0f;
+            return 0.0f;
+        }
     }
 
-    if (toneEnv < silence && noiseEnv < silence && clickEnv < silence && burstsLeft == 0)
+    out += declick;
+    declick *= declickCoef;
+    lastOut = out;
+
+    if (toneEnv < silence && noiseEnv < silence && clickEnv < silence && burstsLeft == 0
+        && std::abs (declick) < silence && ! holding)
+    {
         active = false;
+        declick = 0.0f;
+        lastOut = 0.0f;
+    }
 
     return out;
 }

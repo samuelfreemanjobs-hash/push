@@ -114,7 +114,7 @@ juce::AudioBuffer<float> renderVoice (const VoiceDef& def, const BusDef& busDef,
     shaper.prepare (sr);
     shaper.setAmounts (bp.punch, bp.tail);
 
-    const int maxLen = (int) (8.0 * sr);
+    const int maxLen = (int) (16.0 * sr); // long 808s
     const int tail = (int) (0.05 * sr);
     juce::AudioBuffer<float> out (1, maxLen);
     out.clear();
@@ -136,6 +136,22 @@ juce::AudioBuffer<float> renderVoice (const VoiceDef& def, const BusDef& busDef,
     out.setSize (1, juce::jmax (1, n), true);
     trimAndFade (out, sr);
     return out;
+}
+
+juce::String padFileName (const VoiceDef& voice, const juce::String& name, const BusDef& bus)
+{
+    const auto type = (VoiceType) (int) voice[Type];
+    return sanitise (voiceTypeNames()[(int) type]) + "_" + sanitise (name) + bitsTag (bus, voice) + ".wav";
+}
+
+bool exportPad (const VoiceDef& voice, const BusDef& bus, const juce::File& file, const Options& opt)
+{
+    auto audio = renderVoice (voice, bus, opt.sampleRate);
+    if (opt.normalise)
+        if (const float peak = audio.getMagnitude (0, audio.getNumSamples()); peak > 0.0f)
+            audio.applyGain (juce::Decibels::decibelsToGain (targetPeakDb ((VoiceType) (int) voice[Type])) / peak);
+    file.getParentDirectory().createDirectory();
+    return writeWav (audio, opt.sampleRate, opt.bitDepth, file);
 }
 
 Result exportKit (const Kit& kit, const juce::File& folder, const Options& opt)

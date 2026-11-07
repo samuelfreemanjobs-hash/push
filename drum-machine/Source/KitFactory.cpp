@@ -1,4 +1,5 @@
 #include "KitFactory.h"
+#include "VoicePresets.h"
 
 namespace kf::KitFactory
 {
@@ -25,6 +26,11 @@ namespace
     bool chance (juce::Random& r, float p)           { return r.nextFloat() < p; }
 }
 
+VoiceDef makeVoice (VoiceType type, std::initializer_list<std::pair<VP, float>> overrides)
+{
+    return make (type, overrides);
+}
+
 VoiceDef defaultVoice()
 {
     VoiceDef v {};
@@ -40,7 +46,7 @@ const juce::StringArray& factoryKitNames()
 {
     static const juce::StringArray names { "Boom Analog", "Punch Machine", "Electro Steel",
                                            "Dusty Lo-Fi", "Industrial Forge", "Minimal Tick",
-                                           "Jazz Phonk (16 pads)" };
+                                           "Jazz Phonk (16 pads)", "Memphis Drift (phonk)" };
     return names;
 }
 
@@ -344,6 +350,26 @@ Kit factoryKit (int index)
             k.bus[BPunch] = 0.25f;   // about +1.5 dB on the attack
             k.bus[BVinyl] = 0.12f;
             break;
+
+        case 7: // Memphis Drift -- phonk: distorted kick + 808, crunchy clap, cowbell riffs, triplet hats
+        {
+            auto pre = [] (const char* name) { return Presets::findFactory (name)->voice; };
+            bankA = { pre ("Phonk Distorted Kick"), pre ("Phonk Clap-Snare"), pre ("Phonk Crunch Clap"), pre ("Phonk Hat"),
+                      pre ("Phonk Open Hat"), pre ("Drift Cowbell Ring"), pre ("808 Rim"), pre ("808 Crash") };
+            namesA = { "Phonk Distorted Kick", "Phonk Clap-Snare", "Phonk Crunch Clap", "Phonk Hat",
+                       "Phonk Open Hat", "Drift Cowbell Ring", "808 Rim", "808 Crash" };
+            bankB = { pre ("808 Low Tom"), pre ("808 Mid Tom"), pre ("Trap Snare"), pre ("Trap Roll Hat"),
+                      pre ("Phonk Distorted 808"), pre ("Memphis Tape Bell"), pre ("Vox Stab"), pre ("Tambourine") };
+            namesB = { "808 Low Tom", "808 Mid Tom", "Trap Snare", "Trap Roll Hat",
+                       "Phonk Distorted 808", "Memphis Tape Bell", "Vox Stab", "Tambourine" };
+            bankA[5][Pan] = 0.2f;  bankB[5][Pan] = -0.25f;  bankA[3][Pan] = 0.15f;
+            haveBankB = true;
+            k.bus = machineBus (3);          // DR-660 phonk: 32 kHz / 12-bit, driven
+            k.bus[BLowKeep] = 90.0f;
+            k.bus[BPunch] = 0.3f;
+            k.bus[BVinyl] = 0.15f;
+            break;
+        }
     }
 
     for (int t = 0; t < 8; ++t)
@@ -774,23 +800,308 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
 //==============================================================================
 // Pattern generation
 //==============================================================================
+const juce::StringArray& grooveStyleNames()
+{
+    static const juce::StringArray names { "Surprise me", "Boom Bap", "Four on the Floor", "Trap",
+                                           "Memphis Phonk", "Drift Phonk" };
+    return names;
+}
+
+float grooveTempo (GrooveStyle style)
+{
+    switch (style)
+    {
+        case GrooveStyle::BoomBap:      return 90.0f;
+        case GrooveStyle::FourOnFloor:  return 124.0f;
+        case GrooveStyle::Trap:         return 140.0f;
+        case GrooveStyle::MemphisPhonk: return 140.0f;
+        case GrooveStyle::DriftPhonk:   return 130.0f;
+        case GrooveStyle::Auto:         break;
+    }
+    return 0.0f;
+}
+
+float grooveSwing (GrooveStyle style)
+{
+    switch (style)
+    {
+        case GrooveStyle::BoomBap:      return 58.0f;
+        case GrooveStyle::FourOnFloor:  return 52.0f;
+        case GrooveStyle::Trap:
+        case GrooveStyle::MemphisPhonk:
+        case GrooveStyle::DriftPhonk:   return 50.0f;
+        case GrooveStyle::Auto:         break;
+    }
+    return 0.0f;
+}
+
+namespace
+{
+    // The first track of each drum type plays the main part; later tracks of the
+    // same type (e.g. a second hat) play a supporting part.
+    std::array<bool, numTracks> primaryTracks (juce::AudioProcessorValueTreeState& apvts)
+    {
+        std::array<bool, numTracks> primary {};
+        std::array<bool, 16> seen {};
+        for (int t = 0; t < numTracks; ++t)
+        {
+            const int type = (int) getParamValue (apvts, voiceParamID (t, Type));
+            primary[(size_t) t] = ! seen[(size_t) type];
+            seen[(size_t) type] = true;
+        }
+        return primary;
+    }
+
+    VoiceType trackType (juce::AudioProcessorValueTreeState& apvts, int t)
+    {
+        return (VoiceType) (int) getParamValue (apvts, voiceParamID (t, Type));
+    }
+
+    // Memphis / drift phonk: 808-style kit, cowbell riffs in a dark (phrygian) key,
+    // distorted 808 bass following the kick, triplet hat rolls.
+    void generatePhonk (PatternBank& bank, int pattern, juce::AudioProcessorValueTreeState& apvts,
+                        juce::Random& r, bool drift)
+    {
+        constexpr uint8_t ghost = 45, normal = 100, accent = 127;
+        static const int phrygian[] = { 0, 1, 3, 5, 7, 8, 10, 12 };
+        const auto primary = primaryTracks (apvts);
+
+        // The cowbell riff is the hook. Use a cowbell track, else a perc / rim.
+        int melodyTrack = -1, counterTrack = -1;
+        for (auto want : { VoiceType::Cowbell, VoiceType::Perc, VoiceType::Rim })
+        {
+            for (int t = 0; t < numTracks; ++t)
+                if (trackType (apvts, t) == want)
+                {
+                    if (melodyTrack < 0) melodyTrack = t;
+                    else if (counterTrack < 0 && want == VoiceType::Cowbell) counterTrack = t;
+                }
+            if (melodyTrack >= 0) break;
+        }
+
+        // ---- Kick + 808 rhythm (shared) ----
+        std::vector<int> kicks { 0 };
+        {
+            const int choices[] = { 3, 6, 7, 10, 11, 14 };
+            const int count = 2 + r.nextInt (2);
+            for (int i = 0; i < count; ++i)
+            {
+                const int s = choices[r.nextInt ((int) std::size (choices))];
+                if (std::find (kicks.begin(), kicks.end(), s) == kicks.end()) kicks.push_back (s);
+            }
+            if (! drift && std::find (kicks.begin(), kicks.end(), 8) != kicks.end())
+                kicks.erase (std::find (kicks.begin(), kicks.end(), 8));
+            std::sort (kicks.begin(), kicks.end());
+        }
+
+        // ---- Cowbell riff: a 2-beat motif, answered with a variation ----
+        std::array<int, numSteps> riffNote {};
+        std::array<bool, numSteps> riffOn {};
+        {
+            const float density = drift ? 0.62f : 0.4f;
+            // Root on the downbeat, then a melodic walk that leans on the
+            // dark intervals (b2, b3, 5, b6) and jumps now and then.
+            int degree = 0; // index into phrygian
+            for (int s = 0; s < 8; ++s)
+            {
+                riffOn[(size_t) s] = s == 0 || chance (r, s % 2 == 0 ? density + 0.15f : density - 0.1f);
+                if (! riffOn[(size_t) s])
+                    continue;
+                if (s == 0)
+                    degree = 0;
+                else if (chance (r, 0.25f))
+                    degree = std::array<int, 4> { 1, 2, 4, 5 } [(size_t) r.nextInt (4)];   // leap to b2 / b3 / 5 / b6
+                else
+                    degree = juce::jlimit (0, 7, degree + std::array<int, 6> { -2, -1, 1, 1, 2, 3 } [(size_t) r.nextInt (6)]);
+                riffNote[(size_t) s] = phrygian[degree];
+            }
+            for (int s = 8; s < numSteps; ++s)
+            {
+                riffOn[(size_t) s] = riffOn[(size_t) (s - 8)];
+                riffNote[(size_t) s] = riffNote[(size_t) (s - 8)];
+            }
+            // Answer: change the last few notes of the second half.
+            for (int s = 12; s < numSteps; ++s)
+                if (chance (r, 0.5f))
+                {
+                    riffOn[(size_t) s] = chance (r, 0.7f);
+                    riffNote[(size_t) s] = phrygian[r.nextInt ((int) std::size (phrygian))];
+                }
+            if (! drift)
+            {
+                // Memphis: sparser, more rhythmic bell on the off-beats.
+                for (int s = 0; s < numSteps; ++s)
+                    if (s % 4 == 0 && s != 0 && chance (r, 0.5f)) riffOn[(size_t) s] = false;
+            }
+        }
+
+        // 808 notes: root, with a fall or rise on the later hits (slides with Glide).
+        std::array<int, numSteps> bassNote {};
+        for (size_t i = 1; i < kicks.size(); ++i)
+            if (chance (r, 0.45f))
+                bassNote[(size_t) kicks[i]] = std::array<int, 6> { -2, 3, 5, 7, -5, 12 } [(size_t) r.nextInt (6)];
+
+        for (int t = 0; t < numTracks; ++t)
+        {
+            const auto type = trackType (apvts, t);
+            const bool main = primary[(size_t) t];
+            auto put = [&] (int step, uint8_t vel, int pitch = 0)
+            {
+                bank.set (pattern, t, step, vel);
+                bank.setPitch (pattern, t, step, pitch);
+            };
+
+            if (t == melodyTrack)
+            {
+                for (int s = 0; s < numSteps; ++s)
+                    if (riffOn[(size_t) s])
+                        put (s, s % 4 == 0 ? accent : (s % 2 == 0 ? normal : (uint8_t) 85), riffNote[(size_t) s]);
+                continue;
+            }
+            if (t == counterTrack)
+            {
+                // Higher answer in the gaps of the second half.
+                for (int s = 8; s < numSteps; ++s)
+                    if (! riffOn[(size_t) s] && chance (r, 0.45f))
+                        put (s, 80, phrygian[r.nextInt ((int) std::size (phrygian))] + 7);
+                continue;
+            }
+
+            switch (type)
+            {
+                case VoiceType::Kick:
+                    if (! main) break;
+                    for (int s : kicks) put (s, s == 0 ? accent : normal);
+                    break;
+
+                case VoiceType::Sub808:
+                    if (! main) break;
+                    for (int s : kicks) put (s, s == 0 ? accent : (uint8_t) 110, bassNote[(size_t) s]);
+                    break;
+
+                case VoiceType::Snare:
+                case VoiceType::Clap:
+                    if (! main) { if (chance (r, 0.4f)) put (15, ghost); break; }
+                    if (drift) { put (4, accent); put (12, accent); }
+                    else       { put (8, accent); }
+                    if (chance (r, 0.3f)) put (drift ? 15 : 14, ghost);
+                    break;
+
+                case VoiceType::ClosedHat:
+                    if (! main)
+                    {
+                        // second hat: a couple of rolls
+                        for (int i = 0; i < 2; ++i)
+                        {
+                            const int s = 2 * r.nextInt (8) + 1;
+                            put (s, 85);
+                            bank.setRatchet (pattern, t, s, 2 + r.nextInt (2));
+                        }
+                        break;
+                    }
+                    for (int s = 0; s < numSteps; ++s)
+                    {
+                        const bool on = drift ? (s % 2 == 0 || chance (r, 0.25f)) : true; // Memphis: running 16ths
+                        if (! on) continue;
+                        put (s, s % 4 == 0 ? normal : (s % 2 == 0 ? (uint8_t) 80 : (uint8_t) 55));
+                        if (chance (r, s >= 12 ? 0.3f : 0.1f))
+                            bank.setRatchet (pattern, t, s, r.nextBool() ? 3 : 2); // triplet / 1/32 rolls
+                    }
+                    break;
+
+                case VoiceType::OpenHat:
+                    if (! main) break;
+                    for (int s : { 2, 6, 10, 14 })
+                        if (chance (r, drift ? 0.35f : 0.2f)) put (s, 90);
+                    break;
+
+                case VoiceType::Cymbal:
+                    if (main && chance (r, 0.4f)) put (0, 90);
+                    break;
+
+                case VoiceType::Shaker:
+                    if (! main) break;
+                    for (int s = 1; s < numSteps; s += 2)
+                        if (chance (r, 0.6f)) put (s, 70);
+                    break;
+
+                case VoiceType::Cowbell:
+                case VoiceType::Rim:
+                case VoiceType::Perc:
+                    if (main && chance (r, 0.5f))
+                        put (2 * r.nextInt (8) + 1, 70);
+                    break;
+
+                case VoiceType::Tom:
+                    if (main && chance (r, 0.35f))
+                        put (14 + r.nextInt (2), 90, r.nextBool() ? 0 : -3);
+                    break;
+            }
+        }
+
+        // Open hats choke the closed hats on the same step.
+        for (int s = 0; s < numSteps; ++s)
+        {
+            bool openHere = false;
+            for (int t = 0; t < numTracks; ++t)
+                openHere |= trackType (apvts, t) == VoiceType::OpenHat && bank.get (pattern, t, s) > 0;
+            if (openHere)
+                for (int t = 0; t < numTracks; ++t)
+                    if (trackType (apvts, t) == VoiceType::ClosedHat && primary[(size_t) t])
+                        bank.set (pattern, t, s, 0);
+        }
+    }
+}
+
 void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueTreeState& apvts, juce::Random& r)
+{
+    generatePattern (bank, pattern, apvts, r, GrooveStyle::Auto);
+}
+
+void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueTreeState& apvts, juce::Random& r,
+                      GrooveStyle style)
 {
     constexpr uint8_t ghost = 45, normal = 100, accent = 127;
     bank.clear (pattern);
 
-    // Pick a feel. Trap = half-time snare on beat 3, 808 sub, hat rolls.
-    const float feel = r.nextFloat();
-    const bool trap = feel < 0.4f;
-    const bool fourOnFloor = ! trap && feel < 0.7f;
+    if (style == GrooveStyle::Auto)
+        style = (GrooveStyle) (1 + r.nextInt (5));
+
+    if (style == GrooveStyle::MemphisPhonk || style == GrooveStyle::DriftPhonk)
+    {
+        generatePhonk (bank, pattern, apvts, r, style == GrooveStyle::DriftPhonk);
+        return;
+    }
+
+    const bool trap = style == GrooveStyle::Trap;
+    const bool fourOnFloor = style == GrooveStyle::FourOnFloor;
     const bool sixteenthHats = ! trap && chance (r, 0.4f);
+    const auto primary = primaryTracks (apvts);
 
     for (int t = 0; t < numTracks; ++t)
     {
         const auto type = (VoiceType) (int) getParamValue (apvts, voiceParamID (t, Type));
         auto put = [&] (int step, uint8_t vel) { bank.set (pattern, t, step, vel); };
 
+        // Supporting tracks (second hat, second snare...) stay sparse.
+        if (! primary[(size_t) t])
+        {
+            if (type == VoiceType::ClosedHat && trap)
+            {
+                const int s = 2 * r.nextInt (8) + 1;
+                put (s, 85);
+                bank.setRatchet (pattern, t, s, 2 + r.nextInt (3));
+            }
+            else
+            {
+                for (int s = 0; s < numSteps; ++s)
+                    if (chance (r, 0.05f)) put (s, chance (r, 0.5f) ? normal : ghost + 20);
+            }
+            continue;
+        }
+
         switch (type)
+
         {
             case VoiceType::Kick:
                 if (trap)

@@ -13,6 +13,8 @@ struct VoiceParams
     float pEnvAmt     = 24.0f; // semitones
     float pEnvDecayMs = 40.0f;
     float toneDecayMs = 400.0f;
+    float holdMs      = 0.0f;   // body stays at full level this long before decaying (long 808s)
+    float glideMs     = 0.0f;   // retriggering while ringing slides from the old pitch (808 slides)
     float toneLevel   = 1.0f;
     float fmAmt       = 0.0f;
     float fmRatio     = 1.5f;
@@ -28,6 +30,8 @@ struct VoiceParams
 
     float click    = 0.2f;
     float attackMs = 0.0f;
+    float punch    = 0.0f;  // -1..1 transient shaper: soften or boost the start of the hit
+    float punchMs  = 15.0f; // how long the transient section lasts
     float drive    = 0.0f;
     float level    = 0.8f;
     float pan      = 0.0f;
@@ -44,6 +48,8 @@ struct VoiceParams
         p.pEnvAmt      = v[(size_t) PEnvAmt];
         p.pEnvDecayMs  = v[(size_t) PEnvDecay];
         p.toneDecayMs  = v[(size_t) ToneDecay];
+        p.holdMs       = v[(size_t) Hold];
+        p.glideMs      = v[(size_t) Glide];
         p.toneLevel    = v[(size_t) ToneLevel];
         p.fmAmt        = v[(size_t) FmAmt];
         p.fmRatio      = v[(size_t) FmRatio];
@@ -57,6 +63,8 @@ struct VoiceParams
         p.bursts       = (int) (v[(size_t) Burst] + 0.5f);
         p.click        = v[(size_t) Click];
         p.attackMs     = v[(size_t) Attack];
+        p.punch        = v[(size_t) Punch];
+        p.punchMs      = v[(size_t) PunchTime];
         p.drive        = v[(size_t) Drive];
         p.level        = v[(size_t) Level];
         p.pan          = v[(size_t) Pan];
@@ -90,7 +98,8 @@ public:
     // Update coefficients from the current parameters (call once per block).
     void setParams (const VoiceParams& p);
 
-    void trigger (float velocity);
+    // semitones: per-step pitch offset (e.g. cowbell melodies, 808 notes)
+    void trigger (float velocity, float semitones = 0.0f);
     void choke();  // quick fade-out (used by choke groups)
 
     bool isActive() const noexcept { return active; }
@@ -117,6 +126,17 @@ private:
     // Attack ramp
     int attackSamples = 0;
     int sampleCount = 0;
+    int holdSamples = 0;
+
+    // Per-hit pitch, glide and transient shaping
+    float pitchMul = 1.0f;          // from the step's pitch offset
+    float glideRatio = 1.0f;        // previous pitch / new pitch, decays to 1
+    float glideEnv = 0.0f, glideCoef = 0.0f;
+    float punchEnv = 0.0f, punchCoef = 0.0f;
+
+    // De-click: when a ringing voice is retriggered, its last output fades out
+    // instead of jumping to zero.
+    float lastOut = 0.0f, declick = 0.0f, declickCoef = 0.0f;
 
     // Clap-style noise re-triggering
     int burstsLeft = 0;

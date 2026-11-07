@@ -12,9 +12,21 @@ There are no samples. Every sound comes from a built-in **drum synthesizer engin
 - **Hi-hat rolls / ratchets**: any step can play x2 (1/32), x3 (1/16-triplet roll) or x4 (1/64) repeats. Turn on
   **ROLL** mode and click steps to cycle the ratchet, or Ctrl/Cmd-click in normal mode. Rolls span the step as it is
   actually played, so they follow the swing. Repeats sit slightly under the first hit (80 % velocity).
+- **Per-step pitch** (±24 semitones): turn on **PITCH** mode and drag a step up or down (right-click resets), or
+  use the mouse wheel over a step in any mode. Use it for cowbell riffs and 808 bass notes; 808s with Glide slide
+  between notes.
+- **Space bar** starts and stops; keys **1–8** select patterns A–H. Many DAWs keep the space bar for their own
+  transport, so this works best in the standalone app.
 - Pattern length 1–16, MPC-style swing (50–75 %), mute and solo per pad
-- Copy / Paste / Clear patterns, plus **Generate**, which writes a groove that fits each pad's drum type. It picks
-  one of three feels: boom-bap, four-on-the-floor, or trap (half-time snare, 808 sub, hat rolls)
+- Copy / Paste / Clear patterns, plus **Generate**, which writes a groove that fits each pad's drum type. Pick a style
+  from the menu (it also sets a typical tempo and swing):
+  - **Boom Bap** (90 BPM), **Four on the Floor** (124), **Trap** (140)
+  - **Memphis Phonk** (140, half-time): kick on 1 plus syncopation, snare on beat 3, running 16th hats with triplet
+    rolls, an off-beat cowbell pattern, and an 808 following the kick
+  - **Drift Phonk** (130): a pitched cowbell riff in a dark phrygian key (a 2-beat motif plus an answer), claps on 2
+    and 4, 808 notes that slide, 8th hats with rolls, and a second cowbell answering higher
+  - **Surprise me** picks one of the above
+  - A second pad of the same type (e.g. a second hat) gets a supporting part, not a copy
 - Built-in patterns: A boom-bap, B four-on-the-floor with shaker, C trap with hat rolls
 - Follows the host transport and tempo when the DAW is playing. Otherwise it uses its own clock: press **PLAY** (in the standalone app or in the plugin)
 - MIDI input: notes **C1–D#2 (36–51)** play pads 1–16 (standard 16-pad layout), so you can finger-drum or sequence from your DAW
@@ -26,7 +38,16 @@ There are no samples. Every sound comes from a built-in **drum synthesizer engin
 | Noise / Metal | White noise or a six-oscillator metallic generator, an SVF filter (LP/BP/HP) with cutoff and resonance, Level, Decay, and clap-style **Bursts** |
 | Shape / Output | Transient Click, Attack, Drive (saturation), Volume, Pan, Choke group (e.g. the open hat is choked by the closed hat) |
 
-It also has **FM Decay** (the FM index envelope, for DX-style chimes that strike metallic and fade to a pure sine)
+It also has:
+- **Hold**: the body stays at full level before decaying. Tone decay now goes up to 10 s, so 808s can ring as
+  long as you want.
+- **Glide**: retriggering a ringing pad slides from the old pitch to the new one (808 slides).
+- **Transient** section: **Punch** (right boosts the start of the hit, up to +12 dB; left softens it) and
+  **Punch Time** (2–150 ms), next to Click and Attack.
+- **Waveform view**: shows the selected pad's hit (through the bus) with the punch region and hold marker. Click it to
+  play; **drag it out to drop the sound as a WAV** into your DAW, sampler or a folder.
+- **De-click**: retriggering a ringing voice fades the old sound out instead of cutting it.
+- **FM Decay** (the FM index envelope, for DX-style chimes that strike metallic and fade to a pure sine)
 and a per-pad **Lo-Fi Send** (how much of the pad goes through the vintage bus; 0 keeps an 808 sub fully clean).
 
 ### Vintage Sampler Bus (12-bit lo-fi)
@@ -54,12 +75,18 @@ The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS.
 (the UI scales).
 
 ### Kit Factory
-- **8 factory kits**: Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick,
+- **Presets for every drum type** (PRESETS button): 68 designed presets (8 kicks, 7 808s, 7 snares, 5 claps,
+  11 hats, 6 toms, 4 rims, 4 cymbals, 6 cowbells, 6 percussion, 4 shakers), plus every pad of every factory kit, plus your
+  own. Use "Save this sound as a preset..." to add yours; they're stored as `.kfvoice` files in
+  `Documents/KitForge Voices/<Type>/`. The "Other drum types" submenu loads a preset of a different type onto the pad.
+- **EXPORT PAD** saves just the selected drum as a WAV (or drag it out of the waveform view)
+- **9 factory kits**: **Memphis Drift (phonk)** (distorted kick and 808, crunchy clap, phonk hats, cowbell riffs,
+  DR-660 style bus), Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick,
   plus **Jazz Phonk (16 pads)**: a jazz × phonk × trap 12-bit kit (see below). Every kit has 16 pads. In the original
   six kits, pads A09–A16 are derived from bank 1: low/high toms, a snare variation, a short "roll hat" that chokes
   with the main hats, an 808 sub, a percussion variation, a short crash and a shaker. Kit files saved with 8 pads
   get the same derived bank 2 when loaded.
-- Drum types now include **808 Sub** (sine tuned to E1–A#1 with a glide; never crushed) and **Shaker**
+- Drum types include **808 Sub** (sine tuned to E1–A#1 with a glide; never crushed) and **Shaker**
 - **FORGE KIT** builds a complete new kit (with a generated name) from per-drum-type "recipes"
 - **FORGE VOICE** regenerates only the selected track, using its *Drum Type* (Kick, Snare, Clap, Closed/Open Hat, Tom, Rim, Cymbal, Cowbell, Perc)
 - **MUTATE** nudges every parameter of the current kit in a random direction, for variations

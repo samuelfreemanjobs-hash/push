@@ -39,4 +39,9 @@ juce::String sanitise (const juce::String& s);
 juce::AudioBuffer<float> renderVoice (const VoiceDef& voice, const BusDef& bus, double sampleRate);
 
 Result exportKit (const Kit& kit, const juce::File& folder, const Options& options);
+
+// Export a single pad as one WAV (rendered through the bus, normalised by type).
+// A file name like "Kick_JazzSubKick_12bit.wav" is suggested by padFileName().
+juce::String padFileName (const VoiceDef& voice, const juce::String& name, const BusDef& bus);
+bool exportPad (const VoiceDef& voice, const BusDef& bus, const juce::File& file, const Options& options);
 } // namespace kf::Exporter
