@@ -153,6 +153,50 @@ octave(s) you pick: `Octave 2 (C2-B2)` ... or `Octaves 2-3`. Very wide jazz voic
 Command line: `--octaves 2-3`, `--palette "Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3"` (chord symbol,
 `@` octave, `:` voicing, `/` inversion).
 
+## Progressions: build or generate progressions, export MIDI and loops
+
+Click **Progressions** (top right). Chords sit on a timeline as **blocks**, sized by length:
+
+* **Generate Progression** writes one in the chosen **genre preset**'s style (4, 8 or 16 bars: a
+  phrase, an answer and a turnaround) - plus the parts that play it. **Dice** = a new one.
+* **Build your own:** add the key's chords (the I ... vii buttons), any root + chord type, your chord
+  grid **palette**, or type it (`ii:m9 V:13 I:maj9 vi:m9` or `Dm9 G13 Cmaj9 Am9`, `*2` = 2 beats).
+* Click a block to select it, **drag** it to move it, double-click to hear it; `<` `>`, length
+  (1 beat ... 4 bars), Duplicate, Delete. Changing the Key moves the whole progression.
+* **Parts - 5 MIDI tracks:** **Keys** (voice-led comping in the genre's rhythm), **Bass** (the
+  genre's bass line with approach notes into each chord), **Pad / Strings** (upper-structure chord
+  tones), **Lead** (a melody from chord tones and scale steps, above the keys) and **Drums** (GM
+  drums, the genre's groove). Each part's recipe can be changed; **New parts** rewrites them with the
+  same chords. Tempo and swing are adjustable.
+* **Play loop** plays it; **Export MIDI** writes `<name>.mid` (all 5 parts on their own tracks, with
+  names and programs), one `.mid` per part and `<name>_chords.mid` (block chords with chord-name
+  markers). **Export Loop** writes `<name>_loop.wav` and a stem per part - **drumless, exactly the
+  progression's length and seamless** (tails wrap to the start), made for sampling.
+  Files go to `Progressions/<preset>_<key>_<bpm>bpm_<seed>/`.
+
+**Genre presets** (vintage R&B first) - each uses a recipe for every part:
+
+| Preset | Keys | Bass | Pad / strings | Lead | Drums |
+|---|---|---|---|---|---|
+| 70s Philly Soul | Wurlitzer | 70s Soul Bass | Philly Soul Strings | Soul Horn Section | straight 8ths soul |
+| Memphis / Stax Soul | Organ stabs | 70s Soul Bass | Philly Soul Strings | Soul Horn Section | soul |
+| 80s Quiet Storm | 1980s R&B Chords | Quiet Storm Synth Bass | Smooth Jazz Pad | Smooth Jazz Sax | half-time |
+| Sade / Minor Quiet Storm | Wiz Khalifa EP | Quiet Storm Synth Bass | Sade Pad | Smooth Jazz Sax | half-time |
+| New Jack Swing | NJS Synth Stabs | NJS Bass | Choir | Lead synth | swung 16ths |
+| 90s Neo-Soul | Neo-Soul Rhodes | Neo-Soul Bass | Smooth Jazz Pad | Mellotron Flute | swung, behind the beat |
+| 90s Gospel R&B | 90s Gospel R&B Chords | Bassline | Choir | Gospel organ | neo-soul |
+| Smooth Jazz | Smooth Jazz Chords | Upright Jazz Bass (walking) | Smooth Jazz Pad | Smooth Jazz Sax | light swing |
+| G-Funk | G-Funk EP | Moog Bass | Philly Soul Strings | G-Funk whistle | laid back |
+| DJ Screw Chopped R&B | DJ Screw R&B Chords | 808 Bass | Screwed Choir | Talkbox | half-time |
+| Luxury Soul (Maybach) | Wiz Khalifa EP | 808 Bass | Luxury Jazz Strings | Luxury Jazz Brass | trap-soul |
+
+New one-shot recipes so every genre has every instrument: **70s Soul Bass**, **Philly Soul Strings**,
+**Soul Horn Section**, **Quiet Storm Synth Bass**, **Upright Jazz Bass**, **Neo-Soul Bass**,
+**New Jack Swing Bass** and **New Jack Swing Synth Stabs**.
+
+Command line: `mpcforge --song quiet-storm --key Eb --bars 8 [--tempo 72 --swing 0.2 --seed 7]
+[--chords "ii:m9 V:13 I:maj9 vi:m9"] [--no-loop] --out dir`; `--list-song-presets`.
+
 ## Recipe Cards: render a recipe book page exactly
 
 Click **Recipe Cards** (top right) and paste a page from your recipe book - e.g. a daily ChatGPT
@@ -694,6 +738,7 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--loudness` | Match perceived loudness (LUFS) across the batch instead of peak level |
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
 | `--octaves <n\|lo-hi>` | Keep every sample's lowest note in these MPC octaves, e.g. `2` or `2-3` |
+| `--song <preset>` | Write a progression + 5 parts and export MIDI + loops (`--key --bars --tempo --swing --seed --chords --no-loop`) |
 | `--card <file.txt>` | Render a recipe card / recipe book page with its exact notes and names (`--card-index`, `--card-info`) |
 | `--palette "<chords>"` | Render exactly these: `Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3` |
 | `--round-robins <2-4>` | Also render 2-4 slightly different takes of every sample (`Round_Robin/Take_2` ...) |
@@ -806,6 +851,8 @@ Source/RenderQueue.*     queue items (saved settings + instrument state), queue 
 Source/QueuePanel.*      the Render Queue window
 Source/RecipeCard.*      reads recipe cards / recipe book pages, plans them, writes their .mid files
 Source/RecipeCardPanel.* the Recipe Cards window
+Source/Arranger.*        genre presets, progression writer, keys / bass / pad / lead / drum parts, MIDI + loop export
+Source/ProgressionPanel.* the Progressions page (chord block timeline)
 Source/BuiltInSynth.*    built-in synth (27 engines)
 Source/Effects.*         offline FX: filters, EQ, saturation, crush, wow/flutter, chorus, reverb, delays, rotary ...
 Tests/TestPlugin.cpp     builds the built-in synth as a VST3 (-DFORGE_BUILD_TEST_PLUGIN=ON)

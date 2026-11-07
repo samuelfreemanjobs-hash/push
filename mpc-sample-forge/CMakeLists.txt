@@ -60,7 +60,7 @@ juce_add_gui_app(MPCSampleForge
     COMPANY_NAME "MPCSampleForge"
     VERSION ${PROJECT_VERSION})
 
-target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp Source/PresetSweepPanel.cpp Source/QueuePanel.cpp Source/RecipeCardPanel.cpp)
+target_sources(MPCSampleForge PRIVATE ${FORGE_ENGINE_SOURCES} Source/Main.cpp Source/MainComponent.cpp Source/DiagnosticsPanel.cpp Source/ReviewPanel.cpp Source/StyleEditor.cpp Source/PresetSweepPanel.cpp Source/QueuePanel.cpp Source/RecipeCardPanel.cpp Source/ProgressionPanel.cpp)
 
 target_compile_definitions(MPCSampleForge PRIVATE ${FORGE_DEFINITIONS}
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:MPCSampleForge,JUCE_PRODUCT_NAME>"

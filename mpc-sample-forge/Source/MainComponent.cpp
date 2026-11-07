@@ -2,6 +2,7 @@
 #include "PresetSweepPanel.h"
 #include "QueuePanel.h"
 #include "RecipeCardPanel.h"
+#include "ProgressionPanel.h"
 #include <map>
 #include "ProgressionLibrary.h"
 #include "BuiltInSynth.h"
@@ -99,6 +100,10 @@ MainComponent::MainComponent()
     cardsButton.setTooltip ("Paste a recipe book page (e.g. your daily ChatGPT installment) and render it with its exact notes and file names");
     cardsButton.onClick = [this] { openRecipeCards(); };
     addAndMakeVisible (cardsButton);
+    progressionsButton.setTooltip ("Build progressions from chord blocks, or let a genre preset write one - with keys, bass, pad, lead and drums - and export MIDI and loops");
+    progressionsButton.setColour (juce::TextButton::buttonColourId, accent.darker (0.5f));
+    progressionsButton.onClick = [this] { openProgressions(); };
+    addAndMakeVisible (progressionsButton);
     addQueueButton.setTooltip ("Save everything set up here (recipe, key, count, instrument + sound, format, takes ...) as a batch "
                                "in the render queue, to render later with the others");
     addQueueButton.onClick = [this] { addToQueue(); };
@@ -583,6 +588,7 @@ MainComponent::~MainComponent()
     planWatcher.reset();
     previewPlayer.setSource (nullptr);
     deviceManager.removeAudioCallback (&previewPlayer);
+    progressionsWindow.reset();
     cardsWindow.reset();
     queueWindow.reset();
     queueRunning = false;
@@ -618,6 +624,8 @@ void MainComponent::resized()
     queueButton.setBounds (titleRow.removeFromRight (120).reduced (0, 3));
     titleRow.removeFromRight (8);
     cardsButton.setBounds (titleRow.removeFromRight (130).reduced (0, 3));
+    titleRow.removeFromRight (8);
+    progressionsButton.setBounds (titleRow.removeFromRight (130).reduced (0, 3));
     title.setBounds (titleRow);
     area.removeFromTop (12);
 
@@ -2063,6 +2071,36 @@ void MainComponent::queueItemFinished (bool ok, const juce::String& summary, con
     }
     saveQueueFile();
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainComponent> (this)] { if (safe != nullptr) safe->runNextQueued(); });
+}
+
+//==============================================================================
+// Progressions
+
+void MainComponent::openProgressions()
+{
+    if (progressionsWindow != nullptr) { progressionsWindow->toFront (true); return; }
+    ProgressionPanel::Hooks hooks;
+    hooks.palette = [this] { return palette; };
+    hooks.play = [this] (const juce::AudioBuffer<float>& audio, double)
+    {
+        auto copy = audio;
+        previewPlayer.setSource (nullptr);
+        previewSource = std::make_unique<juce::MemoryAudioSource> (copy, true, false);
+        previewPlayer.setSource (previewSource.get());
+    };
+    hooks.stop = [this] { previewPlayer.setSource (nullptr); };
+    hooks.outputFolder = [this] { return outputFolder; };
+    hooks.sampleRate = [this]
+    {
+        auto* device = deviceManager.getCurrentAudioDevice();
+        return device != nullptr && device->getCurrentSampleRate() > 0 ? device->getCurrentSampleRate() : 44100.0;
+    };
+    hooks.exportRate = [this] { return (double) rateBox.getSelectedId(); };
+    hooks.bitDepth = [this] { return bitsBox.getSelectedId(); };
+    hooks.log = [this] (const juce::String& m) { log (m); };
+    auto safe = juce::Component::SafePointer<MainComponent> (this);
+    progressionsWindow = std::make_unique<ToolWindow> ("Progressions", new ProgressionPanel (hooks, props.getUserSettings()),
+                                                       [safe] { if (safe != nullptr) safe->progressionsWindow.reset(); });
 }
 
 //==============================================================================

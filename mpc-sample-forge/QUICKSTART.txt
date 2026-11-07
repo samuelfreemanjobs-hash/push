@@ -56,6 +56,14 @@ WHAT WILL GENERATE MAKE?
   rendered with the recipe's FX ("Hear with FX"), so it sounds like the files.
   Octaves menu (Engine row): keep everything in the octave(s) you want (C3 = middle C).
 
+PROGRESSIONS (chord blocks, MIDI + loops)
+  Click "Progressions". Pick a genre preset (70s Philly Soul, 80s Quiet Storm, Neo-Soul, New Jack
+  Swing ...), a key and 4 / 8 / 16 bars, then "Generate Progression" - or build your own: add
+  chords (the key's chords, any chord, your palette, or type them), drag blocks to reorder, set
+  their length. Keys, bass, pad, lead and drums are written for it (5 MIDI tracks). "Play loop",
+  then "Export MIDI + Loop": multi-track .mid + one per part + chords, and a drumless,
+  seamless loop with stems for sampling.
+
 RECIPE CARDS (your recipe book / daily ChatGPT installment)
   Click "Recipe Cards", paste the page. It shows exactly which files it will make (exact chord
   notes, lead + soft notes, textures, .mid files, with the book's own file names). "Render this

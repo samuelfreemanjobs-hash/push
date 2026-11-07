@@ -7,6 +7,7 @@
 #include "PresetSweep.h"
 #include "RenderQueue.h"
 #include "RecipeCard.h"
+#include "Arranger.h"
 #include <cmath>
 
 namespace forge
@@ -548,6 +549,43 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
                       && b[0].items[2].velocity == 60 && b[0].melody.size() == 3 && std::abs (b[0].tempo - 92.0) < 0.01;
         say (ok && okBook ? L::Pass : L::Fail, "Recipe cards",
              juce::String (ok ? "FORGE CARD read exactly" : "FORGE CARD WRONG") + "; " + (okBook ? "book page read (chords, notes, names, melody)" : "BOOK PAGE WRONG"));
+    }
+
+    // ------------------------------------------------------------ progressions (arranger)
+    {
+        juce::String err;
+        std::vector<ChordBlock> blocks;
+        bool ok = parseProgression ("ii:m9 V:13 Imaj9 vi:m9*2", 0, blocks, err) && blocks.size() == 4
+                  && blocks[0].name() == "Dm9" && blocks[1].name() == "G13" && blocks[2].name() == "Cmaj9" && blocks[3].beats == 2.0;
+        int presetsOk = 0, recipesMissing = 0;
+        for (auto& p : songPresets())
+        {
+            for (auto* id : { &p.keysRecipe, &p.bassRecipe, &p.padRecipe, &p.leadRecipe }) recipesMissing += findBuiltInStyle (*id) == nullptr;
+            Arrangement a;
+            a.presetId = p.id; a.scale = p.scale; a.tonic = parsePitchClass (p.keys[0]); a.tempo = p.tempoLow; a.swing = p.swing; a.seed = 3;
+            a.blocks = generateProgression (p, a.tonic, 8, a.seed);
+            generateParts (a, p);
+            bool good = a.blocks.size() >= 8 && a.parts.size() == 5;
+            for (auto& part : a.parts) good = good && ! part.notes.empty();
+            presetsOk += good;
+        }
+        Arrangement a;
+        a.presetId = "philly-soul"; a.tonic = 0; a.tempo = 120; a.seed = 2;
+        a.blocks = blocks;
+        generateParts (a, *findSongPreset ("philly-soul"));
+        juce::AudioBuffer<float> mix;
+        std::vector<juce::AudioBuffer<float>> stems;
+        const bool rendered = renderArrangement (a, 44100.0, mix, stems, err);
+        const int expected = juce::roundToInt (14 * 60.0 / 120.0 * 44100.0);
+        auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("forge_selftest_midi");
+        dir.deleteRecursively();
+        auto files = writeArrangementMidi (a, dir, "test");
+        dir.deleteRecursively();
+        ok = ok && presetsOk == (int) songPresets().size() && recipesMissing == 0 && rendered && mix.getNumSamples() == expected && files.size() == 7;
+        say (ok ? L::Pass : L::Fail, "Progressions",
+             juce::String (presetsOk) + "/" + juce::String ((int) songPresets().size()) + " genre presets write 8 bars + 5 parts"
+             + (recipesMissing > 0 ? ", " + juce::String (recipesMissing) + " RECIPES MISSING" : juce::String())
+             + "; loop " + juce::String (mix.getNumSamples()) + "/" + juce::String (expected) + " samples; " + juce::String (files.size()) + " MIDI files");
     }
 
     // ------------------------------------------------------------ trap progression library

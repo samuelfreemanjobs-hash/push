@@ -61,6 +61,7 @@ namespace forge
 
         // recipe cards
         void openRecipeCards();
+        void openProgressions();
         bool buildCardRequest (const RecipeCardPanel::Options& o, int cardIndex, BatchRequest& req, std::vector<SampleSpec>& specs);
         void addOrReplaceStyle (const Style& st, bool select);
         void updateChordRow();
@@ -113,7 +114,7 @@ namespace forge
         juce::MemoryBlock stateBeforeSweep;   // the sound to go back to after a sweep
 
         std::vector<QueueItem> queue;
-        std::unique_ptr<juce::DocumentWindow> queueWindow, cardsWindow;
+        std::unique_ptr<juce::DocumentWindow> queueWindow, cardsWindow, progressionsWindow;
         bool queueRunning = false, queueStopRequested = false;
         int queueIndex = -1, queueCopies = 1, queueRunNumber = 0, queueRunTotal = 0;
         juce::String queueStartPath;          // the instrument + sound to go back to after the queue
@@ -136,7 +137,7 @@ namespace forge
                          loadSoundButton { "Load Sound" }, styleFileButton { "Style JSON..." }, diceButton { "Dice" },
                          outButton { "Choose..." }, planButton { "Preview List" }, generateButton { "Generate" },
                          auditionButton { "Audition Random" }, diagnosticsButton { "Diagnostics" },
-                         reviewButton { "Review..." }, moreButton { "+16 More" }, sweepButton { "Preset Sweep..." }, addQueueButton { "Add to Queue" }, queueButton { "Queue" }, cardsButton { "Recipe Cards" },
+                         reviewButton { "Review..." }, moreButton { "+16 More" }, sweepButton { "Preset Sweep..." }, addQueueButton { "Add to Queue" }, queueButton { "Queue" }, cardsButton { "Recipe Cards" }, progressionsButton { "Progressions" },
                          size16 { "16" }, size32 { "32" }, size64 { "64" };
         juce::Label estimateLabel, sizeLabel;
 
