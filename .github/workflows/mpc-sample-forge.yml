@@ -88,6 +88,14 @@ jobs:
           "$CLI" --song philly-soul --key C --bars 4 --seed 3 --plugin-keys $P --finish sp1200 --chops 16 --out sweep-out/song_plugin
           test -f sweep-out/song_plugin/*_stem_keys.wav
           test "$(ls sweep-out/song_plugin/*_Chops/Bank_A/*.wav | wc -l | tr -d ' ')" -eq 16
+          # save it (with the plugin's sound), load it back: the same loop, sample for sample
+          "$CLI" --song philly-soul --key C --bars 4 --seed 3 --plugin-keys $P --finish sp1200 --save-song sweep-out/saved.forgesong --out sweep-out/song_saved
+          grep -q '"pluginState"' sweep-out/saved.forgesong
+          "$CLI" --song-file sweep-out/saved.forgesong --out sweep-out/song_loaded
+          cmp sweep-out/song_saved/*_stem_keys.wav sweep-out/song_loaded/*_stem_keys.wav
+          cmp sweep-out/song_saved/*_loop.wav sweep-out/song_loaded/*_loop.wav
+          "$CLI" --song-file sweep-out/saved.forgesong --vary 3 --no-loop --out sweep-out/song_vary
+          ls sweep-out/song_vary/*.mid
 
       - name: Render demo kit
         run: |

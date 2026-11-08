@@ -354,9 +354,73 @@ ProgressionPanel::ProgressionPanel (Hooks h, juce::PropertiesFile* s) : hooks (s
                                                              &bothButton, &openButton, &status })
         addAndMakeVisible (c);
 
-    setSize (1120, 720);
+    // ---- library
+    libraryLabel.setText ("Library - double-click to load", juce::dontSendNotification);
+    libraryLabel.setColour (juce::Label::textColourId, dim);
+    libraryList.setRowHeight (24);
+    libraryList.setColour (juce::ListBox::backgroundColourId, panel);
+    nameEditor.setTextToShowWhenEmpty ("name to save as", dim);
+    saveButton.setColour (juce::TextButton::buttonColourId, accent.darker (0.3f));
+    saveButton.setTooltip ("Save this progression to the library (chords, key, tempo, swing, preset, finish and each part's sound, plugin presets too)");
+    saveButton.onClick = [this] { saveCurrent(); };
+    deleteButton.setTooltip ("Move the selected saved progression to the trash (or drop a variation)");
+    deleteButton.onClick = [this]
+    {
+        auto row = libraryList.getSelectedRow();
+        const int nv = (int) variations.size();
+        if (row < 0) return;
+        if (row < nv) variations.erase (variations.begin() + row);
+        else
+        {
+            std::vector<LibraryEntry*> shown;
+            for (auto& e : library) if (! favOnlyToggle.getToggleState() || e.favourite) shown.push_back (&e);
+            if (row - nv < (int) shown.size()) shown[(size_t) (row - nv)]->file.moveToTrash();
+        }
+        refreshLibrary();
+    };
+    favButton.setTooltip ("Mark / unmark the selected saved progression as a favourite (favourites stay at the top)");
+    favButton.onClick = [this]
+    {
+        auto row = libraryList.getSelectedRow() - (int) variations.size();
+        std::vector<LibraryEntry*> shown;
+        for (auto& e : library) if (! favOnlyToggle.getToggleState() || e.favourite) shown.push_back (&e);
+        if (! juce::isPositiveAndBelow (row, (int) shown.size())) return;
+        Arrangement a;
+        SongFileExtras x;
+        juce::String err;
+        if (loadSongFile (shown[(size_t) row]->file, a, x, err)) { x.favourite = ! x.favourite; saveSongFile (shown[(size_t) row]->file, a, x); }
+        refreshLibrary();
+    };
+    favOnlyToggle.onClick = [this] { refreshLibrary(); };
+    moreButton.setTooltip ("4 variations of this progression: the same chords with new parts, and three with musical changes "
+                           "(richer extensions, substitutes, secondary dominants) - they appear at the top of the list");
+    moreButton.onClick = [this] { moreLikeThis(); };
+    undoButton.setTooltip ("Undo the last change to the progression");
+    undoButton.onClick = [this] { undo(); };
+    openFileButton.setTooltip ("Load a .forgesong file (every export folder has one)");
+    openFileButton.onClick = [this]
+    {
+        chooser = std::make_unique<juce::FileChooser> ("Open a progression", songLibraryFolder(), "*.forgesong");
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this] (const juce::FileChooser& fc)
+        {
+            Arrangement a;
+            SongFileExtras x;
+            juce::String err;
+            if (fc.getResult().existsAsFile())
+            {
+                if (loadSongFile (fc.getResult(), a, x, err)) applyLoaded (a, x, false);
+                else status.setText ("Can't open: " + err, juce::dontSendNotification);
+            }
+        });
+    };
+    for (auto* c : std::initializer_list<juce::Component*> { &libraryList, &libraryLabel, &nameEditor, &saveButton, &deleteButton, &favButton,
+                                                             &favOnlyToggle, &moreButton, &undoButton, &openFileButton })
+        addAndMakeVisible (c);
+
+    setSize (1120, 860);
     presetChanged (false);
     generate();
+    refreshLibrary();
 }
 
 const SongPreset& ProgressionPanel::preset() const
@@ -444,6 +508,17 @@ void ProgressionPanel::selectBlock (int index)
 
 void ProgressionPanel::blocksChanged()
 {
+    // remember the previous state for Undo (only real changes)
+    auto signature = [] (const Arrangement& a)
+    {
+        return a.progressionText() + "|" + juce::String (a.tonic) + "|" + juce::String (a.tempo) + "|" + juce::String (a.swing) + "|" + juce::String (a.seed)
+               + "|" + a.presetId;
+    };
+    if (! restoring && haveSnapshot && signature (snapshot) != signature (arr))
+    {
+        undoStack.push_back (snapshot);
+        if (undoStack.size() > 40) undoStack.erase (undoStack.begin());
+    }
     generateParts (arr, preset());
     // parts are rebuilt: re-attach the instruments chosen for them
     for (int p = 0; p < 4 && p < partSounds.size(); ++p)
@@ -472,7 +547,10 @@ void ProgressionPanel::blocksChanged()
                                        : juce::String ((int) arr.blocks.size()) + " chords, " + juce::String (beats / 4.0, beats / 4.0 == std::floor (beats / 4.0) ? 0 : 2)
                                          + " bars, " + juce::String (arr.lengthSeconds(), 1) + " s at " + juce::String (arr.tempo, 0) + " BPM in "
                                          + pitchClassName (arr.tonic) + " " + arr.scale, juce::dontSendNotification);
-    for (auto* b : { &playButton, &midiButton, &loopButton, &bothButton, &newPartsButton }) b->setEnabled (! arr.blocks.empty());
+    for (auto* b : { &playButton, &midiButton, &loopButton, &bothButton, &newPartsButton, &saveButton, &moreButton }) b->setEnabled (! arr.blocks.empty());
+    snapshot = arr;
+    haveSnapshot = true;
+    undoButton.setEnabled (! undoStack.empty());
 }
 
 void ProgressionPanel::playLoop()
@@ -557,6 +635,7 @@ void ProgressionPanel::exportFiles (bool midi, bool loops)
                                                               + juce::String (arr.tempo, 0) + " BPM, swing " + juce::String (arr.swing, 2) + ", seed " + juce::String (arr.seed)
                                                               + "\nChords: " + arr.progressionText() + "\nSounds: " + sounds.joinIntoString (", ")
                                                               + "\nFinish: " + arr.finish + "\n");
+    saveSongFile (folder.getChildFile (baseName() + ".forgesong"), arr, currentExtras());   // reopen it later with Open file...
     lastFolder = folder;
     auto finished = [this, written, folder]
     {
@@ -680,6 +759,210 @@ ProgressionPanel::~ProgressionPanel()
     for (auto& e : partEditors) e.reset();
 }
 
+//==============================================================================
+// Library
+
+SongFileExtras ProgressionPanel::currentExtras() const
+{
+    SongFileExtras x;
+    x.name = nameEditor.getText().trim().isNotEmpty() ? nameEditor.getText().trim()
+                                                      : preset().name + " " + pitchClassName (arr.tonic) + " " + juce::Time::getCurrentTime().formatted ("%d %b %H-%M");
+    for (int p = 0; p < 4; ++p)
+        if (partPlugins[p] != nullptr)
+        {
+            juce::MemoryBlock state;
+            partPlugins[p]->getStateInformation (state);
+            x.pluginStates[partIds[p]] = state;
+        }
+    return x;
+}
+
+void ProgressionPanel::saveCurrent()
+{
+    if (arr.blocks.empty()) return;
+    auto x = currentExtras();
+    auto file = songLibraryFolder().getChildFile (safeFileName (x.name) + ".forgesong");
+    if (file.existsAsFile())
+    {
+        Arrangement old;
+        SongFileExtras oldX;
+        juce::String err;
+        if (loadSongFile (file, old, oldX, err)) { x.favourite = oldX.favourite; x.created = oldX.created; }
+    }
+    if (saveSongFile (file, arr, x))
+    {
+        nameEditor.setText (x.name, false);
+        status.setText ("Saved \"" + x.name + "\" to the library", juce::dontSendNotification);
+        if (hooks.log) hooks.log ("Saved progression: " + x.name + " (" + arr.progressionText() + ") -> " + file.getFullPathName());
+    }
+    else status.setText ("Could not save to " + file.getFullPathName(), juce::dontSendNotification);
+    refreshLibrary();
+}
+
+void ProgressionPanel::refreshLibrary()
+{
+    library.clear();
+    for (auto& f : songLibraryFolder().findChildFiles (juce::File::findFiles, false, "*.forgesong"))
+    {
+        Arrangement a;
+        SongFileExtras x;
+        juce::String err;
+        if (! loadSongFile (f, a, x, err)) continue;
+        LibraryEntry e;
+        e.file = f;
+        e.name = x.name.isNotEmpty() ? x.name : f.getFileNameWithoutExtension();
+        e.favourite = x.favourite;
+        e.created = x.created;
+        auto* p = findSongPreset (a.presetId);
+        e.line = (p != nullptr ? p->name : a.presetId) + " - " + pitchClassName (a.tonic) + " - " + juce::String (a.tempo, 0) + " BPM - " + a.progressionText();
+        library.push_back (e);
+    }
+    std::stable_sort (library.begin(), library.end(), [] (const LibraryEntry& a, const LibraryEntry& b)
+    {
+        if (a.favourite != b.favourite) return a.favourite;
+        return a.created > b.created;
+    });
+    libraryList.updateContent();
+    libraryList.repaint();
+    libraryLabel.setText ("Library (" + juce::String ((int) library.size()) + " saved" + (variations.empty() ? juce::String() : ", " + juce::String ((int) variations.size()) + " variations")
+                          + ") - double-click to load", juce::dontSendNotification);
+}
+
+int ProgressionPanel::getNumRows()
+{
+    int shown = 0;
+    for (auto& e : library) shown += (! favOnlyToggle.getToggleState() || e.favourite) ? 1 : 0;
+    return (int) variations.size() + shown;
+}
+
+void ProgressionPanel::paintListBoxItem (int row, juce::Graphics& g, int w, int h, bool selected)
+{
+    const LibraryEntry* e = nullptr;
+    if (row < (int) variations.size()) e = &variations[(size_t) row];
+    else
+    {
+        int k = row - (int) variations.size();
+        for (auto& x : library)
+            if (! favOnlyToggle.getToggleState() || x.favourite) { if (k == 0) { e = &x; break; } --k; }
+    }
+    if (e == nullptr) return;
+    g.fillAll (selected ? accent.withAlpha (0.35f) : (row % 2 ? panel.brighter (0.04f) : panel));
+    g.setColour (e->variation ? juce::Colour (0xffffd166) : e->favourite ? juce::Colour (0xffffc107) : text);
+    g.setFont (juce::FontOptions (13.0f, e->favourite ? juce::Font::bold : juce::Font::plain));
+    auto prefix = e->variation ? juce::String ("~ ") : e->favourite ? juce::String (juce::CharPointer_UTF8 ("\xe2\x98\x85 ")) : juce::String ("   ");
+    g.drawText (prefix + e->name, 6, 0, 300, h, juce::Justification::centredLeft, true);
+    g.setColour (dim);
+    g.setFont (juce::FontOptions (12.0f));
+    g.drawText (e->line, 310, 0, w - 316, h, juce::Justification::centredLeft, true);
+}
+
+void ProgressionPanel::listBoxItemDoubleClicked (int row, const juce::MouseEvent&) { loadEntry (row); }
+
+void ProgressionPanel::loadEntry (int row)
+{
+    if (row < (int) variations.size())
+    {
+        applyLoaded (variations[(size_t) row].arrangement, {}, true);
+        return;
+    }
+    int k = row - (int) variations.size();
+    for (auto& e : library)
+        if (! favOnlyToggle.getToggleState() || e.favourite)
+        {
+            if (k-- != 0) continue;
+            Arrangement a;
+            SongFileExtras x;
+            juce::String err;
+            if (loadSongFile (e.file, a, x, err)) applyLoaded (a, x, false);
+            else status.setText ("Can't load: " + err, juce::dontSendNotification);
+            return;
+        }
+}
+
+void ProgressionPanel::applyLoaded (const Arrangement& loaded, const SongFileExtras& x, bool variation)
+{
+    // the preset first (it resets tempo / swing / parts), then everything saved on top
+    for (size_t k = 0; k < songPresets().size(); ++k)
+        if (songPresets()[k].id == loaded.presetId) presetBox.setSelectedId ((int) k + 1, juce::dontSendNotification);
+    presetChanged (false);
+    arr = loaded;
+    tempoSlider.setValue (arr.tempo, juce::dontSendNotification);
+    swingSlider.setValue (arr.swing, juce::dontSendNotification);
+    seedEditor.setText (juce::String (arr.seed), false);
+    keyBox.setSelectedId (arr.tonic + 2, juce::dontSendNotification);   // show the loaded key (Generate keeps it)
+    for (size_t k = 0; k < vintageFinishes().size(); ++k)
+        if (vintageFinishes()[k].first == arr.finish) finishBox.setSelectedId ((int) k + 1, juce::dontSendNotification);
+    if (! variation)
+    {
+        nameEditor.setText (x.name, false);
+        // part sounds: built-in, or the plugin with its saved preset
+        for (int p = 0; p < 4; ++p)
+        {
+            juce::String path;
+            for (auto& part : arr.parts) if (part.id == partIds[p]) path = part.pluginPath;
+            if (path.isEmpty()) { partSounds[p]->setSelectedId (1, juce::dontSendNotification); setPartPlugin (p, nullptr, {}); continue; }
+            juce::String err;
+            auto inst = hooks.loadPlugin ? hooks.loadPlugin (path, err) : nullptr;
+            if (inst == nullptr)
+            {
+                status.setText ("Couldn't load " + path + " for " + partNames[p] + " - using the built-in sound", juce::dontSendNotification);
+                partSounds[p]->setSelectedId (1, juce::dontSendNotification);
+                setPartPlugin (p, nullptr, {});
+                continue;
+            }
+            auto it = x.pluginStates.find (partIds[p]);
+            if (it != x.pluginStates.end()) inst->setStateInformation (it->second.getData(), (int) it->second.getSize());
+            auto index = installed.indexOf (path);
+            if (index >= 0) partSounds[p]->setSelectedId (10 + index, juce::dontSendNotification);
+            else
+            {
+                partSounds[p]->addItem ("Sound: " + juce::File (path).getFileNameWithoutExtension(), 1000 + p);
+                partSounds[p]->setSelectedId (1000 + p, juce::dontSendNotification);
+            }
+            setPartPlugin (p, std::move (inst), path);
+        }
+    }
+    selected = -1;
+    blocksChanged();
+    status.setText ((variation ? "Loaded a variation: " : "Loaded \"" + x.name + "\": ") + arr.progressionText(), juce::dontSendNotification);
+}
+
+void ProgressionPanel::moreLikeThis()
+{
+    if (arr.blocks.empty()) return;
+    variations.clear();
+    auto base = arr;
+    for (int v = 0; v < 4; ++v)
+    {
+        LibraryEntry e;
+        e.variation = true;
+        e.arrangement = base;
+        e.arrangement.seed = juce::Random::getSystemRandom().nextInt (999999);
+        e.arrangement.blocks = varyProgression (base.blocks, base.tonic, base.scale, e.arrangement.seed, v);   // 0 = same chords, new parts
+        e.name = v == 0 ? "Same chords, new parts" : "Variation " + juce::String (v) + (v == 3 ? " (bolder)" : "");
+        e.line = e.arrangement.progressionText();
+        variations.push_back (e);
+    }
+    refreshLibrary();
+    libraryList.selectRow (0);
+    status.setText ("4 variations at the top of the library - double-click one to load it (Undo goes back)", juce::dontSendNotification);
+}
+
+void ProgressionPanel::undo()
+{
+    if (undoStack.empty()) return;
+    restoring = true;
+    arr = undoStack.back();
+    undoStack.pop_back();
+    tempoSlider.setValue (arr.tempo, juce::dontSendNotification);
+    swingSlider.setValue (arr.swing, juce::dontSendNotification);
+    for (size_t k = 0; k < songPresets().size(); ++k)
+        if (songPresets()[k].id == arr.presetId) presetBox.setSelectedId ((int) k + 1, juce::dontSendNotification);
+    selected = -1;
+    blocksChanged();
+    restoring = false;
+}
+
 void ProgressionPanel::paint (juce::Graphics& g) { g.fillAll (bg); }
 
 void ProgressionPanel::resized()
@@ -746,6 +1029,26 @@ void ProgressionPanel::resized()
     auto bottom = r.removeFromBottom (32);
     r.removeFromBottom (8);
     auto looks = r.removeFromBottom (28);
+    r.removeFromBottom (8);
+    // library: the rest of the space
+    r.removeFromTop (6);
+    libraryLabel.setBounds (r.removeFromTop (22));
+    auto libButtons = r.removeFromRight (190);
+    r.removeFromRight (8);
+    libraryList.setBounds (r);
+    auto lb = [&libButtons] (int h = 28) { auto x = libButtons.removeFromTop (h); libButtons.removeFromTop (4); return x; };
+    nameEditor.setBounds (lb());
+    auto saveRow = lb();
+    saveButton.setBounds (saveRow.removeFromLeft (92));
+    saveRow.removeFromLeft (6);
+    deleteButton.setBounds (saveRow);
+    auto favRow = lb();
+    favButton.setBounds (favRow.removeFromLeft (92));
+    favRow.removeFromLeft (6);
+    undoButton.setBounds (favRow);
+    moreButton.setBounds (lb());
+    openFileButton.setBounds (lb());
+    favOnlyToggle.setBounds (lb (24));
     finishLabel.setBounds (looks.removeFromLeft (50));
     finishBox.setBounds (looks.removeFromLeft (260)); looks.removeFromLeft (16);
     chopsLabel.setBounds (looks.removeFromLeft (50));

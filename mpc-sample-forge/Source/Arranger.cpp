@@ -919,4 +919,185 @@ juce::StringArray writeArrangementLoops (const Arrangement& arr, const juce::Fil
     written.addArray (writeLoopChops (arr, mix, folder, name, chopMode, sr, bits));
     return written;
 }
+
+//==============================================================================
+// Saved progressions
+
+juce::var arrangementToVar (const Arrangement& a, const SongFileExtras& x)
+{
+    auto* o = new juce::DynamicObject();
+    o->setProperty ("format", "MPCSampleForgeSong");
+    o->setProperty ("version", 1);
+    o->setProperty ("name", x.name);
+    o->setProperty ("favourite", x.favourite);
+    o->setProperty ("created", x.created.isNotEmpty() ? x.created : juce::Time::getCurrentTime().toISO8601 (true));
+    o->setProperty ("preset", a.presetId);
+    o->setProperty ("key", pitchClassName (a.tonic));
+    o->setProperty ("scale", a.scale);
+    o->setProperty ("tempo", a.tempo);
+    o->setProperty ("swing", a.swing);
+    o->setProperty ("seed", juce::String (a.seed));
+    o->setProperty ("finish", a.finish);
+    o->setProperty ("chords", a.progressionText());
+    juce::Array<juce::var> blocks;
+    for (auto& b : a.blocks)
+    {
+        auto* bo = new juce::DynamicObject();
+        bo->setProperty ("root", pitchClassName (b.rootPc));
+        bo->setProperty ("quality", b.quality);
+        bo->setProperty ("beats", b.beats);
+        blocks.add (juce::var (bo));
+    }
+    o->setProperty ("blocks", blocks);
+    juce::Array<juce::var> parts;
+    for (auto& p : a.parts)
+    {
+        auto* po = new juce::DynamicObject();
+        po->setProperty ("id", p.id);
+        po->setProperty ("recipe", p.recipeId);
+        po->setProperty ("enabled", p.enabled);
+        if (p.pluginPath.isNotEmpty())
+        {
+            po->setProperty ("plugin", p.pluginPath);
+            po->setProperty ("pluginName", p.pluginName);
+            auto it = x.pluginStates.find (p.id);
+            if (it != x.pluginStates.end()) po->setProperty ("pluginState", it->second.toBase64Encoding());
+        }
+        parts.add (juce::var (po));
+    }
+    o->setProperty ("parts", parts);
+    return juce::var (o);
+}
+
+bool arrangementFromVar (const juce::var& v, Arrangement& a, SongFileExtras& x, juce::String& error)
+{
+    if (v["format"].toString() != "MPCSampleForgeSong") { error = "not an MPC Sample Forge progression"; return false; }
+    a = Arrangement();
+    x = SongFileExtras();
+    x.name = v["name"].toString();
+    x.favourite = (bool) v["favourite"];
+    x.created = v["created"].toString();
+    a.presetId = v["preset"].toString();
+    a.tonic = juce::jmax (0, parsePitchClass (v["key"].toString()));
+    a.scale = v.getProperty ("scale", "major").toString();
+    a.tempo = juce::jlimit (40.0, 220.0, (double) v.getProperty ("tempo", 90.0));
+    a.swing = juce::jlimit (0.0, 1.0, (double) v.getProperty ("swing", 0.0));
+    a.seed = v["seed"].toString().getLargeIntValue();
+    a.finish = v.getProperty ("finish", "clean").toString();
+    if (auto* blocks = v["blocks"].getArray())
+        for (auto& bv : *blocks)
+        {
+            ChordBlock b;
+            b.rootPc = juce::jmax (0, parsePitchClass (bv["root"].toString()));
+            b.quality = bv["quality"].toString();
+            b.beats = juce::jlimit (0.5, 32.0, (double) bv.getProperty ("beats", 4.0));
+            if (findQuality (b.quality) == nullptr) { error = "unknown chord type " + b.quality; return false; }
+            a.blocks.push_back (b);
+        }
+    if (auto* parts = v["parts"].getArray())
+        for (auto& pv : *parts)
+        {
+            Part p;
+            p.id = pv["id"].toString();
+            p.recipeId = pv["recipe"].toString();
+            p.enabled = (bool) pv.getProperty ("enabled", true);
+            p.pluginPath = pv["plugin"].toString();
+            p.pluginName = pv["pluginName"].toString();
+            if (pv.hasProperty ("pluginState"))
+            {
+                juce::MemoryBlock state;
+                if (state.fromBase64Encoding (pv["pluginState"].toString())) x.pluginStates[p.id] = state;
+            }
+            a.parts.push_back (p);
+        }
+    if (a.blocks.empty()) { error = "the progression has no chords"; return false; }
+    return true;
+}
+
+bool saveSongFile (const juce::File& f, const Arrangement& a, const SongFileExtras& x)
+{
+    f.getParentDirectory().createDirectory();
+    return f.replaceWithText (juce::JSON::toString (arrangementToVar (a, x), false));
+}
+
+bool loadSongFile (const juce::File& f, Arrangement& a, SongFileExtras& x, juce::String& error)
+{
+    if (! f.existsAsFile()) { error = "file not found: " + f.getFullPathName(); return false; }
+    return arrangementFromVar (juce::JSON::parse (f), a, x, error);
+}
+
+juce::File songLibraryFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("MPCSampleForge").getChildFile ("Progressions");
+}
+
+//==============================================================================
+// "More like this"
+
+std::vector<ChordBlock> varyProgression (const std::vector<ChordBlock>& blocks, int tonic, const juce::String& scaleName,
+                                         juce::int64 seed, int strength)
+{
+    std::vector<ChordBlock> out = blocks;
+    if (strength <= 0 || blocks.empty()) return out;
+    juce::Random rng (seed);
+    std::vector<int> scale;
+    if (! getScale (scaleName, scale)) getScale ("major", scale);
+    auto inKey = [&] (const ChordBlock& b)
+    {
+        for (auto i : b.intervals())
+            if (std::find (scale.begin(), scale.end(), ((b.rootPc + i - tonic) % 12 + 12) % 12) == scale.end()) return false;
+        return true;
+    };
+    // richer / simpler colours of the same chord
+    static const std::map<juce::String, std::vector<const char*>> colours {
+        { "maj7", { "maj9", "69", "maj7s11" } }, { "maj9", { "maj7", "69", "maj13" } }, { "69", { "maj9", "maj7" } },
+        { "m7", { "m9", "m11" } }, { "m9", { "m7", "m11" } }, { "m11", { "m9", "m7" } },
+        { "7", { "9", "13", "7sus4" } }, { "9", { "13", "9sus4", "7" } }, { "13", { "9", "7s9", "13b9" } },
+        { "7sus4", { "9sus4", "7" } }, { "9sus4", { "7sus4", "13" } }, { "7s9", { "7b9", "13" } },
+        { "maj", { "add9", "maj7" } }, { "min", { "m7", "madd9" } } };
+    const double chance = juce::jlimit (0.15, 0.7, 0.2 + 0.15 * strength);
+    for (size_t i = 0; i < out.size(); ++i)
+    {
+        if (rng.nextDouble() > chance) continue;
+        auto& b = out[i];
+        const auto& next = blocks[(i + 1) % blocks.size()];
+        const int degree = ((b.rootPc - tonic) % 12 + 12) % 12;
+        const int pick = rng.nextInt (10);
+        if (pick < 4)
+        {
+            auto it = colours.find (b.quality);
+            if (it != colours.end()) b.quality = it->second[(size_t) rng.nextInt ((int) it->second.size())];
+        }
+        else if (pick < 7)
+        {
+            // a chord with the same job: I <-> iii / vi, IV <-> ii, vi <-> IV, i <-> bIII / bVI ...
+            struct Sub { int from, to; const char* quality; };
+            static const Sub subs[] = { { 0, 9, "m9" }, { 0, 4, "m7" }, { 5, 2, "m9" }, { 2, 5, "maj9" }, { 9, 5, "maj9" }, { 9, 0, "maj9" },
+                                        { 4, 7, "9sus4" }, { 3, 8, "maj7" }, { 8, 3, "maj9" }, { 10, 5, "9" }, { 5, 10, "9" } };
+            std::vector<const Sub*> options;
+            for (auto& sb : subs) if (sb.from == degree) options.push_back (&sb);
+            if (! options.empty())
+            {
+                auto* sb = options[(size_t) rng.nextInt ((int) options.size())];
+                ChordBlock c = b;
+                c.rootPc = (tonic + sb->to) % 12;
+                c.quality = sb->quality;
+                if (inKey (c) || strength > 2) b = c;
+            }
+        }
+        else if (pick < 9 && i + 1 < out.size())
+        {
+            // a secondary dominant into the next chord (V7 of it)
+            b.rootPc = (next.rootPc + 7) % 12;
+            b.quality = rng.nextBool() ? "7s9" : "13";
+        }
+        else if (b.quality == "7" || b.quality == "9" || b.quality == "13" || b.quality == "7s9")
+        {
+            // tritone substitution for a dominant
+            b.rootPc = (b.rootPc + 6) % 12;
+            b.quality = "9";
+        }
+    }
+    return out;
+}
 }

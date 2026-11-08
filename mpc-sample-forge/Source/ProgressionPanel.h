@@ -30,7 +30,8 @@ namespace forge
 
     /** The Progressions page: build a progression from chord blocks (or let a genre preset write one),
         with keys, bass, pad / strings, lead and drums parts, and export MIDI and audio loops. */
-    class ProgressionPanel final : public juce::Component
+    class ProgressionPanel final : public juce::Component,
+                                   private juce::ListBoxModel
     {
     public:
         struct Hooks
@@ -69,6 +70,30 @@ namespace forge
         InstrumentFor instrumentFor();
         /** Renders on a background thread with a progress window, then calls `done` on the message thread. */
         void renderInBackground (std::function<bool (std::function<void (double)>)> work, std::function<void()> done);
+
+        // library: saved progressions, favourites, variations ("more like this"), undo
+        struct LibraryEntry
+        {
+            juce::File file;                 // empty = an unsaved variation
+            juce::String name, line;
+            bool favourite = false, variation = false;
+            juce::String created;
+            Arrangement arrangement;         // variations only
+        };
+        int getNumRows() override;
+        void paintListBoxItem (int row, juce::Graphics&, int w, int h, bool selected) override;
+        void listBoxItemDoubleClicked (int row, const juce::MouseEvent&) override;
+        void refreshLibrary();
+        void saveCurrent();
+        void loadEntry (int row);
+        void applyLoaded (const Arrangement& a, const SongFileExtras& extras, bool variation);
+        void moreLikeThis();
+        void undo();
+        SongFileExtras currentExtras() const;
+        std::vector<LibraryEntry> library, variations;
+        std::vector<Arrangement> undoStack;
+        Arrangement snapshot;
+        bool haveSnapshot = false, restoring = false;
         juce::String baseName() const;
         const SongPreset& preset() const;
         std::vector<ChordBlock> keyChords() const;
@@ -106,5 +131,12 @@ namespace forge
         juce::ComboBox finishBox, chopsBox;
         juce::Label finishLabel, chopsLabel;
         std::unique_ptr<juce::Thread> renderThread;
+
+        juce::ListBox libraryList { "library", this };
+        juce::Label libraryLabel;
+        juce::TextEditor nameEditor;
+        juce::TextButton saveButton { "Save" }, deleteButton { "Delete" }, favButton { "Favourite" }, moreButton { "More like this" },
+                         undoButton { "Undo" }, openFileButton { "Open file..." };
+        juce::ToggleButton favOnlyToggle { "Favourites only" };
     };
 }

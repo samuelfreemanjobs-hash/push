@@ -90,6 +90,9 @@ juce::String cliHelpText()
       << "  --key <C..B|random> --bars <4|8|16> --tempo <bpm> --swing <0-1> --seed <n>\n"
       << "  --chords \"ii:m9 V:13 I:maj9 vi:m9\"   your own progression (numerals or chord symbols, *2 = 2 beats)\n"
       << "  --no-loop                 MIDI only (no audio loop / stems)\n"
+      << "  --save-song <f.forgesong> save the progression (chords, settings, part sounds incl. plugin presets)\n"
+      << "  --song-file <f.forgesong> load a saved progression and export it again\n"
+      << "  --vary <0-4>              'more like this' (0 = same chords, new parts): the progression with musical substitutions\n"
       << "  --finish <clean|tape70s|cassette|digital80s|sp1200|mpc60|vinyl|dusty>   vintage look for loop + stems\n"
       << "  --chops <off|chord|bar|16>   also cut the loop into pad chops (Bank_A ...) with a pad map\n"
       << "  --plugin-keys / --plugin-bass / --plugin-pad / --plugin-lead <file.vst3>   play that part with your VST3\n\n"
@@ -139,7 +142,7 @@ static void out (const juce::String& s) { std::cout << s << std::endl; }
 
 bool CliRunner::wantsCli (const juce::StringArray& args)
 {
-    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue", "--song", "--list-song-presets" })
+    for (auto a : { "--cli", "--help", "-h", "--list-styles", "--list-plugins", "--dump-style", "--diagnose", "--version", "--analyse", "--list-progressions", "--queue", "--song", "--song-file", "--list-song-presets" })
         if (args.contains (a))
             return true;
     return false;
@@ -179,11 +182,21 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         return onDone (0);
     }
 
-    if (args.contains ("--song"))
+    if (args.contains ("--song") || args.contains ("--song-file"))
     {
-        auto* preset = findSongPreset (option (args, "--song"));
-        if (preset == nullptr) return fail ("unknown --song preset (see --list-song-presets)");
         Arrangement arr;
+        SongFileExtras extras;
+        const bool fromFile = args.contains ("--song-file");
+        if (fromFile)
+        {
+            juce::String e;
+            if (! loadSongFile (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--song-file")), arr, extras, e))
+                return fail ("--song-file: " + e);
+        }
+        auto* preset = findSongPreset (fromFile ? arr.presetId : option (args, "--song"));
+        if (preset == nullptr) return fail ("unknown --song preset (see --list-song-presets)");
+        if (! fromFile)
+        {
         arr.presetId = preset->id;
         arr.scale = preset->scale;
         arr.seed = args.contains ("--seed") ? option (args, "--seed").getLargeIntValue() : juce::Random::getSystemRandom().nextInt (999999);
@@ -200,6 +213,14 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
             if (! parseProgression (option (args, "--chords"), arr.tonic, arr.blocks, err)) return fail ("--chords: " + err);
         }
         else arr.blocks = generateProgression (*preset, arr.tonic, juce::jlimit (4, 16, option (args, "--bars", "8").getIntValue()), arr.seed);
+        arr.finish = option (args, "--finish", "clean");
+        }
+        if (args.contains ("--vary"))
+        {
+            const int strength = juce::jlimit (0, 4, option (args, "--vary", "2").getIntValue());
+            arr.seed = arr.seed * 7 + 11;
+            arr.blocks = varyProgression (arr.blocks, arr.tonic, arr.scale, arr.seed, strength);
+        }
         generateParts (arr, *preset);
 
         auto name = safeFileName (preset->name.removeCharacters ("/()") + "_" + pitchClassName (arr.tonic) + "_" + juce::String (juce::roundToInt (arr.tempo)) + "bpm_" + juce::String (arr.seed));
@@ -214,12 +235,30 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
         if (args.contains ("--plan-only")) return onDone (0);
         auto midi = writeArrangementMidi (arr, folder, name);
         out ("MIDI: " + midi.joinIntoString (", "));
-        arr.finish = option (args, "--finish", "clean");
+        if (args.contains ("--finish")) arr.finish = option (args, "--finish");
+        if (args.contains ("--save-song"))
+        {
+            extras.name = extras.name.isNotEmpty() ? extras.name : name;
+            auto f = juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--save-song"));
+            if (! saveSongFile (f, arr, extras)) return fail ("could not save " + f.getFullPathName());
+            out ("Saved " + f.getFullPathName());
+        }
         if (! args.contains ("--no-loop"))
         {
             // --plugin-keys / --plugin-bass / --plugin-pad / --plugin-lead <file.vst3>: your instruments play those parts
             const double rate = option (args, "--rate", "44100").getDoubleValue();
             std::map<juce::String, std::unique_ptr<juce::AudioPluginInstance>> partPlugins;
+            for (auto& part : arr.parts)
+                if (part.pluginPath.isNotEmpty())
+                {
+                    juce::String e;
+                    auto inst = host.load (part.pluginPath, rate, 512, e);
+                    if (inst == nullptr) return fail ("the song's " + part.id + " plugin: " + e);
+                    auto it = extras.pluginStates.find (part.id);
+                    if (it != extras.pluginStates.end()) inst->setStateInformation (it->second.getData(), (int) it->second.getSize());
+                    out ("  " + part.id + " plays on " + inst->getName() + " (saved sound)");
+                    partPlugins[part.id] = std::move (inst);
+                }
             for (auto* id : { "keys", "bass", "pad", "lead" })
                 if (args.contains ("--plugin-" + juce::String (id)))
                 {
@@ -231,6 +270,11 @@ void CliRunner::start (const juce::StringArray& args, std::function<void (int)> 
                     out ("  " + juce::String (id) + " plays on " + inst->getName());
                     partPlugins[id] = std::move (inst);
                 }
+            if (args.contains ("--save-song") && ! partPlugins.empty())
+            {
+                for (auto& [id, inst] : partPlugins) { juce::MemoryBlock st; inst->getStateInformation (st); extras.pluginStates[id] = st; }
+                saveSongFile (juce::File::getCurrentWorkingDirectory().getChildFile (option (args, "--save-song")), arr, extras);
+            }
             InstrumentFor instrumentFor = [&partPlugins] (const Part& part) -> juce::AudioProcessor*
             {
                 auto it = partPlugins.find (part.id);

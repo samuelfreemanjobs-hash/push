@@ -191,6 +191,22 @@ Load a bank in order and the pads play the progression.
 CLI: `--finish dusty`, `--chops chord|bar|16`, `--plugin-keys / --plugin-bass / --plugin-pad /
 --plugin-lead <file.vst3>`.
 
+**Library: save, favourite, "More like this", Undo.** Type a name and press **Save** - the
+progression goes into your library (`MPCSampleForge/Progressions` in your user settings folder:
+`%APPDATA%` on Windows, `~/Library/Application Support` on Mac) as a small `.forgesong` file:
+preset, key, tempo, swing, seed, finish, the chords, each part's recipe / on-off, and each part's
+VST3 **with the sound you dialled in**. Loading rebuilds it exactly - the same notes, the same
+loop. Double-click a library row to load it. **Favourite** stars it (favourites sit at the top;
+**Favourites only** hides the rest). **More like this** adds 4 variations under it - the same
+chords with new parts, then richer / simpler extensions, substitutes (vi for I, ii for IV ...),
+a secondary dominant or tritone sub into the next chord; double-click one to try it. **Undo** goes
+back through your last changes (load, generate, edit, variation). **Open file...** loads a
+`.forgesong` from anywhere. Every export also writes `<name>.forgesong` next to the MIDI and loops,
+so a folder of exports can always be reopened.
+
+CLI: `--save-song <file.forgesong>`, `--song-file <file.forgesong>` (instead of `--song`),
+`--vary 0-4` (a variation of the loaded / written progression).
+
 **Genre presets** (vintage R&B first) - each uses a recipe for every part:
 
 | Preset | Keys | Bass | Pad / strings | Lead | Drums |
@@ -756,6 +772,9 @@ mpcforge --style trap --key F --scale phrygian --seed 7 --plan-only
 | `--short-names` | Short, pad-ordered file names such as `014_EPBell_C3` |
 | `--octaves <n\|lo-hi>` | Keep every sample's lowest note in these MPC octaves, e.g. `2` or `2-3` |
 | `--song <preset>` | Write a progression + 5 parts and export MIDI + loops (`--key --bars --tempo --swing --seed --chords --no-loop`) |
+| `--song-file <f.forgesong>` | Rebuild a saved progression exactly (its parts' VST3 sounds too) and export it |
+| `--save-song <f.forgesong>` | Save the progression (with `--song` or `--song-file`) |
+| `--vary <0-4>` | "More like this": 0 = same chords / new parts ... 4 = boldest substitutions |
 | `--card <file.txt>` | Render a recipe card / recipe book page with its exact notes and names (`--card-index`, `--card-info`) |
 | `--palette "<chords>"` | Render exactly these: `Cm9 Fm9@3:drop2 Bb13/1 note:Eb@3` |
 | `--round-robins <2-4>` | Also render 2-4 slightly different takes of every sample (`Round_Robin/Take_2` ...) |

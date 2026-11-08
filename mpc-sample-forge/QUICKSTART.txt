@@ -66,6 +66,9 @@ PROGRESSIONS (chord blocks, MIDI + loops)
   Sound (per part): built-in, the main window's instrument + sound, or any VST3 ("Edit" picks
   its preset). Finish: 70s Tape, Cassette, 80s Digital, SP-1200, MPC60, Vinyl, Dusty Record.
   Chops: the loop also cut into pad chops (per chord / bar / 16 slices) in Bank_A ... + pad map.
+  Library: type a name, "Save". Double-click a row to load it back exactly (VST3 sounds too).
+  "Favourite" stars it, "More like this" adds 4 variations to try, "Undo" steps back.
+  Exports also save <name>.forgesong next to the files - "Open file..." reopens it.
 
 RECIPE CARDS (your recipe book / daily ChatGPT installment)
   Click "Recipe Cards", paste the page. It shows exactly which files it will make (exact chord

@@ -1,5 +1,6 @@
 #pragma once
 #include "SamplePlanner.h"
+#include <map>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -78,6 +79,26 @@ namespace forge
     /** MIDI files: <name>.mid (every part on its own track), <name>_<part>.mid each, and
         <name>_chords.mid (block chords). Returns the files written. */
     juce::StringArray writeArrangementMidi (const Arrangement& arrangement, const juce::File& folder, const juce::String& name);
+
+    /** A saved progression (.forgesong): everything needed to rebuild it exactly. */
+    struct SongFileExtras
+    {
+        juce::String name;
+        bool favourite = false;
+        juce::String created;                                   // ISO date
+        std::map<juce::String, juce::MemoryBlock> pluginStates; // part id -> the plugin's sound
+    };
+    juce::var arrangementToVar (const Arrangement& arrangement, const SongFileExtras& extras);
+    bool arrangementFromVar (const juce::var& v, Arrangement& arrangement, SongFileExtras& extras, juce::String& error);
+    bool saveSongFile (const juce::File& f, const Arrangement& arrangement, const SongFileExtras& extras);
+    bool loadSongFile (const juce::File& f, Arrangement& arrangement, SongFileExtras& extras, juce::String& error);
+    juce::File songLibraryFolder();
+
+    /** "More like this": the same progression with musical changes - richer or simpler extensions,
+        relative / functional substitutes, a tritone sub or a secondary dominant into the next chord.
+        strength 0 = the same chords (only the parts change with a new seed). */
+    std::vector<ChordBlock> varyProgression (const std::vector<ChordBlock>& blocks, int tonicPc, const juce::String& scale,
+                                             juce::int64 seed, int strength);
 
     /** Whole-loop looks: 70s tape, cassette, 80s digital, SP-1200, MPC60, vinyl ... (id, name). */
     const std::vector<std::pair<juce::String, juce::String>>& vintageFinishes();

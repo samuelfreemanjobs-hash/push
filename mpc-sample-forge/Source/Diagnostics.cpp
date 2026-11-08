@@ -608,6 +608,64 @@ void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioPro
              + juce::String (chopSamples) + " samples");
     }
 
+    // ------------------------------------------------------------ song files (save / load) + "more like this"
+    {
+        auto* preset = findSongPreset ("quiet-storm");
+        Arrangement a;
+        a.presetId = "quiet-storm"; a.scale = "major"; a.tonic = 3; a.tempo = 71; a.swing = 0.2; a.seed = 506591; a.finish = "cassette";
+        a.blocks = generateProgression (*preset, a.tonic, 8, a.seed);
+        generateParts (a, *preset);
+        a.parts[0].pluginPath = "/x/Keys.vst3"; a.parts[0].pluginName = "Keys";
+        a.parts[2].enabled = false;
+        SongFileExtras x;
+        x.name = "Slow Jam"; x.favourite = true; x.created = "2026-01-01";
+        const char stateBytes[] = { 1, 2, 3, 0, 4, 5 };
+        x.pluginStates["keys"] = juce::MemoryBlock (stateBytes, sizeof (stateBytes));
+        // through JSON text, exactly as a .forgesong file is written and read
+        auto parsed = juce::JSON::parse (juce::JSON::toString (arrangementToVar (a, x)));
+        Arrangement b;
+        SongFileExtras y;
+        juce::String err;
+        bool ok = arrangementFromVar (parsed, b, y, err)
+                  && b.progressionText() == a.progressionText() && b.tonic == a.tonic && b.tempo == a.tempo && b.swing == a.swing
+                  && b.seed == a.seed && b.finish == a.finish && b.presetId == a.presetId && b.parts.size() == a.parts.size()
+                  && y.name == x.name && y.favourite && y.created == x.created
+                  && y.pluginStates.count ("keys") == 1 && y.pluginStates["keys"] == x.pluginStates["keys"];
+        if (ok) generateParts (b, *preset);   // the notes are rebuilt from the blocks + seed, as on load
+        int sameNotes = 0;
+        for (size_t k = 0; ok && k < a.parts.size(); ++k)
+        {
+            const auto& p = a.parts[k];
+            const auto& q = b.parts[k];
+            ok = q.recipeId == p.recipeId && q.pluginPath == p.pluginPath && q.enabled == p.enabled;
+            bool same = p.notes.size() == q.notes.size();
+            for (size_t n = 0; same && n < p.notes.size(); ++n)
+                same = p.notes[n].note == q.notes[n].note && std::abs (p.notes[n].start - q.notes[n].start) < 1e-9
+                       && p.notes[n].velocity == q.notes[n].velocity;
+            sameNotes += same;
+        }
+        ok = ok && sameNotes == (int) a.parts.size();
+        // variations: strength 0 keeps the chords, stronger ones change some but keep the length
+        auto same = varyProgression (a.blocks, a.tonic, a.scale, 7, 0);
+        int changedTotal = 0;
+        bool lengthsKept = true;
+        for (int s = 1; s <= 3; ++s)
+        {
+            auto v = varyProgression (a.blocks, a.tonic, a.scale, 7 + s, s);
+            Arrangement va = a;
+            va.blocks = v;
+            lengthsKept = lengthsKept && v.size() == a.blocks.size() && std::abs (va.totalBeats() - a.totalBeats()) < 1e-9;
+            for (size_t k = 0; k < v.size() && k < a.blocks.size(); ++k) changedTotal += v[k].name() != a.blocks[k].name();
+        }
+        Arrangement sa = a;
+        sa.blocks = same;
+        ok = ok && sa.progressionText() == a.progressionText() && lengthsKept && changedTotal > 0;
+        say (ok ? L::Pass : L::Fail, "Song files",
+             juce::String (ok ? "save / load round trip exact" : "ROUND TRIP WRONG") + " (" + juce::String (sameNotes) + "/"
+             + juce::String ((int) a.parts.size()) + " parts rebuilt note for note, plugin state kept); variations changed "
+             + juce::String (changedTotal) + " chords" + (err.isNotEmpty() ? " - " + err : juce::String()));
+    }
+
     // ------------------------------------------------------------ trap progression library
     {
         const auto& lib = progressionLibrary ("trap");
