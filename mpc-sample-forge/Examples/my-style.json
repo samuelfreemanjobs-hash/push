@@ -1,0 +1,17 @@
+{
+  "id": "dark-rnb",
+  "name": "Dark R&B",
+  "description": "Moody minor 9ths and 11ths for late-night R&B. Copy and edit this file to make your own style.",
+  "scale": "minor",
+  "chords":   { "m9": 6, "m11": 5, "maj7": 3, "maj9": 3, "mmaj9": 2, "9sus4": 2, "m7b5": 1 },
+  "voicings": { "rootless": 4, "drop2": 3, "spread": 2, "open": 1 },
+  "chordRatio": 0.7,
+  "keyTypes": { "note": 4, "octave": 2, "fifth": 1, "stab": 1 },
+  "chordRootRange": [45, 57],
+  "keyRange": [36, 72],
+  "velocity": [60, 95],
+  "hold": [1.8, 3.0],
+  "stabChance": 0.1,
+  "stabHold": 0.3,
+  "strumMs": 35
+}

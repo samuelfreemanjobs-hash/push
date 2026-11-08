@@ -1,0 +1,794 @@
+#include "Diagnostics.h"
+#include "BuiltInSynth.h"
+#include "OfflineRenderer.h"
+#include "Styles.h"
+#include "Analysis.h"
+#include "ProgressionLibrary.h"
+#include "PresetSweep.h"
+#include "RenderQueue.h"
+#include "RecipeCard.h"
+#include "Arranger.h"
+#include "Effects.h"
+#include <cmath>
+
+namespace forge
+{
+//==============================================================================
+namespace Log
+{
+    static std::unique_ptr<juce::FileLogger> logger;
+    static juce::CriticalSection lock;
+
+    juce::File file()
+    {
+        return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                   .getChildFile ("MPCSampleForge").getChildFile ("Logs").getChildFile ("forge.log");
+    }
+
+    static void crashHandler (void*)
+    {
+        // Best effort: we are in a crash, keep this minimal.
+        write ("*** CRASH ***\n" + juce::SystemStats::getStackBacktrace());
+    }
+
+    void init (const juce::String& appName)
+    {
+        const juce::ScopedLock sl (lock);
+        if (logger != nullptr) return;
+        file().getParentDirectory().createDirectory();
+        logger = std::make_unique<juce::FileLogger> (file(), appName + " log", 512 * 1024); // trimmed to 512 KB
+        juce::SystemStats::setApplicationCrashHandler (crashHandler);
+        logger->logMessage ("==== " + appName + " started " + juce::Time::getCurrentTime().toString (true, true)
+                            + " on " + juce::SystemStats::getOperatingSystemName());
+    }
+
+    void write (const juce::String& message)
+    {
+        const juce::ScopedLock sl (lock);
+        if (logger != nullptr)
+            logger->logMessage (juce::Time::getCurrentTime().toString (false, true, true, true) + "  " + message);
+    }
+
+    void shutdown()
+    {
+        const juce::ScopedLock sl (lock);
+        logger.reset();
+    }
+}
+
+//==============================================================================
+juce::String DiagResult::toString() const
+{
+    const char* tag = level == Level::Pass ? "PASS" : level == Level::Warn ? "WARN" : level == Level::Fail ? "FAIL" : "info";
+    return juce::String ("[") + tag + "] " + area.paddedRight (' ', 24) + " " + message;
+}
+
+void DiagSummary::add (const DiagResult& r)
+{
+    if (r.level == DiagResult::Level::Pass) ++pass;
+    if (r.level == DiagResult::Level::Warn) ++warn;
+    if (r.level == DiagResult::Level::Fail) ++fail;
+}
+
+juce::String DiagSummary::toString() const
+{
+    return juce::String (pass) + " passed, " + juce::String (warn) + " warnings, " + juce::String (fail) + " failed"
+           + (fail == 0 ? (warn == 0 ? "  -> all good" : "  -> working, see warnings") : "  -> problems found, please send this report");
+}
+
+//==============================================================================
+juce::String systemReport (PluginHost& host, juce::AudioDeviceManager* devices,
+                           juce::AudioProcessor* instrument, const juce::String& instrumentPath)
+{
+    juce::String r;
+    auto line = [&r] (const juce::String& k, const juce::String& v) { r << "  " << k.paddedRight (' ', 20) << v << "\n"; };
+
+    r << "MPC SAMPLE FORGE - DIAGNOSTICS REPORT\n"
+      << "Generated " << juce::Time::getCurrentTime().toString (true, true) << "\n\n";
+
+    r << "Application\n";
+    line ("Version", juce::String (FORGE_VERSION_STRING));
+    line ("JUCE", juce::SystemStats::getJUCEVersion());
+    line ("Built", juce::String (__DATE__) + " " + __TIME__);
+    line ("Executable", juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName());
+    line ("Log file", Log::file().getFullPathName());
+
+    r << "\nSystem\n";
+    line ("OS", juce::SystemStats::getOperatingSystemName() + (juce::SystemStats::isOperatingSystem64Bit() ? " (64-bit)" : ""));
+    line ("CPU", juce::SystemStats::getCpuModel() + " / " + juce::String (juce::SystemStats::getNumCpus()) + " cores");
+    line ("Memory", juce::String (juce::SystemStats::getMemorySizeInMegabytes()) + " MB");
+    line ("Device", juce::SystemStats::getDeviceDescription());
+    line ("Language", juce::SystemStats::getUserLanguage() + "-" + juce::SystemStats::getUserRegion());
+
+    r << "\nAudio\n";
+    if (devices == nullptr)
+        line ("Device", "(command line: no audio device used)");
+    else if (auto* d = devices->getCurrentAudioDevice())
+    {
+        line ("Type", d->getTypeName());
+        line ("Device", d->getName());
+        line ("Sample rate", juce::String (juce::roundToInt (d->getCurrentSampleRate())) + " Hz");
+        line ("Buffer", juce::String (d->getCurrentBufferSizeSamples()) + " samples");
+        line ("Outputs", juce::String (d->getActiveOutputChannels().countNumberOfSetBits()));
+        line ("CPU usage", juce::String (devices->getCpuUsage() * 100.0, 1) + " %");
+    }
+    else
+        line ("Device", "NONE OPEN - auditioning will be silent (rendering still works)");
+
+    auto midi = juce::MidiInput::getAvailableDevices();
+    juce::StringArray midiNames;
+    for (auto& m : midi) midiNames.add (m.name);
+    line ("MIDI inputs", midiNames.isEmpty() ? juce::String ("none") : midiNames.joinIntoString (", "));
+
+    r << "\nVST3\n";
+    for (auto* f : host.getFormatManager().getFormats())
+        if (f->getName() == "VST3")
+            line ("Search folders", f->getDefaultLocationsToSearch().toString().replace (";", "\n" + juce::String::repeatedString (" ", 22)));
+    auto found = host.findInstalledVST3();
+    line ("Plugins found", juce::String (found.size()));
+    for (auto& p : found) r << "      " << p << "\n";
+
+    r << "\nCurrent instrument\n";
+    if (instrument == nullptr)
+        line ("Instrument", "none");
+    else
+    {
+        line ("Name", instrument->getName());
+        line ("Path", instrumentPath.isEmpty() ? juce::String ("(built-in)") : instrumentPath);
+        if (auto* inst = dynamic_cast<juce::AudioPluginInstance*> (instrument))
+        {
+            auto d = inst->getPluginDescription();
+            line ("Manufacturer", d.manufacturerName);
+            line ("Version", d.version);
+            line ("Format", d.pluginFormatName);
+            line ("Is instrument", d.isInstrument ? "yes" : "NO (this looks like an effect)");
+        }
+        line ("Inputs / outputs", juce::String (instrument->getTotalNumInputChannels()) + " / " + juce::String (instrument->getTotalNumOutputChannels()));
+        line ("Accepts MIDI", instrument->acceptsMidi() ? "yes" : "NO");
+        line ("Latency", juce::String (instrument->getLatencySamples()) + " samples");
+        line ("Has editor", instrument->hasEditor() ? "yes" : "no");
+        juce::MemoryBlock state;
+        instrument->getStateInformation (state);
+        line ("State size", juce::String ((int) state.getSize()) + " bytes");
+    }
+
+    r << "\nStyles: " << builtInStyles().size() << " built in.  Engines: " << engineIds().joinIntoString (", ") << "\n";
+    return r;
+}
+
+//==============================================================================
+namespace
+{
+    /** Fundamental by autocorrelation around the expected period (sub-sample accurate). */
+    double estimatePitch (const juce::AudioBuffer<float>& b, double sr, double expectedHz)
+    {
+        auto start = (int) (0.02 * sr);
+        auto n = juce::jmin (b.getNumSamples() - start, (int) (0.3 * sr));
+        if (n < (int) (4 * sr / expectedHz)) return 0;
+
+        std::vector<double> x ((size_t) n);
+        for (int i = 0; i < n; ++i)
+            x[(size_t) i] = 0.5 * (b.getSample (0, start + i) + b.getSample (juce::jmin (1, b.getNumChannels() - 1), start + i));
+
+        auto period = sr / expectedHz;
+        auto lo = juce::jmax (2, (int) (period * 0.94)), hi = (int) (period * 1.06) + 2;
+        std::vector<double> r ((size_t) (hi + 2), 0.0);
+        for (int lag = lo - 1; lag <= hi + 1; ++lag)
+        {
+            double s = 0;
+            for (int i = 0; i + lag < n; ++i) s += x[(size_t) i] * x[(size_t) (i + lag)];
+            r[(size_t) lag] = s / (n - lag);
+        }
+        int best = lo;
+        for (int lag = lo; lag <= hi; ++lag) if (r[(size_t) lag] > r[(size_t) best]) best = lag;
+        auto a = r[(size_t) best - 1], c = r[(size_t) best + 1], m = r[(size_t) best];
+        auto denom = a - 2 * m + c;
+        auto p = std::abs (denom) > 1e-12 ? 0.5 * (a - c) / denom : 0.0;
+        return sr / (best + p);
+    }
+
+    bool isFinite (const juce::AudioBuffer<float>& b)
+    {
+        for (int ch = 0; ch < b.getNumChannels(); ++ch)
+            for (int i = 0; i < b.getNumSamples(); ++i)
+                if (! std::isfinite (b.getSample (ch, i))) return false;
+        return true;
+    }
+
+    SampleSpec testNote (int note, double hold, int velocity = 110)
+    {
+        SampleSpec s;
+        s.fileStem = "diag";
+        s.kind = "Key";
+        s.label = midiNoteName (note);
+        s.rootNote = note;
+        s.variation = 12345;
+        NoteEvent e;
+        e.note = note; e.velocity = velocity; e.startSec = 0; e.lengthSec = hold;
+        s.notes.push_back (e);
+        return s;
+    }
+}
+
+void runSelfTest (std::function<void (const DiagResult&)> report, juce::AudioProcessor* plugin, const std::atomic<bool>& cancel)
+{
+    using L = DiagResult::Level;
+    auto say = [&] (L level, const juce::String& area, const juce::String& msg)
+    {
+        DiagResult r { level, area, msg };
+        Log::write ("diag " + r.toString());
+        report (r);
+    };
+
+    RenderSettings rs;
+    rs.warmUpSec = 0;
+    const auto sr = rs.sampleRate;
+
+    // ------------------------------------------------------------ planning
+    {
+        int ok = 0;
+        juce::StringArray problems;
+        for (auto& st : builtInStyles())
+        {
+            for (auto root : { -1, PlanOptions::styleRoot })
+            {
+                PlanOptions o; o.count = 100; o.seed = 7; o.builtIn = true; o.fixedRoot = root;
+                juce::String err;
+                auto specs = planSamples (st, o, err);
+                auto expected = st.scaleBankOnly ? 112 : 100; // banks come in whole sets of 16 (7 x 16 for 100)
+                if ((int) specs.size() == expected && err.isEmpty()) ++ok;
+                else problems.add (st.id + (root == -1 ? "" : " (16 Levels)") + ": " + juce::String ((int) specs.size()) + " samples " + err);
+            }
+        }
+        if (problems.isEmpty()) say (L::Pass, "Sample planner", juce::String (ok) + " style/mode combinations each plan 100 unique samples");
+        else for (auto& p : problems) say (L::Fail, "Sample planner", p);
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ built-in engines
+    {
+        BuiltInSynth synth;
+        OfflineRenderer renderer (synth, rs);
+        for (auto& id : engineIds())
+        {
+            if (cancel) return;
+            Engine e;
+            parseEngine (id, e);
+            synth.setEngine (e);
+            synth.setVariation (12345);
+
+            juce::AudioBuffer<float> audio;
+            juce::String err;
+            auto t0 = juce::Time::getMillisecondCounterHiRes();
+            auto spec = testNote (60, 0.4);
+            if (! renderer.render (spec, audio, err)) { say (L::Fail, "Engine " + id, err); continue; }
+            auto ms = juce::Time::getMillisecondCounterHiRes() - t0;
+
+            if (! isFinite (audio)) { say (L::Fail, "Engine " + id, "audio contains NaN / infinity"); continue; }
+
+            auto peakDb = juce::Decibels::gainToDecibels (audio.getMagnitude (0, audio.getNumSamples()));
+            juce::String info = juce::String (juce::roundToInt (audio.getNumSamples() / sr * 1000.0)) + " ms, peak " + juce::String (peakDb, 1)
+                                + " dB, rendered in " + juce::String (juce::roundToInt (ms)) + " ms";
+
+            // bell and cowbell are inharmonic by design: no single-period pitch to measure
+            if (e == Engine::Bell || e == Engine::Cowbell)
+            {
+                say (L::Pass, "Engine " + id, info);
+                continue;
+            }
+
+            auto f0 = estimatePitch (audio, sr, 261.6256);
+            auto cents = f0 > 0 ? 1200.0 * std::log2 (f0 / 261.6256) : 9999.0;
+            auto tolerance = (e == Engine::Supersaw || e == Engine::Choir || e == Engine::Organ || e == Engine::Lead || e == Engine::Whistle
+                              || e == Engine::Talkbox || e == Engine::Sax || e == Engine::Flute || e == Engine::Bass808
+                              || e == Engine::LogDrum || e == Engine::MusicBox) ? 25.0 : 10.0;
+            say (std::abs (cents) <= tolerance ? L::Pass : L::Warn, "Engine " + id,
+                 info + ", tuning " + (f0 > 0 ? juce::String (cents, 1) + " cents" : juce::String ("not measurable")));
+        }
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ recipes (FX chains + lengths)
+    {
+        BuiltInSynth synth;
+        OfflineRenderer renderer (synth, rs);
+        for (auto& st : builtInStyles())
+        {
+            if (cancel) return;
+            if (st.isKit() || st.processing.isEmpty()) continue;
+
+            PlanOptions o; o.count = 1; o.seed = 3; o.builtIn = true; o.fixedRoot = PlanOptions::styleRoot;
+            juce::String err;
+            auto specs = planSamples (st, o, err);
+            if (specs.empty()) { say (L::Fail, "Recipe " + st.tag, "could not plan: " + err); continue; }
+
+            Engine e;
+            if (parseEngine (specs[0].engine, e)) synth.setEngine (e);
+            synth.setVariation (specs[0].variation);
+
+            juce::AudioBuffer<float> audio;
+            if (! renderer.render (specs[0], audio, err)) { say (L::Fail, "Recipe " + st.tag, err); continue; }
+            if (! isFinite (audio)) { say (L::Fail, "Recipe " + st.tag, "audio contains NaN / infinity"); continue; }
+
+            auto lenMs = audio.getNumSamples() / sr * 1000.0;
+            auto& P = st.processing;
+            auto maxMs = (P.maxLength > 0 ? P.maxLength * 1000.0 : 1e9) + P.fxTailMs + 2.0;
+            auto peak = audio.getMagnitude (0, audio.getNumSamples());
+            auto ok = lenMs <= maxMs && peak > 0.1f && peak <= 1.0f;
+            say (ok ? L::Pass : L::Fail, "Recipe " + st.tag,
+                 juce::String (juce::roundToInt (lenMs)) + " ms (end point " + juce::String (juce::roundToInt (P.maxLength * 1000.0)) + " ms"
+                 + (P.fxTailMs > 0 ? " + " + juce::String (juce::roundToInt (P.fxTailMs)) + " ms tail" : juce::String()) + "), "
+                 + juce::String (P.fx.isArray() ? P.fx.size() : 0) + " FX, peak " + juce::String (juce::Decibels::gainToDecibels (peak), 1) + " dB");
+        }
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ Smart Pick
+    {
+        BuiltInSynth synth;
+        OfflineRenderer renderer (synth, rs);
+        auto* st = findBuiltInStyle ("one-shot-palette");
+        PlanOptions o; o.count = 24; o.seed = 21; o.builtIn = true; o.fixedRoot = PlanOptions::styleRoot;
+        juce::String err;
+        auto specs = st != nullptr ? planSamples (*st, o, err) : std::vector<SampleSpec>();
+        std::vector<PickCandidate> cands;
+        for (auto& sp : specs)
+        {
+            Engine e;
+            if (parseEngine (sp.engine, e)) synth.setEngine (e);
+            synth.setVariation (sp.variation);
+            juce::AudioBuffer<float> audio;
+            PickCandidate c;
+            c.valid = renderer.render (sp, audio, err);
+            if (c.valid) c.features = analyseSample (audio, sr, sp.rootNote, sp.kind == "Key");
+            c.rootNote = sp.rootNote;
+            c.group = sp.kind;
+            cands.push_back (c);
+        }
+        // plus a deliberately muddy chord: Smart Pick must mark it down
+        PickCandidate muddy = cands.empty() ? PickCandidate() : cands.front();
+        muddy.lowIntervalViolations = lowIntervalViolations ({ 40, 43, 47 }, &muddy.lowIntervalDetail);
+        cands.push_back (muddy);
+
+        auto verdicts = smartPick (cands, 8);
+        int kept = 0;
+        for (auto& v : verdicts) kept += v.kept ? 1 : 0;
+        auto muddyMarked = ! verdicts.empty() && verdicts.back().score < 100 && verdicts.back().reasons.joinIntoString (" ").contains ("muddy");
+        bool finite = true;
+        for (auto& c : cands) for (auto x : c.features.fingerprint) finite = finite && std::isfinite (x);
+
+        say (kept == 8 && muddyMarked && finite ? L::Pass : L::Fail, "Smart Pick",
+             "picked " + juce::String (kept) + " of " + juce::String ((int) cands.size()) + " candidates"
+             + (muddyMarked ? ", muddy test chord caught (" + verdicts.back().reasons.joinIntoString ("; ") + ")" : juce::String (", muddy test chord NOT caught"))
+             + (finite ? juce::String() : juce::String (", NaN in analysis")));
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ scale banks
+    {
+        auto* notesStyle = findBuiltInStyle ("scale-notes");
+        auto* chordStyle = findBuiltInStyle ("soul-chords");
+        PlanOptions o; o.count = 16; o.seed = 4; o.key = "C"; o.scale = "minor"; o.scaleBank = true;
+        juce::String err;
+        auto notes = notesStyle != nullptr ? planSamples (*notesStyle, o, err) : std::vector<SampleSpec>();
+        std::vector<int> cMinor { 0, 2, 3, 5, 7, 8, 10 };
+        bool ascending = notes.size() == 16, inKey = notes.size() == 16;
+        for (size_t i = 0; i < notes.size(); ++i)
+        {
+            auto n = notes[i].notes[0].note;
+            inKey = inKey && std::find (cMinor.begin(), cMinor.end(), n % 12) != cMinor.end() && notes[i].pad == (int) i + 1;
+            if (i > 0) ascending = ascending && n > notes[i - 1].notes[0].note;
+        }
+        o.bankType = "chords";
+        auto chords = chordStyle != nullptr ? planSamples (*chordStyle, o, err) : std::vector<SampleSpec>();
+        bool diatonic = chords.size() == 16;
+        for (auto& c : chords)
+            for (auto& nn : c.notes)
+                diatonic = diatonic && std::find (cMinor.begin(), cMinor.end(), nn.note % 12) != cMinor.end();
+        say (ascending && inKey && diatonic ? L::Pass : L::Fail, "Scale banks",
+             "C minor: 16 note pads " + juce::String (ascending && inKey ? "climb the scale" : "WRONG")
+             + ", chord pads " + (diatonic ? "all diatonic (" + (chords.empty() ? juce::String() : chords[0].label + " ... " + chords[6].label) + ")"
+                                           : juce::String ("NOT diatonic")));
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ chord row + progression banks
+    {
+        std::vector<int> cMajor { 0, 2, 4, 5, 7, 9, 11 };
+        auto* soul = findBuiltInStyle ("soul-chords");
+        auto chords = soul != nullptr ? diatonicChords (*soul, 0, cMajor) : std::vector<DiatonicChord>();
+        juce::StringArray names;
+        for (auto& c : chords) names.add (c.roman + " " + c.name);
+        auto inverted = invertChord (60, { 0, 4, 7, 11 }, 1);     // Cmaj7, 1st inversion: E G B C
+        bool invOk = inverted == std::vector<int> { 64, 67, 71, 72 };
+        bool keyOk = chords.size() == 7;
+        for (auto& c : chords) for (auto i : c.intervals) keyOk = keyOk && std::find (cMajor.begin(), cMajor.end(), (c.rootPc + i) % 12) != cMajor.end();
+        say (keyOk && invOk ? L::Pass : L::Fail, "Chord row",
+             "C major: " + names.joinIntoString (", ") + (invOk ? "; 1st inversion OK" : "; INVERSION WRONG"));
+
+        PlanOptions o; o.count = 16; o.seed = 3; o.key = "C"; o.scale = "major"; o.scaleBank = true; o.bankType = "progressions";
+        juce::String err;
+        auto prog = soul != nullptr ? planSamples (*soul, o, err) : std::vector<SampleSpec>();
+        double move = 0; int steps = 0; bool inKey = prog.size() == 16;
+        for (size_t i = 0; i < prog.size(); ++i)
+        {
+            for (auto& n : prog[i].notes) inKey = inKey && std::find (cMajor.begin(), cMajor.end(), n.note % 12) != cMajor.end();
+            if (i % 4 == 0) continue;
+            for (auto& n : prog[i].notes)
+            {
+                int d = 99;
+                for (auto& p : prog[i - 1].notes) d = std::min (d, std::abs (n.note - p.note));
+                move += d; ++steps;
+            }
+        }
+        auto avg = steps > 0 ? move / steps : 99.0;
+        say (inKey && avg < 3.0 ? L::Pass : L::Fail, "Progression banks",
+             juce::String (prog.size()) + " pads, rows like " + (prog.empty() ? juce::String() : prog[0].group)
+             + ", voices move " + juce::String (avg, 1) + " semitones on average" + (inKey ? "" : ", NOT in key"));
+    }
+
+    // ------------------------------------------------------------ preset sweep detectors
+    {
+        const double sr = 44100;
+        auto make = [sr] (std::function<float (double)> gain)
+        {
+            juce::AudioBuffer<float> b (2, (int) (sr * 2.0));
+            for (int i = 0; i < b.getNumSamples(); ++i)
+            {
+                auto t = i / sr;
+                auto v = gain (t) * std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * t);
+                b.setSample (0, i, (float) v); b.setSample (1, i, (float) v);
+            }
+            return b;
+        };
+        auto arp     = make ([] (double t) { return std::fmod (t * 8.0, 1.0) < 0.45 ? 0.8 : 0.0; });             // gated 8 Hz
+        auto tremolo = make ([] (double t) { return 0.6 * (1.0 + 0.3 * std::sin (2 * juce::MathConstants<double>::pi * 5 * t)); });
+        auto pluck   = make ([] (double t) { return 0.9 * std::exp (-t * 3.0); });
+        auto slow    = make ([] (double t) { return juce::jmin (1.0, t / 0.6) * 0.7; });
+        const int arpOnsets = countRepeatedOnsets (arp, sr, 1.6), tremOnsets = countRepeatedOnsets (tremolo, sr, 1.6),
+                  pluckOnsets = countRepeatedOnsets (pluck, sr, 1.6);
+        const auto slowAttack = attackMs (slow, sr), fastAttack = attackMs (pluck, sr);
+        juce::String why;
+        const bool names = nameLooksUnsuitable ("ARP Trance Pulse", why) && nameLooksUnsuitable ("005_ArpPulse", why)
+                           && nameLooksUnsuitable ("FX/Riser 2", why) && ! nameLooksUnsuitable ("Mark I Rhodes Soft", why)
+                           && ! nameLooksUnsuitable ("Deep Sharp Keys", why);
+        BuiltInSynth probeSynth;
+        SweepOptions so;
+        juce::String err;
+        auto entries = collectPresets (probeSynth, so, 1, err);
+        const bool ok = arpOnsets >= 2 && tremOnsets == 0 && pluckOnsets == 0 && slowAttack > 250 && fastAttack < 20 && names
+                        && entries.size() == (size_t) engineIds().size() * 3;
+        say (ok ? L::Pass : L::Fail, "Preset sweep checks",
+             "arp " + juce::String (arpOnsets) + " pulses, tremolo " + juce::String (tremOnsets) + ", pluck " + juce::String (pluckOnsets)
+             + "; attack slow " + juce::String (juce::roundToInt (slowAttack)) + " ms / fast " + juce::String (juce::roundToInt (fastAttack))
+             + " ms; name filter " + (names ? "OK" : "WRONG") + "; " + juce::String ((int) entries.size()) + " built-in presets");
+    }
+
+    // ------------------------------------------------------------ round robins + render queue
+    {
+        auto* soul = findBuiltInStyle ("neo-soul");
+        PlanOptions o; o.count = 4; o.seed = 9;
+        juce::String err;
+        auto plan = soul != nullptr ? planSamples (*soul, o, err) : std::vector<SampleSpec>();
+        bool rrOk = ! plan.empty();
+        int velocityChanges = 0;
+        for (auto& sp : plan)
+            for (int take = 2; take <= 4; ++take)
+            {
+                auto a = roundRobinTake (sp, take), b = roundRobinTake (sp, take);
+                rrOk = rrOk && a.fileStem == sp.fileStem + "_rr" + juce::String (take) && a.notes.size() == sp.notes.size();
+                for (size_t n = 0; n < a.notes.size(); ++n)
+                {
+                    rrOk = rrOk && a.notes[n].note == sp.notes[n].note                          // same pitches
+                                && a.notes[n].velocity == b.notes[n].velocity                    // repeatable
+                                && std::abs (a.notes[n].velocity - sp.notes[n].velocity) <= 8;  // only slightly different
+                    velocityChanges += a.notes[n].velocity != sp.notes[n].velocity;
+                }
+            }
+        rrOk = rrOk && velocityChanges > 0;
+
+        QueueItem item;
+        item.request.style = soul != nullptr ? *soul : Style();
+        item.request.plan.key = "F#"; item.request.plan.count = 48; item.request.plan.seed = 123456789012LL;
+        item.request.roundRobins = 3; item.request.registers = { -12, 12 }; item.smartPick = true;
+        item.pluginPath = "/x/Keys.vst3"; item.pluginState.append ("abc", 3); item.instances = 2;
+        QueueItem back;
+        bool qOk = queueItemFromVar (juce::JSON::parse (juce::JSON::toString (queueItemToVar (item))), back, err)
+                   && back.request.plan.key == "F#" && back.request.plan.count == 48 && back.request.plan.seed == 123456789012LL
+                   && back.request.roundRobins == 3 && back.request.registers.size() == 2 && back.smartPick && back.instances == 2
+                   && back.pluginPath == item.pluginPath && back.pluginState == item.pluginState && back.request.style.id == "neo-soul";
+        say (rrOk && qOk ? L::Pass : L::Fail, "Round robins + queue",
+             juce::String (rrOk ? "takes 2-4 same notes, velocity within 8, repeatable" : "ROUND ROBIN TAKES WRONG")
+             + "; queue item " + (qOk ? "saves and loads" : "DOES NOT ROUND-TRIP " + err));
+    }
+
+    // ------------------------------------------------------------ chord palette + octave control
+    {
+        juce::String why;
+        PaletteChord a, b, n;
+        bool ok = PaletteChord::fromString ("Ebm9@3:drop2/1", a) && PaletteChord::fromString ("Bb13", b) && PaletteChord::fromString ("note:G@4", n);
+        ok = ok && a.name() == "Ebm9" && a.octave == 3 && a.voicing == "drop2" && a.inversion == 1 && b.quality == "13" && n.isNote();
+        PaletteChord back;
+        ok = ok && PaletteChord::fromString (a.toString(), back) && back.toString() == a.toString();
+        auto notes = a.notes();
+        ok = ok && ! notes.empty() && notes.front() >= 60 && notes.front() < 72;          // lowest note in octave 3
+        auto* wiz = findBuiltInStyle ("wiz-ep");
+        PlanOptions po; po.usePalette = true; po.palette = { a, b, n }; po.seed = 4;
+        auto pal = wiz != nullptr ? planSamples (*wiz, po, why) : std::vector<SampleSpec>();
+        ok = ok && pal.size() == 3 && pal[2].notes.size() == 1 && pal[2].notes[0].note == 79;   // G4 (MPC naming: C3 = 60)
+        PlanOptions oo; oo.count = 60; oo.seed = 5; oo.octaveLow = 4; oo.octaveHigh = 4;
+        auto inOct = wiz != nullptr ? planSamples (*wiz, oo, why) : std::vector<SampleSpec>();
+        int outside = 0;
+        for (auto& sp : inOct)
+        {
+            int low = 127;
+            for (auto& x : sp.notes) low = std::min (low, x.note);
+            outside += low < 72 || low > 83;
+        }
+        ok = ok && ! inOct.empty() && outside == 0;
+        say (ok ? L::Pass : L::Fail, "Chord palette + octaves",
+             juce::String (ok ? "palette chords parse and plan exactly" : "PALETTE WRONG") + "; Octave 4: "
+             + juce::String ((int) inOct.size() - outside) + "/" + juce::String ((int) inOct.size()) + " samples start in C4-B4");
+    }
+
+    // ------------------------------------------------------------ recipe cards
+    {
+        const juce::String forge = "=== FORGE CARD ===\nname: Test Card\ncode: TC\nkey: D major\ntempo: 92\nsound: electric piano + pad\n"
+                                   "fx: chorus 15, plate 20\nCH A6/9 = A2 C#3 E3 F#3 B3\nLEAD = F#5 C#6\nSOFT = D5 | velocity 60\n"
+                                   "TEXTURE REVERSE_PAD_SWELL = D3 A3\nMELODY = F#5/q A5/e C#6/e B5/h\n=== END ===\n";
+        const juce::String book = juce::CharPointer_UTF8 ("1. Blue Hour\n- Key: D major\n- Tempo: 92 BPM\n"
+                                  "Bar\tChord\tExact notes\n1\tDmaj9\tD3 \xc2\xb7 F\xe2\x99\xaf" "3 \xc2\xb7 A3 \xc2\xb7 C\xe2\x99\xaf" "4 \xc2\xb7 E4\n"
+                                  "1\t1: F\xe2\x99\xaf" "5 q; 2: A5 e; 2&: C\xe2\x99\xaf" "6 e\n"
+                                  "DL_BH_Dmaj9_CH.wav\nDL_BH_Fs5_LEAD.wav\nDL_BH_A5_SOFT.wav\nDL_BH_CHORDS.mid\n");
+        auto a = parseRecipeCards (forge);
+        auto b = parseRecipeCards (book);
+        bool ok = a.size() == 1 && a[0].items.size() == 5 && a[0].items[0].notes == std::vector<int> { 45, 49, 52, 54, 59 }   // A2 = MIDI 45 (C4 = 60)
+                  && a[0].items[0].fileName == "TC_A69_CH" && a[0].items[1].fileName == "TC_Fs5_LEAD" && a[0].items[3].velocity == 60
+                  && a[0].items[4].reverse && a[0].melody.size() == 4 && a[0].fx.isArray();
+        bool okBook = b.size() == 1 && b[0].code == "DL_BH" && b[0].items.size() == 3 && b[0].items[0].fileName == "DL_BH_Dmaj9_CH"
+                      && b[0].items[0].notes == std::vector<int> { 50, 54, 57, 61, 64 } && b[0].items[1].notes == std::vector<int> { 78 }
+                      && b[0].items[2].velocity == 60 && b[0].melody.size() == 3 && std::abs (b[0].tempo - 92.0) < 0.01;
+        say (ok && okBook ? L::Pass : L::Fail, "Recipe cards",
+             juce::String (ok ? "FORGE CARD read exactly" : "FORGE CARD WRONG") + "; " + (okBook ? "book page read (chords, notes, names, melody)" : "BOOK PAGE WRONG"));
+    }
+
+    // ------------------------------------------------------------ progressions (arranger)
+    {
+        juce::String err;
+        std::vector<ChordBlock> blocks;
+        bool ok = parseProgression ("ii:m9 V:13 Imaj9 vi:m9*2", 0, blocks, err) && blocks.size() == 4
+                  && blocks[0].name() == "Dm9" && blocks[1].name() == "G13" && blocks[2].name() == "Cmaj9" && blocks[3].beats == 2.0;
+        int presetsOk = 0, recipesMissing = 0;
+        for (auto& p : songPresets())
+        {
+            for (auto* id : { &p.keysRecipe, &p.bassRecipe, &p.padRecipe, &p.leadRecipe }) recipesMissing += findBuiltInStyle (*id) == nullptr;
+            Arrangement a;
+            a.presetId = p.id; a.scale = p.scale; a.tonic = parsePitchClass (p.keys[0]); a.tempo = p.tempoLow; a.swing = p.swing; a.seed = 3;
+            a.blocks = generateProgression (p, a.tonic, 8, a.seed);
+            generateParts (a, p);
+            bool good = a.blocks.size() >= 8 && a.parts.size() == 5;
+            for (auto& part : a.parts) good = good && ! part.notes.empty();
+            presetsOk += good;
+        }
+        Arrangement a;
+        a.presetId = "philly-soul"; a.tonic = 0; a.tempo = 120; a.seed = 2;
+        a.blocks = blocks;
+        generateParts (a, *findSongPreset ("philly-soul"));
+        juce::AudioBuffer<float> mix;
+        std::vector<juce::AudioBuffer<float>> stems;
+        const bool rendered = renderArrangement (a, 44100.0, mix, stems, err);
+        const int expected = juce::roundToInt (14 * 60.0 / 120.0 * 44100.0);
+        auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("forge_selftest_midi");
+        dir.deleteRecursively();
+        auto files = writeArrangementMidi (a, dir, "test");
+        dir.deleteRecursively();
+        // vintage finishes are valid effect chains; chops cut the loop exactly
+        int finishesOk = 0;
+        for (auto& [id, name] : vintageFinishes())
+        {
+            juce::String fxError;
+            auto fx = vintageFinishFx (id);
+            finishesOk += (id == "clean" ? fx.isVoid() : fx.isArray()) && validateFx (fx, fxError);
+        }
+        auto chopDir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("forge_selftest_chops");
+        chopDir.deleteRecursively();
+        auto chops = rendered ? writeLoopChops (a, mix, chopDir, "test", "chord", 44100.0, 16) : juce::StringArray();
+        juce::int64 chopSamples = 0;
+        for (auto& c : chops)
+            if (auto reader = std::unique_ptr<juce::AudioFormatReader> (juce::WavAudioFormat().createReaderFor (chopDir.getChildFile (c).createInputStream().release(), true)))
+                chopSamples += reader->lengthInSamples;
+        chopDir.deleteRecursively();
+        ok = ok && presetsOk == (int) songPresets().size() && recipesMissing == 0 && rendered && mix.getNumSamples() == expected && files.size() == 7
+                && finishesOk == (int) vintageFinishes().size() && chops.size() == 4 && chopSamples == expected;
+        say (ok ? L::Pass : L::Fail, "Progressions",
+             juce::String (presetsOk) + "/" + juce::String ((int) songPresets().size()) + " genre presets write 8 bars + 5 parts"
+             + (recipesMissing > 0 ? ", " + juce::String (recipesMissing) + " RECIPES MISSING" : juce::String())
+             + "; loop " + juce::String (mix.getNumSamples()) + "/" + juce::String (expected) + " samples; " + juce::String (files.size()) + " MIDI files; "
+             + juce::String (finishesOk) + "/" + juce::String ((int) vintageFinishes().size()) + " finishes; " + juce::String (chops.size()) + " chops = "
+             + juce::String (chopSamples) + " samples");
+    }
+
+    // ------------------------------------------------------------ song files (save / load) + "more like this"
+    {
+        auto* preset = findSongPreset ("quiet-storm");
+        Arrangement a;
+        a.presetId = "quiet-storm"; a.scale = "major"; a.tonic = 3; a.tempo = 71; a.swing = 0.2; a.seed = 506591; a.finish = "cassette";
+        a.blocks = generateProgression (*preset, a.tonic, 8, a.seed);
+        generateParts (a, *preset);
+        a.parts[0].pluginPath = "/x/Keys.vst3"; a.parts[0].pluginName = "Keys";
+        a.parts[2].enabled = false;
+        SongFileExtras x;
+        x.name = "Slow Jam"; x.favourite = true; x.created = "2026-01-01";
+        const char stateBytes[] = { 1, 2, 3, 0, 4, 5 };
+        x.pluginStates["keys"] = juce::MemoryBlock (stateBytes, sizeof (stateBytes));
+        // through JSON text, exactly as a .forgesong file is written and read
+        auto parsed = juce::JSON::parse (juce::JSON::toString (arrangementToVar (a, x)));
+        Arrangement b;
+        SongFileExtras y;
+        juce::String err;
+        bool ok = arrangementFromVar (parsed, b, y, err)
+                  && b.progressionText() == a.progressionText() && b.tonic == a.tonic && b.tempo == a.tempo && b.swing == a.swing
+                  && b.seed == a.seed && b.finish == a.finish && b.presetId == a.presetId && b.parts.size() == a.parts.size()
+                  && y.name == x.name && y.favourite && y.created == x.created
+                  && y.pluginStates.count ("keys") == 1 && y.pluginStates["keys"] == x.pluginStates["keys"];
+        if (ok) generateParts (b, *preset);   // the notes are rebuilt from the blocks + seed, as on load
+        int sameNotes = 0;
+        for (size_t k = 0; ok && k < a.parts.size(); ++k)
+        {
+            const auto& p = a.parts[k];
+            const auto& q = b.parts[k];
+            ok = q.recipeId == p.recipeId && q.pluginPath == p.pluginPath && q.enabled == p.enabled;
+            bool same = p.notes.size() == q.notes.size();
+            for (size_t n = 0; same && n < p.notes.size(); ++n)
+                same = p.notes[n].note == q.notes[n].note && std::abs (p.notes[n].start - q.notes[n].start) < 1e-9
+                       && p.notes[n].velocity == q.notes[n].velocity;
+            sameNotes += same;
+        }
+        ok = ok && sameNotes == (int) a.parts.size();
+        // variations: strength 0 keeps the chords, stronger ones change some but keep the length
+        auto same = varyProgression (a.blocks, a.tonic, a.scale, 7, 0);
+        int changedTotal = 0;
+        bool lengthsKept = true;
+        for (int s = 1; s <= 3; ++s)
+        {
+            auto v = varyProgression (a.blocks, a.tonic, a.scale, 7 + s, s);
+            Arrangement va = a;
+            va.blocks = v;
+            lengthsKept = lengthsKept && v.size() == a.blocks.size() && std::abs (va.totalBeats() - a.totalBeats()) < 1e-9;
+            for (size_t k = 0; k < v.size() && k < a.blocks.size(); ++k) changedTotal += v[k].name() != a.blocks[k].name();
+        }
+        Arrangement sa = a;
+        sa.blocks = same;
+        ok = ok && sa.progressionText() == a.progressionText() && lengthsKept && changedTotal > 0;
+        say (ok ? L::Pass : L::Fail, "Song files",
+             juce::String (ok ? "save / load round trip exact" : "ROUND TRIP WRONG") + " (" + juce::String (sameNotes) + "/"
+             + juce::String ((int) a.parts.size()) + " parts rebuilt note for note, plugin state kept); variations changed "
+             + juce::String (changedTotal) + " chords" + (err.isNotEmpty() ? " - " + err : juce::String()));
+    }
+
+    // ------------------------------------------------------------ trap progression library
+    {
+        const auto& lib = progressionLibrary ("trap");
+        int parsed = 0;
+        for (auto& set : lib)
+            for (auto* p : { &set.main, &set.alt1, &set.alt2 })
+                if (! p->chords.empty() && (int) p->chords.size() == juce::StringArray::fromTokens (p->text, "-", "").size()) ++parsed;
+        auto* trap = findBuiltInStyle ("trap-progressions");
+        PlanOptions o; o.count = 16; o.seed = 1; o.progressionNumber = 1; o.key = "random";
+        juce::String err;
+        auto bank = trap != nullptr ? planSamples (*trap, o, err) : std::vector<SampleSpec>();
+        // set #1 in its own key (C minor): pads 1-4 Cm Gm Ab Fm, 13-16 808 roots
+        const int expected[] = { 0, 7, 8, 5 };
+        bool ok = lib.size() == 20 && parsed == 60 && bank.size() == 16;
+        for (int k = 0; ok && k < 4; ++k) ok = bank[(size_t) k].notes.size() == 3 && bank[(size_t) k].rootNote % 12 == expected[k];
+        for (size_t k = 0; ok && k < bank.size(); ++k) ok = bank[k].pad == (int) k + 1;
+        ok = ok && bank.back().engine == "808";
+        o.key = "A";
+        auto moved = trap != nullptr ? planSamples (*trap, o, err) : std::vector<SampleSpec>();
+        ok = ok && moved.size() == 16 && moved.front().rootNote % 12 == 9;
+        say (ok ? L::Pass : L::Fail, "Trap progressions",
+             juce::String ((int) lib.size()) + " sets, " + juce::String (parsed) + "/60 progressions parse; set #1 bank: "
+             + (bank.empty() ? juce::String ("none") : bank[0].group) + (moved.empty() ? "" : "; moved to A: " + moved[0].label));
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ loudness meter + registers + short names
+    {
+        juce::AudioBuffer<float> tone (2, (int) (3 * sr));
+        for (int i = 0; i < tone.getNumSamples(); ++i)
+        {
+            auto v = 0.1f * (float) std::sin (juce::MathConstants<double>::twoPi * 1000.0 * i / sr);
+            tone.setSample (0, i, v); tone.setSample (1, i, v);
+        }
+        auto lufs = momentaryLoudness (tone, sr); // BS.1770 reference for this tone: -20.0 LUFS
+        say (std::abs (lufs + 20.0f) < 0.5f ? L::Pass : L::Fail, "Loudness meter",
+             "1 kHz tone at -20 dBFS measures " + juce::String (lufs, 2) + " LUFS (reference -20.0)");
+
+        SampleSpec key = testNote (60, 0.3);
+        key.kind = "Key"; key.label = midiNoteName (60); key.tag = "Test"; key.shortTag = "EPBell"; key.index = 14;
+        key.stemHead = {}; key.stemTail = "EPBell_" + key.label;
+        SampleSpec down;
+        auto ok = transposeSpec (key, -12, down);
+        auto expected = "014_EPBell_" + midiNoteName (48);
+        say (ok && down.rootNote == 48 && down.notes[0].note == 48 && down.fileStem == expected ? L::Pass : L::Fail, "Registers + names",
+             "octave-down copy of " + key.stemTail + " -> " + down.fileStem + " (root " + midiNoteName (down.rootNote) + ")");
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ WAV round trip
+    {
+        auto tmp = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("mpcforge_diag.wav");
+        juce::AudioBuffer<float> b (2, 4410);
+        for (int i = 0; i < b.getNumSamples(); ++i)
+        {
+            auto v = 0.5f * (float) std::sin (juce::MathConstants<double>::twoPi * 440.0 * i / 44100.0);
+            b.setSample (0, i, v); b.setSample (1, i, v);
+        }
+        juce::String err;
+        if (! OfflineRenderer::writeWav (tmp, b, 44100.0, 24, 57, err))
+            say (L::Fail, "WAV writing", err + " (temp folder: " + tmp.getParentDirectory().getFullPathName() + ")");
+        else
+        {
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::AudioFormatReader> reader (wav.createReaderFor (tmp.createInputStream().release(), true));
+            if (reader == nullptr) say (L::Fail, "WAV writing", "file written but could not be read back");
+            else
+            {
+                auto root = reader->metadataValues.getValue ("MidiUnityNote", "?");
+                auto good = reader->lengthInSamples == 4410 && reader->bitsPerSample == 24 && reader->numChannels == 2 && root == "57";
+                say (good ? L::Pass : L::Fail, "WAV writing",
+                     juce::String (reader->bitsPerSample) + "-bit, " + juce::String (reader->numChannels) + " ch, "
+                     + juce::String (reader->lengthInSamples) + " samples, root note " + root);
+            }
+            tmp.deleteFile();
+        }
+    }
+    if (cancel) return;
+
+    // ------------------------------------------------------------ the loaded plugin
+    if (plugin != nullptr && dynamic_cast<BuiltInSynth*> (plugin) == nullptr)
+    {
+        auto name = plugin->getName();
+        if (! plugin->acceptsMidi()) say (L::Fail, "Plugin", name + " does not accept MIDI - it is probably an effect, not an instrument");
+
+        RenderSettings prs;
+        prs.warmUpSec = 1.5;
+        OfflineRenderer renderer (*plugin, prs);
+        auto t0 = juce::Time::getMillisecondCounterHiRes();
+        renderer.warmUp();
+        say (L::Info, "Plugin", name + ": prepared + warm-up in " + juce::String (juce::roundToInt (juce::Time::getMillisecondCounterHiRes() - t0))
+                                 + " ms, latency " + juce::String (plugin->getLatencySamples()) + " samples");
+
+        for (auto note : { 48, 60, 72 })
+        {
+            if (cancel) return;
+            juce::AudioBuffer<float> audio;
+            juce::String err;
+            auto start = juce::Time::getMillisecondCounterHiRes();
+            if (! renderer.render (testNote (note, 0.5), audio, err))
+            {
+                say (L::Fail, "Plugin " + midiNoteName (note), err);
+                continue;
+            }
+            auto ms = juce::Time::getMillisecondCounterHiRes() - start;
+            auto lenSec = audio.getNumSamples() / prs.sampleRate;
+            if (! isFinite (audio)) { say (L::Fail, "Plugin " + midiNoteName (note), "audio contains NaN / infinity"); continue; }
+
+            auto f0 = estimatePitch (audio, prs.sampleRate, juce::MidiMessage::getMidiNoteInHertz (note));
+            auto cents = f0 > 0 ? 1200.0 * std::log2 (f0 / juce::MidiMessage::getMidiNoteInHertz (note)) : 0.0;
+            auto speed = ms > 0 ? lenSec * 1000.0 / ms : 0.0;
+            say (speed < 1.0 ? L::Warn : L::Pass, "Plugin " + midiNoteName (note),
+                 juce::String (lenSec, 2) + " s of audio in " + juce::String (juce::roundToInt (ms)) + " ms (" + juce::String (speed, 1) + "x real time)"
+                 + (f0 > 0 && std::abs (cents) < 60 ? ", pitch " + juce::String (cents, 1) + " cents"
+                                                    : juce::String (", pitch not measurable (fine for pads / noisy patches)")));
+        }
+
+        juce::MemoryBlock state;
+        plugin->getStateInformation (state);
+        plugin->setStateInformation (state.getData(), (int) state.getSize());
+        say (L::Pass, "Plugin state", "saved and restored " + juce::String ((int) state.getSize()) + " bytes (needed for .forgesound files)");
+    }
+    else
+        say (L::Info, "Plugin", "no VST3 loaded - load one and run the self-test again to check it");
+}
+}
