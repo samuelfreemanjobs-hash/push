@@ -2,3 +2,4 @@
 2026-11-15 DLZ-OPS-002 Seventeen OpenClaw skills with references and ClawHub publish prep.
 2026-11-15 DLZ-OPS-003 Agent-stack DLZ_REPO_ROOT fix; npm run all writes hermes-out.
 2026-11-15 DLZ-DRUM-001 kit-spec.template.yaml validates.
+2026-11-15 Factory milestone M1 — work order + QC manifest + verify-factory-milestone.mjs (capstone DLZ-FACTORY-M1).

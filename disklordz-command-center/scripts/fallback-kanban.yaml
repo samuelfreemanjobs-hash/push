@@ -50,6 +50,14 @@ cards:
     priority: P0
     owner: drumkit-factory-agent
     next: Founder ears → qc_status approved → package → deploy
+  - id: K-FACTORY-M1
+    column: in_progress
+    title: Factory milestone M1 — drum + VST automation + QC spine
+    lane: DRUM
+    priority: P0
+    owner: drumkit-factory-agent
+    milestone: factory-m1
+    next: "DLZ-DRUM-002 ship; DLZ-VST-002 pluginval on Windows"
   - id: K-013
     column: ready
     title: Supabase migrate + Vercel env (tripwire)

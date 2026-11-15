@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DiskLordzTripwireQcManifest",
+  "type": "object",
+  "required": ["kit_id", "version", "sku", "qc_status", "samples"],
+  "properties": {
+    "kit_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "sku": { "type": "string", "minLength": 1 },
+    "qc_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"]
+    },
+    "format": { "const": "wav" },
+    "founder_ears_at": { "type": ["string", "null"] },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "peak_db", "duration_ms"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "peak_db": { "type": "number", "maximum": 0 },
+          "duration_ms": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

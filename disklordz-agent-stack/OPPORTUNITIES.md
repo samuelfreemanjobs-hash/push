@@ -30,6 +30,12 @@ Machine-readable source: `lib/opportunities.mjs` (also mirrored to `hermes-out/r
 | **PLAN** | Kanban cards should cite `opportunity_id` when the work maps to the stack above |
 | **DRUM / FORGE** | Ranks 1–3 are the factory north star |
 
+## Factory milestone M1 (ranks 1–3)
+
+Single Ralph epic: [FACTORY-MILESTONE.md](../disklordz-ralph/FACTORY-MILESTONE.md).
+
+Automation spine is CI-verified (`npm run verify:milestone` in `openclaw/drum-kit-factory`). **Shipping** still gates on **DLZ-DRUM-002** (tripwire pack) and **DLZ-VST-002** (pluginval on Windows).
+
 ## Opportunity #12 (market intelligence)
 
 Implemented as the **Technology Intelligence** loop: AI Dev Signals intake → six-category screening → short reports. See [TECH-RADAR.md](./TECH-RADAR.md). Treat its build priority as **Later** for *net-new product surface*, but the **monitoring pipeline** is already on the free stack so Immediate-tier opportunities get better inputs now.

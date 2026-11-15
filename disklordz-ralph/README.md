@@ -12,6 +12,7 @@ This folder is the **business** control plane. The Detroit Phonk VST3 MSVC loop 
 | **OC** | OpenClaw install, skills, Telegram sage, overnight dev |
 | **H** | Hermes-out / `disklordz-agent-stack` (free tier first) |
 | **DRUM** | Grok kit-spec → drum-kit-factory → tripwire pack |
+| **Factory M1** | Epic `factory-m1` — opportunities 1–3 (`FACTORY-MILESTONE.md`) |
 | **VST** | Instruments / JUCE (often `C:\Dev\DetroitPhonkTrapVST3` on Windows) |
 | **SAAS** | Tripwire checkout, Supabase, Stripe (operator gates) |
 | **BIZ** | Launch gates G3, Friday KPI, vault kanban alignment |

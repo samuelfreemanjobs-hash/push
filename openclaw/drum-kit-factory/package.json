@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "validate:kit-spec": "node scripts/validate-kit-spec.mjs",
-    "validate:template": "node scripts/validate-kit-spec.mjs handoff/kit-spec.template.yaml"
+    "validate:template": "node scripts/validate-kit-spec.mjs handoff/kit-spec.template.yaml",
+    "validate:qc-manifest": "node scripts/validate-qc-manifest.mjs handoff/qc-manifest.template.json",
+    "factory:work-order": "node scripts/emit-factory-work-order.mjs handoff/kit-spec.template.yaml",
+    "verify:milestone": "node scripts/verify-factory-milestone.mjs"
   },
   "dependencies": {
     "yaml": "^2.8.1"

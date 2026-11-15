@@ -29,7 +29,7 @@ jobs:
             run: npm ci && npm run verify
           - name: drum-kit-factory
             dir: openclaw/drum-kit-factory
-            run: npm ci && npm run validate:template
+            run: npm ci && npm run validate:template && npm run verify:milestone
           - name: agent-stack
             dir: disklordz-agent-stack
             run: npm ci && npm run all
