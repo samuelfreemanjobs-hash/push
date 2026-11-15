@@ -23,9 +23,10 @@ if (-not $ProjectDir) { $ProjectDir = $PSScriptRoot }
 $ProjectDir = (Resolve-Path $ProjectDir).Path
 
 $RepoRoot = $ProjectDir
-foreach ($i in 1..5) {
+for ($i = 0; $i -lt 8; $i++) {
+    if (Test-Path (Join-Path $RepoRoot "disklordz-ralph\factory\audio-factory")) { break }
     $parent = Split-Path $RepoRoot -Parent
-    if (Test-Path (Join-Path $parent "AGENTS.md")) { $RepoRoot = $parent; break }
+    if (-not $parent -or $parent -eq $RepoRoot) { break }
     $RepoRoot = $parent
 }
 $FactoryRoot = Join-Path $RepoRoot "disklordz-ralph\factory\audio-factory"
