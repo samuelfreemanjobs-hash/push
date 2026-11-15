@@ -77,7 +77,14 @@ Reference: duck-sampler / CTAG choke patterns; keep logic in headers for Ralph i
 | UJAM / Raptor / Drum Weapons | Cheap presets | **User WAV on pads + export kit + tripwire updates** |
 | BVKER / Cymatics WAV | Folder-only | **VST + same WAVs unlocked** (tripwire checkout) |
 
+## Drag-export vs multi-out (build both; order matters)
+
+1. **`PadDragExport.h`** (`DLZ-VST-007`) — frictionless FL Playlist drops; Core tier UX.
+2. **Multi-out** (`DLZ-VST-009`) — Suite tier; `BusesProperties` kick / sub / hats aux → separate DAW tracks.
+
 ## Product tiers (ship order)
+
+Full commercial matrix: `LICENSING.md`.
 
 1. **Tripwire** — sample pack + light standalone renderer (`DLZ-DRUM-002`).
 2. **Plugin v1** — 5 pads, genre sat, MIDI map, WAV export (`DLZ-VST-002`).

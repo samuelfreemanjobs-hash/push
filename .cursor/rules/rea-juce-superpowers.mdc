@@ -1,0 +1,42 @@
+---
+description: JUCE VST lane — Superpowers TDD, REA scoped audits, TrapCoreDSP DRY
+globs:
+  - disklordz-ralph/vst/**
+  - "**/DetroitPhonkTrapVST3/**"
+  - "**/TrapCoreDSP/**"
+alwaysApply: false
+---
+
+# REA + Superpowers + JUCE
+
+## Superpowers order
+
+1. If installed: use `brainstorming` / `writing-plans` before new DSP in `Source/` or `trap-core-dsp/`.
+2. Red-green-refactor: failing Catch2 or `DrumTestCLI` test before implementation.
+3. `systematic-debugging` for FL/Ableton MIDI issues; then REA §3C, not blind patches.
+
+## REA guardrails
+
+- Never full-binary decompile of JUCE VST3 bundles.
+- Scope: `processBlock`, `renderNextBlock`, named `Trap*` symbols only.
+- Write summaries to `disklordz-ralph/vst/rea-notes/`; evidence = observation / inference / unknown.
+- Clean-room + own PDB builds only; no DRM or competitor pack extraction.
+
+## DRY
+
+- Shared DSP lives in `trap-core-dsp/` (static lib). Plugins link `TrapCoreDSP`; do not copy-paste waveshapers across targets.
+- Genre kits = manifest data, not duplicate `SynthesiserVoice` classes.
+
+## Real-time
+
+- No `new`, `malloc`, locks, or file I/O in `processBlock` / `renderNextBlock`.
+- Oversamplers prepared in `prepareToPlay` only.
+- `COPY_PLUGIN_AFTER_BUILD` default **OFF** unless operator enables `DLZ_COPY_VST3_TO_PROGRAMFILES`.
+
+## Ship checks
+
+- `cmake --build build --config Release --parallel`
+- `ctest -C Release --output-on-failure`
+- `pluginval.exe --strictness-level 5` on Release `.vst3`
+
+Docs: `disklordz-ralph/vst/WINDOWS-BUILD.md`, `REA-WORKFLOW.md`, `SUPERPOWERS.md`.

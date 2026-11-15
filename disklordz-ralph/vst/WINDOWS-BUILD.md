@@ -7,8 +7,9 @@ cd C:\Dev\DetroitPhonkTrapVST3
 copy C:\Dev\push\disklordz-ralph\vst\starter-cpp\CMakeLists.txt .
 # copy starter-cpp\*.h into Source\
 
-cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_BUILD_TESTS=ON
 cmake --build build --config Release --parallel
+ctest -C Release --test-dir build --output-on-failure
 cmake --build build --config RelWithDebInfo --parallel   # preferred for REA
 ```
 
