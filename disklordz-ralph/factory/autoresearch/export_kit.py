@@ -195,20 +195,28 @@ def export_commercial_pack(emit_sfz: bool = False) -> Path:
     return out_root
 
 
+def _publish_openmontage(out_root: Path) -> None:
+    from publish_to_openmontage import stage_latest_release
+
+    try:
+        stage_latest_release(pack_dir=out_root)
+    except (FileNotFoundError, OSError) as exc:
+        print(f"OpenMontage publish skipped: {exc}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sfz", action="store_true", help="Write DiskLordz_Kit.sfz for SFZ/Ableton import")
     ap.add_argument(
-        "--handoff",
+        "--no-publish",
         action="store_true",
-        help="After export, stage assets to OPENMONTAGE_ROOT (../marketing-studio)",
+        help="Skip publish_to_openmontage (default: publish unless SKIP_OPENMONTAGE_PUBLISH=1)",
     )
     args = ap.parse_args()
     out_root = export_commercial_pack(emit_sfz=args.sfz)
-    if args.handoff:
-        from publish_to_openmontage import stage_latest_release
-
-        stage_latest_release(pack_dir=out_root)
+    skip_env = os.environ.get("SKIP_OPENMONTAGE_PUBLISH", "").lower() in ("1", "true", "yes")
+    if not args.no_publish and not skip_env:
+        _publish_openmontage(out_root)
 
 
 if __name__ == "__main__":
