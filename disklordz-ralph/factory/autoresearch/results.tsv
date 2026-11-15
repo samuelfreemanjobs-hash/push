@@ -1,0 +1,2 @@
+run_id	timestamp	eval_loss	timbre	crest_factor	attack_ms	thd_ratio	render_ms	safety_pass	kept	hypothesis20261115T164754	2026-11-15T16:47:54.162693Z	12.342736	0.834050	4.2054	4.2917	0.0159	45.7913	0	1	baseline sandbox with DC blocker
+20261115T164806	2026-11-15T16:48:06.706672Z	0.924585	0.834050	4.2054	4.2917	0.0159	48.1962	1	1	baseline after judge calibration

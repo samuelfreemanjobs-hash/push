@@ -62,6 +62,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Luger Drum Lab (R&D, post-Lite):** `disklordz-ralph/luger-drum-lab/` — genre engine on `ThreeLayerDrum`; prompt `docs/plans/luger-drum-lab-master-prompt.md`; does not replace `starter-cpp` ship path.
 
+**Autoresearch (optional):** `factory/autoresearch/` — edit only `drum_engine.py`; `program.md` + `evaluate.py`; C++ path `docs/dev/autoresearch-cpp.md`.
+
 ## 5. Sample pack & asset pipeline
 
 - **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
