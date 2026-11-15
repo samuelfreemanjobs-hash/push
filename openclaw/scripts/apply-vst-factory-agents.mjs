@@ -25,5 +25,16 @@ const out = {
   delegation_order: data.delegation_order,
   pipeline: data.orchestration?.pipeline,
 };
-console.log("// Paste under agents in openclaw.json — from vst-factory-pods.yaml\n");
+const repo =
+  process.env.DLZ_REPO_ROOT?.trim() ||
+  join(root, "..", "..");
+const skillsShared = join(repo.replace(/\\/g, "/"), "openclaw/skills/shared");
+
+console.log("// Paste under agents in openclaw.json — from vst-factory-pods.yaml");
+console.log("// skills.load.extraDirs:", JSON.stringify([skillsShared]));
+console.log(
+  "// dev.subagents.allowAgents:",
+  JSON.stringify(["vst-architect", "vst-dsp", "vst-gui", "vst-build", "review"]),
+);
+console.log("");
 console.log(JSON.stringify(out, null, 2));

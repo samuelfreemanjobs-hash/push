@@ -1,9 +1,10 @@
 // Merge into ~/.openclaw/openclaw.json — VST Development Factory pods + automation
-// Generate snippet: node openclaw/scripts/apply-vst-factory-agents.mjs
+// VPS: bash openclaw/scripts/setup-vst-factory-vps.sh
+// Or: node openclaw/scripts/merge-vst-factory-config.mjs
 {
   skills: {
     load: {
-      extraDirs: ["/absolute/path/to/push/openclaw/skills/shared"],
+      extraDirs: ["__SKILLS_SHARED__"],
       watch: true,
     },
     entries: {

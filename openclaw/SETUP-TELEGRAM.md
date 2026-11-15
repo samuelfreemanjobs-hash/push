@@ -45,6 +45,15 @@ $env:DLZ_REPO_ROOT = (Get-Location).Path
 
 If the repo lives elsewhere, change `C:\Dev\push`. Requires **Node 24+ or 26+** before `openclaw` install (script still copies workspaces if Node is older).
 
+### VST factory pods (after Telegram base)
+
+```bash
+cd /path/to/push
+export DLZ_REPO_ROOT="$(pwd)"
+bash openclaw/scripts/setup-vst-factory-vps.sh
+# Then merge ~/.openclaw/disklordz.vst-factory.merged.json5 — see SETUP-VST-FACTORY.md
+```
+
 ### Linux / VPS / WSL
 
 ```bash
