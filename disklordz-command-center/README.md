@@ -22,6 +22,22 @@ Open http://127.0.0.1:5173
 
 Fallback seed in `src/data/seed.ts` when snapshot fetch fails offline.
 
+## Mobile crew (free coding agent)
+
+- Sidebar **Mobile crew** → chat UI for elite agents (`CODE`, `PATCH`, `REVIEW`, …)
+- Run `ai-agent-team` with a free [Google AI Studio](https://aistudio.google.com/) key
+- Build or dev with API URL:
+
+```bash
+VITE_AGENT_API_URL=http://127.0.0.1:3000 npm run dev
+```
+
+Full OpenClaw multi-agent install: `openclaw/disklordz-elite-team/README.md`
+
+## PWA
+
+`npm run build` registers a service worker. On phone: open the site → Add to Home Screen.
+
 ## Publish
 
 Built as a static Vite SPA suitable for Cursor **publish-app** from repo root with `project_dir: disklordz-command-center`.

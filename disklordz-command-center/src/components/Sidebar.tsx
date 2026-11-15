@@ -14,6 +14,7 @@ const ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "vault", label: "Vault PRs", hint: "Merge plan" },
   { id: "vst", label: "VST fleet", hint: "CI on main" },
   { id: "agents", label: "Agent lanes", hint: "Slack prefixes" },
+  { id: "mobile", label: "Mobile crew", hint: "Free CODE agent" },
 ];
 
 export function Sidebar({ active, onSelect }: SidebarProps) {

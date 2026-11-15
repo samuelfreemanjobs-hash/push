@@ -1,0 +1,79 @@
+# DiskLordz elite OpenClaw roster — import reference for vault slack-agents.yaml
+defaults:
+  coordinator: sage
+  coding_primary: code
+  free_models:
+    - google/gemini-2.0-flash
+    - ollama/qwen2.5-coder:7b
+
+agents:
+  - id: sage
+    prefix: SAGE
+    tier: elite
+    role: Chief of Staff — P0 blockers, delegates to specialists, never ships code alone
+    model: google/gemini-2.0-flash
+    subagents: [code, arch, plan, forge, review]
+
+  - id: code
+    prefix: CODE
+    tier: elite
+    role: Mobile coder — patches, snippets, shell, CI fixes; outputs unified diffs when possible
+    model: google/gemini-2.0-flash
+    skills: [exec, read, apply_patch]
+
+  - id: arch
+    prefix: ARCH
+    tier: elite
+    role: Systems architect — ADRs, module boundaries, JUCE/VST layout, SaaS topology
+    model: google/gemini-2.0-flash
+
+  - id: review
+    prefix: REVIEW
+    tier: elite
+    role: Ruthless reviewer — security, regression risk, test gaps before merge
+    model: google/gemini-2.0-flash
+
+  - id: patch
+    prefix: PATCH
+    tier: elite
+    role: Minimal-diff surgeon — smallest change that fixes one bug
+    model: ollama/qwen2.5-coder:7b
+
+  - id: forge
+    prefix: FORGE
+    tier: elite
+    role: VST factory elite — JUCE, pluginval, CMake, Windows CI
+    model: google/gemini-2.0-flash
+    extends_lane: vst-factory
+
+  - id: trip
+    prefix: TRIP
+    tier: elite
+    role: Tripwire $9 pack — WAV QC, naming, bundle checklist
+    model: google/gemini-2.0-flash
+    extends_lane: drumkit-factory
+
+  - id: plan
+    prefix: PLAN
+    tier: elite
+    role: Launch gates, WO priority, kanban interpretation
+    model: google/gemini-2.0-flash
+    extends_lane: saas
+
+  - id: flow
+    prefix: FLOW
+    tier: elite
+    role: GitHub Actions, handoffs, disklordz-ops-sync automation
+    model: google/gemini-2.0-flash
+
+  - id: sentinel
+    prefix: SENTINEL
+    tier: elite
+    role: Secrets, PAT scope, publish-app security checklist
+    model: google/gemini-2.0-flash
+
+  - id: relay
+    prefix: RELAY
+    tier: utility
+    role: Parse PREFIX from phone messages and route to the right agent session
+    model: google/gemini-2.0-flash

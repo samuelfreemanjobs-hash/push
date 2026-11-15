@@ -643,6 +643,137 @@ code {
   border-left: 3px solid var(--border);
 }
 
+.mobile-crew__banner {
+  background: var(--accent-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.mobile-crew__api {
+  margin-top: 0;
+}
+
+.mobile-crew__roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.mobile-crew__chip {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mobile-crew__chip--active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.mobile-crew__chip-prefix {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.mobile-crew__badge {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 4px;
+  padding: 0.05rem 0.25rem;
+}
+
+.mobile-crew__model {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mobile-crew__chat {
+  min-height: 220px;
+  max-height: 42vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.75rem;
+  margin: 1rem 0;
+}
+
+.mobile-crew__placeholder {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.mobile-crew__line {
+  margin-bottom: 0.75rem;
+}
+
+.mobile-crew__line--user .mobile-crew__line-body {
+  border-left: 2px solid var(--accent);
+}
+
+.mobile-crew__line--agent .mobile-crew__line-body {
+  border-left: 2px solid var(--border);
+}
+
+.mobile-crew__line-prefix {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.mobile-crew__line-body {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.mobile-crew__composer {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mobile-crew__input {
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+}
+
+.mobile-crew__send {
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #111;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+
+.mobile-crew__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -664,5 +795,9 @@ code {
 
   .agent-list__item {
     grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

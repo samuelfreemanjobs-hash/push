@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AgentsPanel } from "./components/AgentsPanel";
+import { MobileCrewPanel } from "./components/MobileCrewPanel";
 import { AutomationsPanel } from "./components/AutomationsPanel";
 import { GatesPanel } from "./components/GatesPanel";
 import { KanbanBoard } from "./components/KanbanBoard";
@@ -35,6 +36,7 @@ function CommandCenterMain() {
         {section === "vault" ? <VaultPanel /> : null}
         {section === "vst" ? <VstPanel /> : null}
         {section === "agents" ? <AgentsPanel /> : null}
+        {section === "mobile" ? <MobileCrewPanel /> : null}
       </main>
     </div>
   );

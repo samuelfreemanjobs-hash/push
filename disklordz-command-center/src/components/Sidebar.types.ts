@@ -6,4 +6,5 @@ export type SectionId =
   | "gates"
   | "vault"
   | "vst"
-  | "agents";
+  | "agents"
+  | "mobile";
