@@ -1,0 +1,100 @@
+// Merge into ~/.openclaw/openclaw.json — VST Development Factory pods + automation
+// Generate snippet: node openclaw/scripts/apply-vst-factory-agents.mjs
+{
+  skills: {
+    load: {
+      extraDirs: ["/absolute/path/to/push/openclaw/skills/shared"],
+      watch: true,
+    },
+    entries: {
+      egm_spec_challenge: { enabled: true },
+      waza_agent_eval: { enabled: true },
+      vst_architect: { enabled: true },
+      vst_dsp_engineer: { enabled: true },
+      mcode_vst_dsp: { enabled: true },
+      vst_gui_builder: { enabled: true },
+      agent_desktop: { enabled: true },
+      vst_build_engineer: { enabled: true },
+      vst_preset_author: { enabled: true },
+      vst_qa_gate: { enabled: true },
+      vst_release_manager: { enabled: true },
+      vst_factory: { enabled: true },
+    },
+  },
+  agents: {
+    entries: {
+      dev: {
+        subagents: {
+          allowAgents: [
+            "vst-architect",
+            "vst-dsp",
+            "vst-gui",
+            "vst-build",
+            "review",
+          ],
+        },
+        skills: [
+          "overnight_branch",
+          "github_pr_review",
+          "vst_factory",
+          "egm_spec_challenge",
+          "waza_agent_eval",
+          "delegate_subagent",
+        ],
+      },
+      "vst-architect": {
+        name: "ARCH",
+        workspace: "~/.openclaw/workspace-vst-architect",
+        skills: ["vst_architect", "egm_spec_challenge", "memory_vault"],
+      },
+      "vst-dsp": {
+        name: "DSP",
+        workspace: "~/.openclaw/workspace-vst-dsp",
+        skills: ["vst_dsp_engineer", "mcode_vst_dsp", "vst_factory"],
+      },
+      "vst-gui": {
+        name: "GUI",
+        workspace: "~/.openclaw/workspace-vst-gui",
+        skills: ["vst_gui_builder", "agent_desktop"],
+      },
+      "vst-build": {
+        name: "BUILD",
+        workspace: "~/.openclaw/workspace-vst-build",
+        skills: ["vst_build_engineer", "flow_github_actions", "vst_factory"],
+      },
+      "vst-preset": {
+        name: "PRESET",
+        workspace: "~/.openclaw/workspace-vst-preset",
+        skills: ["vst_preset_author", "tripwire_pack"],
+      },
+      "vst-qa": {
+        name: "QA",
+        workspace: "~/.openclaw/workspace-vst-qa",
+        skills: ["vst_qa_gate", "waza_agent_eval", "security_sentinel"],
+      },
+      "vst-release": {
+        name: "REL",
+        workspace: "~/.openclaw/workspace-vst-release",
+        skills: ["vst_release_manager", "launch_gates"],
+      },
+    },
+  },
+  automation: {
+    jobs: [
+      {
+        name: "vst-factory-pipeline",
+        schedule: "0 6 * * *",
+        agentId: "vst-qa",
+        message:
+          "Run factory pipeline report: bash openclaw/elite-frameworks/automation/run_factory_pipeline.sh at DLZ_REPO_ROOT. Summarize Waza + EGM only; no code writes.",
+      },
+      {
+        name: "vst-architect-friday",
+        schedule: "0 14 * * 5",
+        agentId: "vst-architect",
+        message:
+          "Review docs/specs/ and gpu-inference README — run EGM duel mentally, suggest Helix node updates. Read-only unless operator approved.",
+      },
+    ],
+  },
+}

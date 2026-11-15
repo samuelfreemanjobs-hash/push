@@ -24,7 +24,8 @@ agents:
     tier: elite
     role: Dev pod — code, VST, overnight branches
     workspace: workspace-dev
-    subagents: []
+    subagents: [vst-architect, vst-dsp, vst-gui, vst-build, review]
+    factory_pods: openclaw/agents/vst-factory-pods.yaml
     skills:
       - overnight_branch
       - github_pr_review

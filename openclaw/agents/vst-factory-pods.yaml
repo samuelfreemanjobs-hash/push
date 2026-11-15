@@ -1,0 +1,111 @@
+# VST Development Factory — specialized pods (merge with REGISTRY.yaml + openclaw.json).
+# Coordinator: dev (human merge) or sage via delegate_subagent.
+version: 1
+
+defaults:
+  shared_skills:
+    - memory_vault
+    - disk_ops_snapshot
+
+pods:
+  vst-architect:
+    tier: factory
+    role: C++ architecture, threading, EGM specs before implementation
+    workspace: workspace-vst-architect
+    parent: dev
+    skills:
+      - egm_spec_challenge
+      - vst_architect
+      - memory_vault
+    paths_allow:
+      - disklordz-ralph/labs/gpu-inference/**
+      - docs/specs/**
+      - openclaw/elite-frameworks/helix-foundry/**
+
+  vst-dsp:
+    tier: factory
+    role: processBlock DSP, oversampling, soft-clip
+    workspace: workspace-vst-dsp
+    parent: dev
+    skills:
+      - vst_dsp_engineer
+      - vst_factory
+      - mcode_vst_dsp
+    paths_allow:
+      - disklordz-ralph/vst/**
+      - vst/**
+
+  vst-gui:
+    tier: factory
+    role: JUCE editor, WebView parity, faceplate sync
+    workspace: workspace-vst-gui
+    parent: dev
+    skills:
+      - vst_gui_builder
+      - agent_desktop
+    paths_allow:
+      - "**/PluginEditor.*"
+      - "**/ui/**"
+      - storefront/plugin-faceplate/**
+
+  vst-build:
+    tier: factory
+    role: CMake, MSVC, CI workflows
+    workspace: workspace-vst-build
+    parent: dev
+    skills:
+      - vst_build_engineer
+      - flow_github_actions
+      - vst_factory
+    paths_allow:
+      - "**/CMakeLists.txt"
+      - scripts/vst-build-pluginval-gate.ps1
+      - .github/workflows/**
+
+  vst-preset:
+    tier: factory
+    role: APVTS presets, WAV maps, kit manifests
+    workspace: workspace-vst-preset
+    parent: drum-lead
+    skills:
+      - vst_preset_author
+      - tripwire_pack
+      - kit_spec_grok
+    paths_allow:
+      - disklordz-ralph/factory/**
+      - disklordz-ralph/business/trap-phonk-factory/**
+
+  vst-qa:
+    tier: factory
+    role: pluginval, Waza evals, regression contracts
+    workspace: workspace-vst-qa
+    parent: review
+    skills:
+      - vst_qa_gate
+      - waza_agent_eval
+      - security_sentinel
+    gate_script: openclaw/elite-frameworks/automation/run_factory_pipeline.sh
+
+  vst-release:
+    tier: factory
+    role: packaging, OpenDuet gates, release manifests
+    workspace: workspace-vst-release
+    parent: biz
+    skills:
+      - vst_release_manager
+      - launch_gates
+    human_required: true
+
+orchestration:
+  pipeline: openclaw/elite-frameworks/automation/run_factory_pipeline.sh
+  spec_manifest: openclaw/elite-frameworks/automation/specs.manifest.yaml
+  approval: openclaw/elite-frameworks/openduet/approval_gates.yaml
+
+delegation_order:
+  - vst-architect
+  - vst-dsp
+  - vst-gui
+  - vst-build
+  - vst-preset
+  - vst-qa
+  - vst-release

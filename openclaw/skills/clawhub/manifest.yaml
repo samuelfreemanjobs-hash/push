@@ -57,3 +57,36 @@ skills:
   - dir: memory_vault
     slug: disklordz-memory-vault
     display_name: Memory Vault Hygiene
+  - dir: egm_spec_challenge
+    slug: disklordz-egm-spec-challenge
+    display_name: EGM Spec Challenge
+  - dir: waza_agent_eval
+    slug: disklordz-waza-agent-eval
+    display_name: Waza Agent Eval
+  - dir: vst_architect
+    slug: disklordz-vst-architect
+    display_name: VST Architect Pod
+  - dir: vst_dsp_engineer
+    slug: disklordz-vst-dsp-engineer
+    display_name: VST DSP Engineer Pod
+  - dir: mcode_vst_dsp
+    slug: disklordz-mcode-vst-dsp
+    display_name: MCode VST DSP Checklist
+  - dir: vst_gui_builder
+    slug: disklordz-vst-gui-builder
+    display_name: VST GUI Builder Pod
+  - dir: agent_desktop
+    slug: disklordz-agent-desktop
+    display_name: Agent Desktop GUI Smoke
+  - dir: vst_build_engineer
+    slug: disklordz-vst-build-engineer
+    display_name: VST Build Engineer Pod
+  - dir: vst_preset_author
+    slug: disklordz-vst-preset-author
+    display_name: VST Preset Author Pod
+  - dir: vst_qa_gate
+    slug: disklordz-vst-qa-gate
+    display_name: VST QA Gate Pod
+  - dir: vst_release_manager
+    slug: disklordz-vst-release-manager
+    display_name: VST Release Manager Pod

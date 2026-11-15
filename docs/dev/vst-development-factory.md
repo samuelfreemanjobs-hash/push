@@ -137,3 +137,19 @@ RAGFlow opt-in: export Helix chunks + DPP output — `docs/dev/ragflow-knowledge
 - RE of third-party plugins (`reverse-engineer-anything/LEGAL.md`)
 
 Lite customers still ship from **starter-cpp + pluginval**; factory layers accelerate R&D and kits, not replace the gate.
+
+---
+
+## Automation (CI + cron)
+
+| Trigger | Command |
+|---------|---------|
+| **Every PR / push** | GitHub Actions job `vst-factory-pipeline` |
+| **Local / VPS cron** | `bash openclaw/elite-frameworks/automation/run_factory_pipeline.sh` |
+| **Free agent-stack** | `disklordz-agent-stack` → `vst-factory-automation.mjs` inside `npm run all` |
+| **OpenClaw** | Merge `openclaw/openclaw.disklordz.vst-factory.json5.example` — daily `vst-qa` message |
+
+**Pods registry:** `openclaw/agents/vst-factory-pods.yaml`  
+**Emit OpenClaw JSON:** `node openclaw/scripts/apply-vst-factory-agents.mjs`  
+
+Delegation chain: architect → dsp → gui → build → preset → qa → release (human on release).

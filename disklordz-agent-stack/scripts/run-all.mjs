@@ -8,6 +8,7 @@ const scripts = [
   "backup-ops-sync.mjs",
   "engineering-report.mjs",
   "tripwire-status.mjs",
+  "vst-factory-automation.mjs",
 ];
 
 for (const name of scripts) {
