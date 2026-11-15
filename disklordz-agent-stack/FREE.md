@@ -79,6 +79,10 @@ BIZ: Friday KPI
 MKT: summarize hermes-out/research/
 ```
 
+## Ralph loop (whole business)
+
+Autonomous one-story iterations: `disklordz-ralph/ralph.ps1` (Windows) or `ralph.sh` (Linux). VST MSVC work is lane **DLZ-VST-*** only — not a separate business.
+
 ## Upgrade path (still your picks)
 
 When ready: install Hermes, point crons at same `hermes-out/` paths, enable webhooks from `hermes/disklordz-picks/webhooks/github.yaml`.
