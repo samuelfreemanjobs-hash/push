@@ -2,6 +2,7 @@
 
 #include "DrumVoice.h"
 #include <array>
+#include <vector>
 
 namespace kf
 {
@@ -16,6 +17,7 @@ struct BusParams
     float punch   = 0.0f;     // -1..1 transient attack
     float tail    = 0.0f;     // -1..1 transient sustain
     float vinyl   = 0.0f;
+    float wow     = 0.0f;       // 0..1 tape wow & flutter (Phonk Factory bus)
 
     template <typename Array>
     static BusParams fromValues (const Array& v)
@@ -23,6 +25,7 @@ struct BusParams
         BusParams p;
         p.drive = v[(size_t) BDrive]; p.bits = v[(size_t) BBits]; p.rate = v[(size_t) BRate]; p.pitch = v[(size_t) BPitch];
         p.lpf = v[(size_t) BLpf]; p.lowKeep = v[(size_t) BLowKeep]; p.punch = v[(size_t) BPunch]; p.tail = v[(size_t) BTail]; p.vinyl = v[(size_t) BVinyl];
+        p.wow = v[(size_t) BWow];
         return p;
     }
 };
@@ -95,5 +98,23 @@ private:
     float crackle = 0, crackleCoef = 0, cracklePrev = 0;
     float pop = 0, popCoef = 0, popPhase = 0, popInc = 0;
     uint32_t rng = 0x9e3779b9u;
+};
+
+// Tape wow & flutter via modulated fractional delay (Phonk Factory style).
+class WowFlutter
+{
+public:
+    void prepare (double sampleRate);
+    void setAmount (float wow) { amount = wow; }
+    void reset();
+    void process (float& left, float& right) noexcept;
+
+private:
+    double sr = 48000.0;
+    float amount = 0.0f;
+    double lfoPhase = 0.0;
+    std::vector<float> delayL, delayR;
+    int writePos = 0;
+    uint32_t rng = 0x6a09e667u;
 };
 } // namespace kf

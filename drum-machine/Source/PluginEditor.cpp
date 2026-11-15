@@ -723,7 +723,7 @@ BusPanel::BusPanel (KitForgeProcessor& p) : proc (p)
 
     const std::pair<Knob*, BP> knobs[] = {
         { &drive, BDrive }, { &bits, BBits }, { &rate, BRate }, { &pitch, BPitch }, { &lpf, BLpf },
-        { &lowKeep, BLowKeep }, { &punch, BPunch }, { &tail, BTail }, { &vinyl, BVinyl },
+        { &lowKeep, BLowKeep }, { &punch, BPunch }, { &tail, BTail }, { &vinyl, BVinyl }, { &wow, BWow },
     };
     for (auto& [k, bp] : knobs)
     {
@@ -741,6 +741,7 @@ BusPanel::BusPanel (KitForgeProcessor& p) : proc (p)
     punch.slider.setTooltip ("Transient shaper: boost or soften the attack of every hit");
     tail.slider.setTooltip ("Transient shaper: lengthen or tighten the decay of every hit");
     vinyl.slider.setTooltip ("Vinyl surface hiss, crackle and pops (through the 12-bit converter)");
+    wow.slider.setTooltip ("Tape wow & flutter (modulated delay, ported from Phonk Factory)");
 }
 
 void BusPanel::paint (juce::Graphics& g)
@@ -781,7 +782,7 @@ void BusPanel::resized()
     r.removeFromLeft (12);
     infoArea = r.removeFromRight (170).withTrimmedTop (12);
     const int step = juce::jmin (knobW + 10, r.getWidth() / 9);
-    for (auto* k : { &drive, &bits, &rate, &pitch, &lpf, &lowKeep, &punch, &tail, &vinyl })
+    for (auto* k : { &drive, &bits, &rate, &pitch, &lpf, &lowKeep, &punch, &tail, &vinyl, &wow })
         k->setBounds (r.removeFromLeft (step).withSizeKeepingCentre (knobW, knobH));
 }
 
@@ -800,6 +801,10 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     playButton.onClick = [this] { togglePlay(); };
     playButton.setTooltip ("Start / stop (space bar)");
     content.addAndMakeVisible (playButton);
+    hostSyncToggle.setTooltip ("Follow host transport when on (Phonk Factory style); off = internal clock only");
+    content.addAndMakeVisible (hostSyncToggle);
+    hostSyncAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        proc.apvts, ids::hostSync, hostSyncToggle);
 
     for (auto* k : { &tempo, &swing, &length, &master })
         content.addAndMakeVisible (k);
@@ -848,7 +853,11 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
     loadButton.onClick = [this] { loadKitFromFile(); };
     exportButton.onClick = [this] { exportPack(); };
     exportButton.setTooltip ("Render every pad through the vintage bus to WAV + SFZ: a ready-to-use sample pack");
-    for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton })
+    exportLoopsButton.onClick = [this] { exportPhonkLoops(); };
+    exportLoopsButton.setTooltip ("Phonk Factory pack: classic 112/118/124 BPM loops + seeded variations (2 bars, 16-bit WAV)");
+    dragLoopButton.onClick = [this] { dragCurrentLoop(); };
+    dragLoopButton.setTooltip ("Render the current pattern as a seamless loop and start a drag into your DAW (like Phonk Factory)");
+    for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton, &exportLoopsButton, &dragLoopButton })
         content.addAndMakeVisible (b);
 
     // ---- Patterns ----
@@ -886,7 +895,7 @@ KitForgeEditor::KitForgeEditor (KitForgeProcessor& p)
         grid.repaint();
     };
     clearButton.onClick = [this] { proc.patterns.clear (proc.getCurrentPattern()); grid.repaint(); };
-    generateButton.setTooltip ("Write a groove for the current kit: Boom Bap, Four on the Floor, Trap, Memphis Phonk or Drift Phonk");
+    generateButton.setTooltip ("Write a groove: Boom Bap, Trap, Memphis / Drift Phonk, or Phonk Factory classic (uses Variation / Rolls / Cowbell params)");
     generateButton.onClick = [this] { showGenerateMenu(); };
     for (auto* b : { &copyButton, &pasteButton, &clearButton, &generateButton })
         content.addAndMakeVisible (b);
@@ -1049,6 +1058,88 @@ void KitForgeEditor::loadKitFromFile()
                                                                           "KitForge", "That file isn't a KitForge kit.");
                               }
                           });
+}
+
+void KitForgeEditor::exportPhonkLoops()
+{
+    auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("KitForge Phonk Loops");
+    dir.createDirectory();
+    chooser = std::make_unique<juce::FileChooser> ("Folder for Phonk Factory loop pack (classic BPMs + variations)", dir);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                          [this] (const juce::FileChooser& fc)
+                          {
+                              const auto folder = fc.getResult();
+                              if (folder == juce::File()) return;
+                              const auto kit = proc.captureCurrentKit();
+                              Exporter::PhonkLoopExportOptions opt;
+                              opt.prefix = Exporter::sanitise (kit.name.trimCharactersAtEnd ("*"));
+                              opt.patternSeed = (int) kf::getParamValue (proc.apvts, ids::phonkPatSeed);
+                              opt.variation = kf::getParamValue (proc.apvts, ids::phonkVariation);
+                              opt.rolls = kf::getParamValue (proc.apvts, ids::phonkRolls);
+                              opt.cowbell = kf::getParamValue (proc.apvts, ids::phonkCowbell);
+                              opt.currentBpm = kf::getParamValue (proc.apvts, ids::tempo);
+                              const auto result = Exporter::exportPhonkLoopPack (kit, proc.apvts, folder, opt);
+                              juce::AlertWindow::showMessageBoxAsync (
+                                  result.ok() ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon,
+                                  "Phonk loops", result.ok() ? "Wrote " + juce::String (result.files.size()) + " loops to\n" + folder.getFullPathName()
+                                                            : result.error);
+                          });
+}
+
+void KitForgeEditor::dragCurrentLoop()
+{
+    const auto kit = proc.captureCurrentKit();
+    PhonkClassic::Settings ps;
+    ps.seed = (int) kf::getParamValue (proc.apvts, ids::phonkPatSeed);
+    ps.bars = 1;
+    ps.variation = kf::getParamValue (proc.apvts, ids::phonkVariation);
+    ps.rolls = kf::getParamValue (proc.apvts, ids::phonkRolls);
+    ps.cowbell = kf::getParamValue (proc.apvts, ids::phonkCowbell);
+    auto fromPattern = [&]() -> std::vector<PhonkClassic::Event>
+    {
+        std::vector<PhonkClassic::Event> ev;
+        const int pat = proc.getCurrentPattern();
+        for (int t = 0; t < numTracks; ++t)
+            for (int s = 0; s < numSteps; ++s)
+                if (const auto vel = proc.patterns.get (pat, t, s); vel > 0)
+                {
+                    const auto type = (VoiceType) (int) kf::getParamValue (proc.apvts, voiceParamID (t, Type));
+                    PhonkClassic::Voice voice = PhonkClassic::Voice::Kick;
+                    switch (type)
+                    {
+                        case VoiceType::Kick:     voice = PhonkClassic::Voice::Kick; break;
+                        case VoiceType::Snare:
+                        case VoiceType::Clap:     voice = PhonkClassic::Voice::Snare; break;
+                        case VoiceType::ClosedHat: voice = PhonkClassic::Voice::ClosedHat; break;
+                        case VoiceType::OpenHat:  voice = PhonkClassic::Voice::OpenHat; break;
+                        case VoiceType::Cowbell:  voice = PhonkClassic::Voice::Cowbell; break;
+                        default: continue;
+                    }
+                    PhonkClassic::Event e;
+                    e.step = s;
+                    e.voice = voice;
+                    e.velocity = vel / 127.0f;
+                    ev.push_back (e);
+                }
+        return ev;
+    };
+    const auto events = fromPattern().empty() ? PhonkClassic::generateEvents (ps) : fromPattern();
+    const double bpm = kf::getParamValue (proc.apvts, ids::tempo);
+    const double swingPct = kf::getParamValue (proc.apvts, ids::swing);
+    const auto loop = Exporter::renderPhonkLoop (kit, proc.apvts, events, bpm, swingPct, 44100.0);
+    const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("KitForge Drag");
+    dir.createDirectory();
+    const auto file = dir.getChildFile ("Memphis_Loop_Current_" + juce::String ((int) bpm) + "BPM.wav");
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::OutputStream> stream (file.createOutputStream());
+    if (stream != nullptr)
+        if (auto* writer = wav.createWriterFor (stream.get(), 44100.0, 2, 16, {}, 0))
+        {
+            stream.release();
+            std::unique_ptr<juce::AudioFormatWriter> w (writer);
+            w->writeFromAudioSampleBuffer (loop, 0, loop.getNumSamples());
+            juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, this);
+        }
 }
 
 void KitForgeEditor::exportPack()
@@ -1251,7 +1342,9 @@ void KitForgeEditor::layoutContent()
         h.removeFromLeft (206);
 
         playButton.setBounds (h.removeFromLeft (84).withSizeKeepingCentre (84, 44));
-        h.removeFromLeft (12);
+        h.removeFromLeft (8);
+        hostSyncToggle.setBounds (h.removeFromLeft (96).withSizeKeepingCentre (96, 28));
+        h.removeFromLeft (8);
         for (auto* k : { &tempo, &swing, &length, &master })
             k->setBounds (h.removeFromLeft (knobW + 4).withSizeKeepingCentre (knobW, knobH));
 
@@ -1264,8 +1357,8 @@ void KitForgeEditor::layoutContent()
         kitBox.setBounds (top.withSizeKeepingCentre (top.getWidth(), 26));
         f.removeFromTop (8);
         auto bottom = f.removeFromTop (30);
-        const int bw = (bottom.getWidth() - 4 * 6) / 5;
-        for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton })
+        const int bw = juce::jmax (72, (bottom.getWidth() - 6 * 6) / 7);
+        for (auto* b : { &forgeKitButton, &mutateButton, &saveButton, &loadButton, &exportButton, &exportLoopsButton, &dragLoopButton })
         {
             b->setBounds (bottom.removeFromLeft (bw));
             bottom.removeFromLeft (6);

@@ -25,6 +25,9 @@ There are no samples. Every sound comes from a built-in **drum synthesizer engin
     rolls, an off-beat cowbell pattern, and an 808 following the kick
   - **Drift Phonk** (130): a pitched cowbell riff in a dark phrygian key (a 2-beat motif plus an answer), claps on 2
     and 4, 808 notes that slide, 8th hats with rolls, and a second cowbell answering higher
+  - **Phonk Factory (classic)** (118): the original Memphis pattern script from **Phonk Factory** (kick grid
+    `{0,3,7,10,14}`, ghost snares, open-hat slides, hat drop-outs, triplet/32nd rolls, cowbell). **Variation**, **Rolls**,
+    **Cowbell**, and **Humanise** parameters control mutation (Variation `0` = classic groove).
   - **Surprise me** picks one of the above
   - A second pad of the same type (e.g. a second hat) gets a supporting part, not a copy
 - Built-in patterns: A boom-bap, B four-on-the-floor with shaker, C trap with hat rolls
@@ -80,6 +83,9 @@ The master bus has a soft-knee safety clipper, so output never goes past 0 dBFS.
   own. Use "Save this sound as a preset..." to add yours; they're stored as `.kfvoice` files in
   `Documents/KitForge Voices/<Type>/`. The "Other drum types" submenu loads a preset of a different type onto the pad.
 - **EXPORT PAD** saves just the selected drum as a WAV (or drag it out of the waveform view)
+- **Phonk Factory fold-in**: factory kit **Phonk Factory MPC** (four variations each of kick / snare / hat / open hat /
+  cowbell on pads A01–A14), **Wow / Flutter** on the vintage bus, **HOST SYNC** toggle, **EXPORT LOOPS** (112 / 118 /
+  124 BPM classics + variations as seamless 16-bit WAV), and **DRAG LOOP** into a DAW
 - **9 factory kits**: **Memphis Drift (phonk)** (distorted kick and 808, crunchy clap, phonk hats, cowbell riffs,
   DR-660 style bus), Boom Analog, Punch Machine, Electro Steel, Dusty Lo-Fi, Industrial Forge, Minimal Tick,
   plus **Jazz Phonk (16 pads)**: a jazz × phonk × trap 12-bit kit (see below). Every kit has 16 pads. In the original

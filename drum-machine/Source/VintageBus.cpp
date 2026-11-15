@@ -229,4 +229,54 @@ void VinylNoise::process (float& left, float& right) noexcept
     left  += hissL * hissLevel + common;
     right += hissR * hissLevel + common;
 }
+
+//==============================================================================
+// WowFlutter
+//==============================================================================
+void WowFlutter::prepare (double sampleRate)
+{
+    sr = sampleRate;
+    const int size = std::max (4096, (int) std::lround (sr * 0.012));
+    delayL.assign ((size_t) size, 0.f);
+    delayR.assign ((size_t) size, 0.f);
+    writePos = 0;
+    lfoPhase = 0.0;
+}
+
+void WowFlutter::reset()
+{
+    std::fill (delayL.begin(), delayL.end(), 0.f);
+    std::fill (delayR.begin(), delayR.end(), 0.f);
+    writePos = 0;
+    lfoPhase = 0.0;
+}
+
+void WowFlutter::process (float& left, float& right) noexcept
+{
+    if (amount <= 0.0001f)
+        return;
+
+    const int size = (int) delayL.size();
+    delayL[(size_t) writePos] = left;
+    delayR[(size_t) writePos] = right;
+
+    const double depth = (double) amount * 0.0008 * sr;
+    const double d = depth + 2.0 + depth * std::sin (lfoPhase);
+    lfoPhase += 2.0 * 3.141592653589793 * 1.8 / sr;
+    if (lfoPhase > 2.0 * 3.141592653589793)
+        lfoPhase -= 2.0 * 3.141592653589793;
+
+    auto read = [size, d, this] (const std::vector<float>& buf) -> float
+    {
+        double rp = (double) writePos - d;
+        if (rp < 0) rp += size;
+        const int i0 = (int) rp, i1 = (i0 + 1) % size;
+        const float fr = (float) (rp - i0);
+        return buf[(size_t) i0] * (1.f - fr) + buf[(size_t) i1] * fr;
+    };
+
+    left = read (delayL);
+    right = read (delayR);
+    if (++writePos >= size) writePos = 0;
+}
 } // namespace kf

@@ -252,4 +252,129 @@ Result exportKit (const Kit& kit, const juce::File& folder, const Options& opt)
 
     return result;
 }
+
+juce::AudioBuffer<float> renderPhonkLoop (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                                          const std::vector<PhonkClassic::Event>& events, double bpm,
+                                          double swingPercent, double sampleRate)
+{
+    const int totalSteps = events.empty() ? 16 : (events.back().step / 16 + 1) * 16;
+    const double stepLen = 60.0 / bpm / 4.0;
+    const double swing = (swingPercent / 100.0 - 0.5) * 2.0 * 0.25;
+    const int len = (int) std::llround ((double) totalSteps * stepLen * sampleRate);
+    juce::AudioBuffer<float> loop (2, juce::jmax (1, len));
+    loop.clear();
+
+    const BusDef bus = kit.hasBus ? kit.bus : KitFactory::defaultBus();
+    VintageCrusher crusher;
+    TransientShaper shaper;
+    WowFlutter wow;
+    VinylNoise vinyl;
+    crusher.prepare (sampleRate);
+    crusher.setParams (BusParams::fromValues (bus));
+    shaper.prepare (sampleRate);
+    shaper.setAmounts (bus[BPunch], bus[BTail]);
+    wow.prepare (sampleRate);
+    wow.setAmount (bus[BWow]);
+    vinyl.prepare (sampleRate);
+    vinyl.setAmount (bus[BVinyl]);
+
+    auto place = [&] (int track, float vel, int start)
+    {
+        if (! juce::isPositiveAndBelow (track, numTracks))
+            return;
+        auto hit = renderVoice (kit.voices[(size_t) track], bus, sampleRate);
+        if (hit.getNumSamples() <= 0)
+            return;
+        if (const float peak = hit.getMagnitude (0, hit.getNumSamples()); peak > 0.0f)
+            hit.applyGain (vel / peak * 0.7f);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < hit.getNumSamples(); ++i)
+            {
+                const int idx = (start + i) % len;
+                loop.addSample (ch, idx, hit.getSample (juce::jmin (ch, hit.getNumChannels() - 1), i));
+            }
+    };
+
+    for (const auto& e : events)
+    {
+        const int track = PhonkClassic::trackForVoice (apvts, e.voice, e.variation);
+        double t = e.step + e.micro + ((e.step & 1) ? swing : 0.0);
+        t = std::fmod (t, (double) totalSteps);
+        const int start = (int) std::llround (t * stepLen * sampleRate);
+        place (track, e.velocity, start);
+    }
+
+    for (int i = 0; i < len; ++i)
+    {
+        float l = loop.getSample (0, i), r = loop.getSample (1, i);
+        vinyl.process (l, r);
+        crusher.process (l, r);
+        shaper.process (l, r);
+        wow.process (l, r);
+        loop.setSample (0, i, l);
+        loop.setSample (1, i, r);
+    }
+
+    const float peak = loop.getMagnitude (0, len);
+    if (peak > 0.0f)
+        loop.applyGain (0.89f / peak);
+    return loop;
+}
+
+Result exportPhonkLoopPack (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                            const juce::File& folder, const PhonkLoopExportOptions& opt)
+{
+    Result result;
+    folder.createDirectory();
+    const juce::String prefix = opt.prefix.isNotEmpty() ? opt.prefix : sanitise (kit.name);
+
+    auto writeLoop = [&] (const juce::String& name, const PhonkClassic::Settings& ps, double bpm)
+    {
+        auto events = PhonkClassic::generateEvents (ps);
+        auto buf = renderPhonkLoop (kit, apvts, events, bpm, KitFactory::grooveSwing (KitFactory::GrooveStyle::PhonkFactoryClassic), opt.sampleRate);
+        const auto file = folder.getChildFile (name);
+        if (! writeWav (buf, opt.sampleRate, opt.bitDepth, file))
+        {
+            result.error = "Couldn't write " + name;
+            return false;
+        }
+        result.files.add (name);
+        return true;
+    };
+
+    for (int bpm : { 112, 118, 124 })
+    {
+        PhonkClassic::Settings ps;
+        ps.seed = 1;
+        ps.bars = 2;
+        ps.variation = 0.0f;
+        ps.rolls = 0.0f;
+        ps.cowbell = 0.0f;
+        if (! writeLoop ("Memphis_Loop_" + juce::String (bpm) + "BPM.wav", ps, (double) bpm))
+            return result;
+    }
+
+    for (int i = 0; i < opt.extraLoops; ++i)
+    {
+        PhonkClassic::Settings ps;
+        ps.seed = opt.patternSeed + 1 + i;
+        ps.bars = 2;
+        ps.variation = juce::jmax (0.5f, opt.variation);
+        ps.rolls = opt.rolls;
+        ps.cowbell = opt.cowbell;
+        const int bpm = 104 + ((i * 7 + opt.patternSeed) % 5) * 6;
+        if (! writeLoop ("Memphis_Loop_" + juce::String (bpm) + "BPM_Var" + juce::String (i + 1) + ".wav", ps, (double) bpm))
+            return result;
+    }
+
+    PhonkClassic::Settings cur;
+    cur.seed = opt.patternSeed;
+    cur.bars = 2;
+    cur.variation = opt.variation;
+    cur.rolls = opt.rolls;
+    cur.cowbell = opt.cowbell;
+    const int curBpm = (int) std::lround (opt.currentBpm);
+    writeLoop ("Memphis_Loop_Current_" + juce::String (curBpm) + "BPM.wav", cur, opt.currentBpm);
+    return result;
+}
 } // namespace kf::Exporter

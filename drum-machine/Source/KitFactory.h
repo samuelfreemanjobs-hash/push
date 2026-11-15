@@ -55,7 +55,7 @@ namespace KitFactory
     bool kitFromXml (const juce::XmlElement& xml, Kit& kit);
 
     // Write a rhythm into one pattern that suits each track's drum type.
-    enum class GrooveStyle { Auto, BoomBap, FourOnFloor, Trap, MemphisPhonk, DriftPhonk };
+    enum class GrooveStyle { Auto, BoomBap, FourOnFloor, Trap, MemphisPhonk, DriftPhonk, PhonkFactoryClassic };
     const juce::StringArray& grooveStyleNames();          // indexed by GrooveStyle
     float grooveTempo (GrooveStyle style);                // typical BPM (0 for Auto)
     float grooveSwing (GrooveStyle style);                // swing % (0 for Auto)

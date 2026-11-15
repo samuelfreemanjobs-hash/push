@@ -1,5 +1,6 @@
 #include "KitFactory.h"
 #include "VoicePresets.h"
+#include "PhonkClassic.h"
 
 namespace kf::KitFactory
 {
@@ -46,7 +47,7 @@ const juce::StringArray& factoryKitNames()
 {
     static const juce::StringArray names { "Boom Analog", "Punch Machine", "Electro Steel",
                                            "Dusty Lo-Fi", "Industrial Forge", "Minimal Tick",
-                                           "Jazz Phonk (16 pads)", "Memphis Drift (phonk)" };
+                                           "Jazz Phonk (16 pads)", "Memphis Drift (phonk)", "Phonk Factory MPC" };
     return names;
 }
 
@@ -350,6 +351,52 @@ Kit factoryKit (int index)
             k.bus[BPunch] = 0.25f;   // about +1.5 dB on the attack
             k.bus[BVinyl] = 0.12f;
             break;
+
+        case 8: // Phonk Factory MPC -- 4 variations each of kick/snare/hat/oh/cow (notes 36-55 style)
+        {
+            auto pre = [] (const char* name) { return Presets::findFactory (name)->voice; };
+            auto kick = pre ("Phonk Distorted Kick");
+            auto snare = pre ("Phonk Clap-Snare");
+            auto ch = pre ("Phonk Hat");
+            auto oh = pre ("Phonk Open Hat");
+            auto cow = pre ("Phonk Cowbell F#");
+            for (int i = 0; i < 4; ++i)
+            {
+                auto k = kick; k[Pitch] *= 1.0f + 0.02f * (float) i;
+                bankA[(size_t) i] = k;
+                namesA[(size_t) i] = "Kick Var " + juce::String (i + 1);
+            }
+            for (int i = 0; i < 4; ++i)
+            {
+                auto s = snare; s[Pitch] *= 1.0f + 0.015f * (float) i;
+                bankA[(size_t) (4 + i)] = s;
+                namesA[(size_t) (4 + i)] = "Snare Var " + juce::String (i + 1);
+            }
+            // Pads A09–A12: closed hats; A13–A14 open; A15–A16 cowbell (bank B overwrites bank-A slots 8–15).
+            for (int i = 0; i < 4; ++i)
+            {
+                auto h = ch; h[Pitch] *= 1.0f + 0.01f * (float) (i - 1.5f); h[NoiseDecay] *= 1.0f + 0.08f * (float) (i - 1.5f);
+                bankB[(size_t) i] = h;
+                namesB[(size_t) i] = "Closed Hat Var " + juce::String (i + 1);
+            }
+            for (int i = 0; i < 2; ++i)
+            {
+                auto o = oh; o[Pitch] *= 1.0f + 0.01f * (float) i;
+                bankB[(size_t) (4 + i)] = o;
+                namesB[(size_t) (4 + i)] = "Open Hat Var " + juce::String (i + 1);
+            }
+            for (int i = 0; i < 2; ++i)
+            {
+                auto c = cow; c[Pitch] *= 1.0f + 0.02f * (float) i;
+                bankB[(size_t) (6 + i)] = c;
+                namesB[(size_t) (6 + i)] = "Cowbell Var " + juce::String (i + 1);
+            }
+            haveBankB = true;
+            k.bus = machineBus (1);
+            k.bus[BWow] = 0.5f;
+            k.bus[BVinyl] = 0.08f;
+            break;
+        }
 
         case 7: // Memphis Drift -- phonk: distorted kick + 808, crunchy clap, cowbell riffs, triplet hats
         {
@@ -803,7 +850,7 @@ bool kitFromXml (const juce::XmlElement& xml, Kit& kit)
 const juce::StringArray& grooveStyleNames()
 {
     static const juce::StringArray names { "Surprise me", "Boom Bap", "Four on the Floor", "Trap",
-                                           "Memphis Phonk", "Drift Phonk" };
+                                           "Memphis Phonk", "Drift Phonk", "Phonk Factory (classic)" };
     return names;
 }
 
@@ -815,8 +862,9 @@ float grooveTempo (GrooveStyle style)
         case GrooveStyle::FourOnFloor:  return 124.0f;
         case GrooveStyle::Trap:         return 140.0f;
         case GrooveStyle::MemphisPhonk: return 140.0f;
-        case GrooveStyle::DriftPhonk:   return 130.0f;
-        case GrooveStyle::Auto:         break;
+        case GrooveStyle::DriftPhonk:        return 130.0f;
+        case GrooveStyle::PhonkFactoryClassic: return 118.0f;
+        case GrooveStyle::Auto:              break;
     }
     return 0.0f;
 }
@@ -829,8 +877,9 @@ float grooveSwing (GrooveStyle style)
         case GrooveStyle::FourOnFloor:  return 52.0f;
         case GrooveStyle::Trap:
         case GrooveStyle::MemphisPhonk:
-        case GrooveStyle::DriftPhonk:   return 50.0f;
-        case GrooveStyle::Auto:         break;
+        case GrooveStyle::DriftPhonk:        return 53.0f; // ~3% swing like Phonk Factory default
+        case GrooveStyle::PhonkFactoryClassic: return 53.0f;
+        case GrooveStyle::Auto:              break;
     }
     return 0.0f;
 }
@@ -1065,7 +1114,20 @@ void generatePattern (PatternBank& bank, int pattern, juce::AudioProcessorValueT
     bank.clear (pattern);
 
     if (style == GrooveStyle::Auto)
-        style = (GrooveStyle) (1 + r.nextInt (5));
+        style = (GrooveStyle) (1 + r.nextInt (6));
+
+    if (style == GrooveStyle::PhonkFactoryClassic)
+    {
+        PhonkClassic::Settings ps;
+        ps.seed = (int) getParamValue (apvts, ids::phonkPatSeed);
+        ps.bars = 1;
+        ps.variation = getParamValue (apvts, ids::phonkVariation);
+        ps.rolls = getParamValue (apvts, ids::phonkRolls);
+        ps.cowbell = getParamValue (apvts, ids::phonkCowbell);
+        ps.humanize = getParamValue (apvts, ids::phonkHumanize);
+        PhonkClassic::applyToPattern (bank, pattern, apvts, PhonkClassic::generateEvents (ps));
+        return;
+    }
 
     if (style == GrooveStyle::MemphisPhonk || style == GrooveStyle::DriftPhonk)
     {

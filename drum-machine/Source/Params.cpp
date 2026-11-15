@@ -78,6 +78,7 @@ const VoiceParamSpec& busSpec (int bp)
         { "lf_punch",   "Punch",       Kind::Float,  -1,     1,       0,      0,      0,       "",    nullptr },
         { "lf_tail",    "Tail",        Kind::Float,  -1,     1,       0,      0,      0,       "",    nullptr },
         { "lf_vinyl",   "Vinyl",       Kind::Float,  0,      1,       0,      0,      0,       "",    nullptr },
+        { "lf_wow",     "Wow / Flutter", Kind::Float, 0,    1,       0,      0,      0,       "",    nullptr },
     };
     jassert (bp >= 0 && bp < NumBP);
     return specs[bp];
@@ -155,6 +156,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         juce::ParameterID { ids::master, 1 }, "Master",
         juce::NormalisableRange<float> (-60.0f, 6.0f, 0.1f), -3.0f,
         juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { ids::hostSync, 1 }, "Host Sync", true));
+
+    auto addPhonk = [&] (const char* id, const char* name, float lo, float hi, float def)
+    {
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { id, 1 }, name, juce::NormalisableRange<float> (lo, hi, 0.01f), def));
+    };
+    addPhonk (ids::phonkVariation, "Phonk Variation", 0.0f, 1.0f, 0.5f);
+    addPhonk (ids::phonkRolls, "Phonk Hat Rolls", 0.0f, 1.0f, 0.3f);
+    addPhonk (ids::phonkCowbell, "Phonk Cowbell", 0.0f, 1.0f, 0.2f);
+    addPhonk (ids::phonkHumanize, "Phonk Humanise", 0.0f, 1.0f, 0.15f);
+    layout.add (std::make_unique<juce::AudioParameterInt> (
+        juce::ParameterID { ids::phonkPatSeed, 1 }, "Phonk Pattern Seed", 1, 9999, 7));
 
     // ---- Vintage sampler bus ----
     {

@@ -29,6 +29,7 @@ KitForgeProcessor::KitForgeProcessor()
     lengthParam  = apvts.getRawParameterValue (ids::length);
     patternParam = apvts.getRawParameterValue (ids::pattern);
     masterParam  = apvts.getRawParameterValue (ids::master);
+    hostSyncParam = apvts.getRawParameterValue (ids::hostSync);
     for (int bp = 0; bp < NumBP; ++bp)
         busRaw[(size_t) bp] = apvts.getRawParameterValue (busParamID (bp));
 
@@ -58,6 +59,7 @@ void KitForgeProcessor::prepareToPlay (double sr, int)
     crusher.prepare (sr);
     shaper.prepare (sr);
     vinyl.prepare (sr);
+    wow.prepare (sr);
 
     masterGain.reset (sr, 0.02);
     masterGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (masterParam->load()));
@@ -121,6 +123,7 @@ void KitForgeProcessor::readVoiceParams()
     crusher.setParams (bus);
     shaper.setAmounts (bus.punch, bus.tail);
     vinyl.setAmount (bus.vinyl);
+    wow.setAmount (bus.wow);
 }
 
 void KitForgeProcessor::fire (int track, float velocity, float semitones)
@@ -162,8 +165,9 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     double ppqStart = 0.0;
     bool hostIsPlaying = false;
 
-    if (auto* ph = getPlayHead())
+    if (hostSyncParam->load() > 0.5f)
     {
+        if (auto* ph = getPlayHead(); ph != nullptr)
         if (auto pos = ph->getPosition())
         {
             if (pos->getIsPlaying())
@@ -315,6 +319,7 @@ void KitForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         crusher.process (sendL, sendR);
         float l = cleanL + sendL, r = cleanR + sendR;
         shaper.process (l, r);
+        wow.process (l, r);
 
         const float g = masterGain.getNextValue();
         if (right != nullptr)

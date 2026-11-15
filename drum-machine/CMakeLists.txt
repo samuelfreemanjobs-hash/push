@@ -52,6 +52,7 @@ set(KITFORGE_SOURCES
     Source/Exporter.cpp
     Source/VoicePresets.cpp
     Source/KitFactory.cpp
+    Source/PhonkClassic.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/SequencerGrid.cpp)

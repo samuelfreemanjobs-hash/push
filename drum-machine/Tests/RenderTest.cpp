@@ -500,6 +500,81 @@ int main (int argc, char* argv[])
                "voice preset files round-trip");
     }
 
+    // ---- Phonk Factory classic (ported pattern) ----
+    {
+        const int idx = kf::KitFactory::factoryKitNames().indexOf ("Phonk Factory MPC");
+        check (idx >= 0, "Phonk Factory MPC kit exists");
+        proc.loadKit (kf::KitFactory::factoryKit (idx));
+        kf::setParamValue (proc.apvts, kf::ids::phonkVariation, 0.0f);
+        {
+            kf::PhonkClassic::Settings ps;
+            ps.seed = 1;
+            ps.variation = 0.0f;
+            const auto ev = kf::PhonkClassic::generateEvents (ps);
+            check (ev.size() >= 20, "PhonkClassic generates dense events (" + juce::String ((int) ev.size()) + ")");
+            proc.patterns.clear (0);
+            kf::PhonkClassic::applyToPattern (proc.patterns, 0, proc.apvts, ev);
+            int on8 = 0;
+            for (int s = 0; s < kf::numSteps; ++s)
+                on8 += proc.patterns.get (0, 8, s) > 0;
+            int onAnyHat = 0;
+            for (int t = 8; t < 12; ++t)
+                for (int s = 0; s < kf::numSteps; ++s)
+                    onAnyHat += proc.patterns.get (0, t, s) > 0;
+            check (onAnyHat >= 12, "PhonkClassic maps closed hats (tracks 8-11): " + juce::String (onAnyHat) + " hits");
+        }
+        bool classic = true;
+        bool dbgKicks = false, dbgSnare = false;
+        int dbgHats = 0;
+        for (int run = 0; run < 10; ++run)
+        {
+            juce::Random rPhonk (run + 100);
+            kf::KitFactory::generatePattern (proc.patterns, 0, proc.apvts, rPhonk,
+                                             kf::KitFactory::GrooveStyle::PhonkFactoryClassic);
+            auto anyKickClassic = [&]() -> bool
+            {
+                for (int t = 0; t < 4; ++t)
+                    if (proc.patterns.get (0, t, 0) > 0 && proc.patterns.get (0, t, 3) > 0
+                        && proc.patterns.get (0, t, 7) > 0)
+                        return true;
+                return false;
+            };
+            auto anySnareBackbeat = [&]() -> bool
+            {
+                for (int t = 4; t < 8; ++t)
+                    if (proc.patterns.get (0, t, 4) > 0 && proc.patterns.get (0, t, 12) > 0)
+                        return true;
+                return false;
+            };
+            int hats = 0;
+            for (int t = 8; t < 12; ++t)
+                for (int s = 0; s < kf::numSteps; ++s)
+                    hats += proc.patterns.get (0, t, s) > 0;
+            dbgKicks = anyKickClassic();
+            dbgSnare = anySnareBackbeat();
+            dbgHats = hats;
+            classic &= dbgKicks && dbgSnare && dbgHats >= 12;
+        }
+        check (classic, "Phonk Factory classic: kicks {0,3,7,10,14}, snares on 5+13, running hats");
+
+        kf::PhonkClassic::Settings ps;
+        ps.seed = 7;
+        ps.bars = 2;
+        ps.variation = 0.0f;
+        const auto kit = proc.captureCurrentKit();
+        const auto loop = kf::Exporter::renderPhonkLoop (kit, proc.apvts, kf::PhonkClassic::generateEvents (ps), 118.0, 53.0, sr);
+        check (loop.getRMSLevel (0, 0, loop.getNumSamples()) > 0.02f, "offline Phonk loop render");
+        writeWav (loop, sr, outDir.getChildFile ("phonk_factory_classic_118.wav"));
+
+        const auto dir = outDir.getChildFile ("phonk_loops");
+        dir.createDirectory();
+        kf::Exporter::PhonkLoopExportOptions opt;
+        opt.patternSeed = 7;
+        const auto pack = kf::Exporter::exportPhonkLoopPack (kit, proc.apvts, dir, opt);
+        check (pack.ok() && pack.files.size() >= 8,
+               "Phonk loop pack: classic 112/118/124 + variations (" + juce::String (pack.files.size()) + " files)");
+    }
+
     // ---- Phonk generator ----
     {
         const int kitIndex = kf::KitFactory::factoryKitNames().indexOf ("Memphis Drift (phonk)");

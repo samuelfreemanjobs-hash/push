@@ -162,7 +162,7 @@ private:
     KitForgeProcessor& proc;
     Choice machine { "Machine" };
     Knob drive { "Drive" }, bits { "Bits" }, rate { "Rate" }, pitch { "Pitch Hack" }, lpf { "Low-pass" },
-         lowKeep { "Low Keep" }, punch { "Punch", true }, tail { "Tail", true }, vinyl { "Vinyl" };
+         lowKeep { "Low Keep" }, punch { "Punch", true }, tail { "Tail", true }, vinyl { "Vinyl" }, wow { "Wow" };
     juce::Rectangle<int> infoArea;
 };
 
@@ -197,6 +197,8 @@ private:
     void loadKitFromFile();
     void refreshKitName();
     void exportPack();
+    void exportPhonkLoops();
+    void dragCurrentLoop();
     void paintContent (juce::Graphics&);
     void layoutContent();
 
@@ -208,13 +210,16 @@ private:
 
     // Transport / global
     juce::TextButton playButton { "PLAY" };
+    juce::ToggleButton hostSyncToggle { "HOST SYNC" };
     Knob tempo { "Tempo" }, swing { "Swing" }, length { "Length" }, master { "Master" };
 
     // Kit factory
     juce::ComboBox kitBox;
     juce::Label kitName;
     juce::TextButton forgeKitButton { "FORGE KIT" }, mutateButton { "MUTATE" },
-                     saveButton { "SAVE" }, loadButton { "LOAD" }, exportButton { "EXPORT" };
+                     saveButton { "SAVE" }, loadButton { "LOAD" }, exportButton { "EXPORT" },
+                     exportLoopsButton { "EXPORT LOOPS" }, dragLoopButton { "DRAG LOOP" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> hostSyncAttachment;
 
     // Patterns
     std::array<juce::TextButton, kf::numPatterns> patternButtons;

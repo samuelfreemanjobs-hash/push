@@ -84,11 +84,13 @@ private:
     std::atomic<float>* lengthParam = nullptr;
     std::atomic<float>* patternParam = nullptr;
     std::atomic<float>* masterParam = nullptr;
+    std::atomic<float>* hostSyncParam = nullptr;
     std::array<std::atomic<float>*, kf::NumBP> busRaw {};
 
     kf::VintageCrusher crusher;
     kf::TransientShaper shaper;
     kf::VinylNoise vinyl;
+    kf::WowFlutter wow;
 
     double sampleRate = 44100.0;
     double internalPpq = 0.0;

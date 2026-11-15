@@ -1,6 +1,7 @@
 #pragma once
 
 #include "KitFactory.h"
+#include "PhonkClassic.h"
 #include "VintageBus.h"
 
 // Renders a kit to a sample pack: one WAV per pad (through the vintage bus),
@@ -44,4 +45,25 @@ Result exportKit (const Kit& kit, const juce::File& folder, const Options& optio
 // A file name like "Kick_JazzSubKick_12bit.wav" is suggested by padFileName().
 juce::String padFileName (const VoiceDef& voice, const juce::String& name, const BusDef& bus);
 bool exportPad (const VoiceDef& voice, const BusDef& bus, const juce::File& file, const Options& options);
+
+// Offline render of a Phonk Factory-style loop (tails wrap for seamless MPC loops).
+juce::AudioBuffer<float> renderPhonkLoop (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                                          const std::vector<PhonkClassic::Event>& events, double bpm,
+                                          double swingPercent, double sampleRate);
+
+struct PhonkLoopExportOptions
+{
+    double sampleRate = 44100.0;
+    int bitDepth = 16;
+    juce::String prefix { "PhonkFactory" };
+    int patternSeed = 7;
+    float variation = 0.5f;
+    float rolls = 0.3f;
+    float cowbell = 0.2f;
+    int extraLoops = 5;
+    double currentBpm = 118.0;
+};
+
+Result exportPhonkLoopPack (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                            const juce::File& folder, const PhonkLoopExportOptions& opt);
 } // namespace kf::Exporter

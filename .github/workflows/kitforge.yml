@@ -57,3 +57,12 @@ jobs:
           path: |
             drum-machine/build/KitForge_artefacts/Release/VST3
             drum-machine/build/KitForge_artefacts/Release/Standalone
+
+      - name: PluginVal (strictness 5)
+        if: runner.os == 'Linux'
+        run: |
+          curl -sLO https://github.com/Tracktion/pluginval/releases/download/latest_release/pluginval_Linux.zip
+          unzip -qo pluginval_Linux.zip
+          chmod +x pluginval
+          VST3=$(find drum-machine/build/KitForge_artefacts/Release/VST3 -name '*.vst3' -type f | head -1)
+          ./pluginval --validate-in-process --strictness-level 5 --output-dir /tmp/pluginval "$VST3"

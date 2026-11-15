@@ -60,7 +60,7 @@ const VoiceParamSpec& voiceSpec (int vp);
 // whole mix then gets a transient shaper (punch / tail) and a vinyl layer.
 enum BP
 {
-    BDrive, BBits, BRate, BPitch, BLpf, BLowKeep, BPunch, BTail, BVinyl,
+    BDrive, BBits, BRate, BPitch, BLpf, BLowKeep, BPunch, BTail, BVinyl, BWow,
     NumBP
 };
 
@@ -85,6 +85,12 @@ namespace ids
     inline constexpr const char* length  = "length";
     inline constexpr const char* pattern = "pattern";
     inline constexpr const char* master  = "master";
+    inline constexpr const char* hostSync = "host_sync";
+    inline constexpr const char* phonkVariation = "phonk_variation";
+    inline constexpr const char* phonkRolls = "phonk_rolls";
+    inline constexpr const char* phonkCowbell = "phonk_cowbell";
+    inline constexpr const char* phonkHumanize = "phonk_humanize";
+    inline constexpr const char* phonkPatSeed = "phonk_pat_seed";
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
