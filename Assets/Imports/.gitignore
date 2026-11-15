@@ -1,0 +1,4 @@
+# Operator-unpacked demo WAVs from factory upload zips
+**/*
+!.gitignore
+!README.md

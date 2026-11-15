@@ -18,6 +18,8 @@
 ## Key paths
 
 - Masters: `disklordz-ralph/vst/Assets/RawMasters/`
+- Factory imports (local WAV): `Assets/Imports/`
+- Forge v4 source: `disklordz-ralph/factory/drum-forge-v4/`
 - Releases: `Assets/Releases/`
 - DSP (read-only audit): `disklordz-ralph/vst/Modules/TrapCoreDSP/`
 - Plugin UI (already ships drag-export): `disklordz-ralph/vst/starter-cpp/Source/PluginEditor.cpp`

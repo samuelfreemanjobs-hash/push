@@ -5,7 +5,7 @@ Assign each tool one job. Do not use AutoGPT for C++ DSP, or Cursor for schedule
 | Layer | Tool | Responsibility |
 |-------|------|----------------|
 | **1. C++ DSP & VST3** | Cursor + Superpowers + REA + Ponytail | `TrapCoreDSP`, Catch2, MSVC `.vst3`, REA `.pdb` RT safety; `.cursor/rules/ponytail-juce.mdc` |
-| **2. Sound & kit factory** | C++ CLI (`LouisianaKitGenerator.exe`) | 24-bit WAV, encrypted `.blob`, `kit_manifest.json` — no LLM audio |
+| **2. Sound & kit factory** | `factory/drum-forge-v4` + future C++ CLI | 24-bit WAV, `kit_manifest.json` — synthesis-only; no LLM audio |
 | **3. Scheduled intel & outreach** | OpenClaw + Firecrawl | Price cron, producer leads, Telegram only on alerts / draft approval |
 | **4. Launches & support** | AutoGPT Agent Builder | On kit drop: storefront copy, Shorts scripts, install FAQ — human approve APIs |
 
