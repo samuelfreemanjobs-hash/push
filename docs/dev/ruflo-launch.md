@@ -75,7 +75,7 @@ npx ruflo@latest memory search --query "saturation filter loss"
 After pack export:
 
 ```powershell
-python disklordz-ralph\factory\autoresearch\export_kit.py --handoff
+python disklordz-ralph\factory\autoresearch\export_kit.py
 # or: python disklordz-ralph\factory\autoresearch\publish_to_openmontage.py
 ```
 

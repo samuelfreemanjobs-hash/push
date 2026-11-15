@@ -1,7 +1,7 @@
 # OpenMontage prompt templates — DiskLordz
 
 Use these in **Cursor / Claude Code** with the OpenMontage project open at `marketing-studio/`.  
-After `python publish_to_openmontage.py` or `export_kit.py --handoff`, assets live at **`assets/latest_release/`**.
+After `export_kit.py` (auto-publish) or `publish_to_openmontage.py`, assets live at **`assets/latest_release/`**.
 
 **Brand:** hardware booth, gunmetal `#121216`, amber accents, synthesis-only drums, FL Studio–friendly drag workflow on Core+.  
 **Never claim:** copyrighted samples, “AI-generated kits” vaporware tone, iLok.

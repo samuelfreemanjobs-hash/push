@@ -27,7 +27,7 @@ Build, validate, and optimize:
    - **Commercial pack:** `python disklordz-ralph/factory/autoresearch/export_kit.py` (add `--sfz` for sampler patch)
    - **Trigger (coordinator):** when `TOTAL_LOSS` beats prior best **or** kick-only `SPECTRAL_LOSS < 0.35` (Python kit path), run `export_kit.py` (auto-stages OpenMontage unless `SKIP_OPENMONTAGE_PUBLISH=1`); pass `release_brief.json` to docs agent (Gumroad/Lemon copy) and optional `media-studio` — human approves storefront and video checkpoints.
 5. **Docs / storefront** (optional 5th) — `storefront/`, `PRODUCT.md` only; human approves paid copy.
-6. **Media launch (`media-studio`, optional)** — After `export_kit.py`, run `python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py` (or `export_kit.py --handoff` / `scripts/handoff-pack-to-openmontage.ps1`). Open sibling `../marketing-studio` and execute **`assets/latest_release/AGENT_PROMPT.md`** (Templates A/B in `docs/marketing/openmontage-prompt-templates.md`); **human approves** storyboard and draft render before final MP4. See `docs/dev/openmontage.md`.
+6. **Media launch (`media-studio`, optional)** — After `export_kit.py`, run `python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py` (or `scripts/handoff-pack-to-openmontage.ps1` if re-staging without re-export). Open sibling `../marketing-studio` and execute **`assets/latest_release/AGENT_PROMPT.md`** (Templates A/B in `docs/marketing/openmontage-prompt-templates.md`); **human approves** storyboard and draft render before final MP4. See `docs/dev/openmontage.md`.
 
 ### Marketing handoff rule (`kit-producer`)
 

@@ -59,7 +59,7 @@ python disklordz-ralph\factory\autoresearch\publish_to_openmontage.py
 Or one step:
 
 ```powershell
-python disklordz-ralph\factory\autoresearch\export_kit.py --handoff
+python disklordz-ralph\factory\autoresearch\export_kit.py
 ```
 
 ### Autonomous business loop (opt-in R&D)
