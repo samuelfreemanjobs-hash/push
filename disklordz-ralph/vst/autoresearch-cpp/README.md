@@ -4,7 +4,8 @@
 |------|------|
 | `Source/VoiceDSP.h` | **Agent sandbox** (header-only RT-safe kick) |
 | `Source/HeadlessMain.cpp` | `HeadlessRender` CLI (not agent-edited) |
-| `examples/PluginProcessorAutoresearch.example.cpp` | MIDI + `processBlock` wiring reference |
+| `plugin/Source/PluginProcessor.*` | **Shipped preview VST** — VoiceDSP + license UI (OpenMontage) |
+| `examples/PluginProcessorAutoresearch.example.cpp` | Legacy wiring snippet (see `plugin/`) |
 | `STRUCTURE.md` | Folder map vs generic DrumSynth-Autoresearch |
 | `evaluate_vst.py` | Build + pluginval + acoustic loss |
 | `program_cpp.md` | Agent playbook |
@@ -13,8 +14,11 @@
 
 ```powershell
 cd disklordz-ralph\vst\starter-cpp
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_AUTORESEARCH=ON
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_AUTORESEARCH=ON -DDLZ_AUTORESEARCH_VST=ON
 cmake --build build --config Release
+
+# Or one-shot build + pluginval (strictness 8):
+# ..\..\..\scripts\vst-build-drumsynth-autoresearch.ps1
 
 # target kick (shared with Python kit autoresearch)
 copy ..\..\factory\autoresearch\targets\kick.wav .\..\autoresearch-cpp\targets\kick.wav

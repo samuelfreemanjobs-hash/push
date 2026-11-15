@@ -150,9 +150,13 @@ void DetroitPhonkTrapAudioProcessor::getStateInformation(juce::MemoryBlock& dest
 
 void DetroitPhonkTrapAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    if (const auto xml = getXmlFromBinary(data, sizeInBytes); xml != nullptr)
-        if (xml->hasTagName(apvts.state.getType()))
-            apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    if (data == nullptr || sizeInBytes <= 0 || sizeInBytes > 1024 * 1024)
+        return;
+    if (const std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
+        xml != nullptr && xml->hasTagName(apvts.state.getType()))
+    {
+        apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

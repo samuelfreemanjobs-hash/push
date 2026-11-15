@@ -19,6 +19,7 @@
       "Bash(powershell *handoff-pack-to-openmontage.ps1*)",
       "Bash(powershell *export_kit_velocities.ps1*)",
       "Bash(powershell *vst-build-pluginval-gate.ps1*)",
+      "Bash(powershell *vst-build-drumsynth-autoresearch.ps1*)",
       "Bash(pluginval *)",
       "Bash(git status)",
       "Bash(git diff *)",

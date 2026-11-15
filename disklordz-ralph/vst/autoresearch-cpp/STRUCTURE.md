@@ -18,4 +18,5 @@ disklordz-ralph/vst/
 ```
 
 Commercial VST3 remains **`Detroit Phonk Trap Maker`** in `starter-cpp/` — not a separate DrumSynth SKU.  
+**`DrumSynth Autoresearch`** (`plugin/`) is a marketing/QA preview wired directly to `VoiceDSP.h`.  
 Autoresearch tunes `VoiceDSP.h`, then you port winners into `TrapCoreDSP`.
