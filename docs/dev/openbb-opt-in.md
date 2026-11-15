@@ -6,7 +6,7 @@
 
 ---
 
-## Four-agent company map
+## Five-pillar company map (finance slice)
 
 | Department | Engine | Responsibility |
 |------------|--------|----------------|
@@ -14,6 +14,7 @@
 | Knowledge | RAGFlow (MCP) | Schematics, EULAs, manuals |
 | Video & social | OpenMontage | Shorts / VST trailers from `assets/latest_release/` |
 | Finance & market | **OpenBB** | Unit economics, FX/macro context, treasury modeling |
+| Security | Strix (opt-in) | License API, downloads, parsers — `docs/dev/strix-opt-in.md` |
 
 OpenBB does **not** process audio. It reads **`sales_ledger.csv`** and public market data you enable in Workspace.
 

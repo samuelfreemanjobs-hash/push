@@ -19,6 +19,7 @@ Aligned with `disklordz-ralph/STACK-4-LAYER.md` and `STACK-FROZEN.md` (no new ag
 | **Local multi-agent (Claude Code)** | Ruflo (opt-in) | `CLAUDE.md`, `docs/dev/ruflo-opt-in.md` |
 | **Finance & market ops** | OpenBB Workspace (opt-in) | `docs/dev/openbb-opt-in.md`, `business/openbb/` |
 | **Video / social launch** | OpenMontage (opt-in) | `docs/dev/openmontage.md` |
+| **Security red team** | Strix (opt-in) | `docs/dev/strix-opt-in.md`, `docs/security/strix-vst-audit-playbook.md` |
 
 ---
 

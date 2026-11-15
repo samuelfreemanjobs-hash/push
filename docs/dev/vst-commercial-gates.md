@@ -48,6 +48,16 @@ In `factory/autoresearch/evaluate.py`, a future `MIN_SPECTRAL_DISTANCE` env can 
 
 **Legal:** synthesis-only; references must be **your** TrapCoreDSP/Forge exports.
 
+## 5. Strix / security red team (optional, paid tier)
+
+Before **Core/Suite** checkout goes live:
+
+- Run `scripts/strix-pre-release.ps1 -Quick` on `starter-cpp/Source`, `storefront/`, `business/openbb/`
+- Staging URL scan per `docs/security/strix-vst-audit-playbook.md` (license API + signed kit downloads)
+- No open **critical** findings on webhook forgery or unauthenticated ZIP access
+
+Strix is **not** a substitute for pluginval or Catch2.
+
 ## 5. Agent loop integration
 
 ```text
