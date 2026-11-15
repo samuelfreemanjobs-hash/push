@@ -23,9 +23,18 @@ Full pick lists: `PICKS.yaml`.
 
 ## Install order
 
-1. OpenClaw: `../disklordz-elite-team/` + `../drum-kit-factory/` + merge `openclaw.stack.json5.example`
-2. Hermes: `../../hermes/disklordz-picks/` + webhooks + crons
-3. Env: `DISKLORDZ_OPS_TOKEN`, `GEMINI`, optional Codex, `gh auth login` on VPS
+### Free ($0) — start here
+
+1. **`../../disklordz-agent-stack/`** — cron → `~/.openclaw/hermes-out/` (Hermes optional)
+2. OpenClaw + Gemini free + `openclaw.stack.json5.example`
+3. `disklordz-agent-stack/deploy/bootstrap-free.sh`
+
+See **`../../disklordz-agent-stack/FREE.md`**.
+
+### Hermes upgrade (later)
+
+1. `../../hermes/disklordz-picks/` webhooks/crons (same `hermes-out/` paths)
+2. Codex only if you already have a subscription
 
 ## Daily flow
 
