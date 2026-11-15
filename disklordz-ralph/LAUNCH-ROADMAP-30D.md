@@ -24,7 +24,7 @@ Stack: **Cursor + Superpowers + Ponytail (full, `ponytail-juce.mdc`) + REA**, Tr
 
 | Days | Work |
 |------|------|
-| **8–10** | Minimal editor: macros (808 Punch/Clip, Glide, Bounce Swing, Roll trigger) + **DLZ-VST-007** — repo: `vst/starter-cpp/integration/Source/` + `PadGridComponent.h` (click = WAV drag, Shift+click = MIDI drag, drop WAV on pad). |
+| **8–10** | Minimal editor: Glide + 808 Clip macros, **Trap808Voice** + **SoftClipper** in `processBlock`, **DLZ-VST-007** — `starter-cpp/Source/` + pad drag (WAV / Shift+MIDI). Swing + Roll: next story after FL smoke. |
 | **11–12** | FL Studio (primary) + Ableton smoke: note-off, pitch-bend 12 st, state save/load, CPU @ 512 buffer — `vst/docs/FL-STUDIO-QA.md`. |
 | **13–14** | `LouisianaKitGenerator.exe` → 150+ WAVs + 40 MIDI rolls → `Assets/Releases/` + `kit_manifest.json`; encrypted `.blob` for in-plugin factory. |
 
