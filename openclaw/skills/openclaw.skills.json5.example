@@ -10,6 +10,7 @@
       kit_spec_grok: { enabled: true },
       overnight_branch: { enabled: true },
       github_pr_review: { enabled: true },
+      vst_market_intel: { enabled: true },
     },
   },
   agents: {
@@ -38,7 +39,7 @@
         ],
       },
       mkt: {
-        skills: ["research_consume", "tripwire_positioning", "telegram_brief"],
+        skills: ["research_consume", "vst_market_intel", "tripwire_positioning", "telegram_brief"],
       },
       biz: {
         skills: ["launch_gates", "friday_kpi", "tripwire_positioning", "vault_kanban"],

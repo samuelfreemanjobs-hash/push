@@ -3,6 +3,7 @@
 ## Sources
 
 - `hermes-out/` research stubs
+- `hermes-out/research/vst-market-latest.json` (from **vst_market_intel** cron; price drops only)
 - Public web only when operator enables browser/search tools
 
 ## Steps

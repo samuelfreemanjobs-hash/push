@@ -45,6 +45,9 @@ skills:
   - dir: research_consume
     slug: disklordz-research-consume
     display_name: Research Consume
+  - dir: vst_market_intel
+    slug: disklordz-vst-market-intel
+    display_name: VST Market Intel
   - dir: tripwire_positioning
     slug: disklordz-tripwire-positioning
     display_name: Tripwire Positioning

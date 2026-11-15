@@ -38,6 +38,7 @@ agents:
     workspace: workspace-mkt
     skills:
       - research_consume
+      - vst_market_intel
       - tripwire_positioning
       - telegram_brief
 
