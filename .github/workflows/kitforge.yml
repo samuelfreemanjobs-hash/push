@@ -7,6 +7,9 @@ on:
     paths: [ "drum-machine/**", ".github/workflows/kitforge.yml" ]
   workflow_dispatch:
 
+env:
+  PLUGINVAL_TAG: v1.0.3
+
 jobs:
   build:
     strategy:
@@ -25,7 +28,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libx11-dev libxrandr-dev libxinerama-dev \
-            libxcursor-dev libxext-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev
+            libxcursor-dev libxext-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev \
+            libcurl4-openssl-dev ladspa-sdk xvfb
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -50,7 +54,15 @@ jobs:
           name: KitForge-Factory-Sample-Packs
           path: drum-machine/packs
 
-      - name: Upload plugin
+      - name: Upload Windows x64 VST3
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KitForge-VST3-Windows-x64
+          path: drum-machine/build/KitForge_artefacts/Release/VST3
+
+      - name: Upload plugin (macOS / Linux)
+        if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: KitForge-${{ runner.os }}
@@ -58,15 +70,33 @@ jobs:
             drum-machine/build/KitForge_artefacts/Release/VST3
             drum-machine/build/KitForge_artefacts/Release/Standalone
 
-      - name: PluginVal (strictness 5)
+      - name: Build pluginval
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          git clone --depth 1 --branch "$PLUGINVAL_TAG" --recurse-submodules --shallow-submodules \
+            https://github.com/Tracktion/pluginval.git /tmp/pluginval
+          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/pluginval/build --config Release -j 4
+
+      - name: PluginVal (strictness 5, Linux)
         if: runner.os == 'Linux'
         working-directory: drum-machine
         run: |
-          sudo apt-get install -y libcurl4-openssl-dev
-          git clone --depth 1 --branch 1.0.3 https://github.com/Tracktion/pluginval.git /tmp/pluginval
-          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
-          cmake --build /tmp/pluginval/build -j 4
           VST3=$(find build/KitForge_artefacts/Release/VST3 -maxdepth 1 -name '*.vst3' | head -1)
           test -n "$VST3"
-          /tmp/pluginval/build/pluginval_artefacts/Release/pluginval \
-            --validate-in-process --strictness-level 5 --output-dir /tmp/pluginval "$VST3"
+          PLUGINVAL=/tmp/pluginval/build/pluginval_artefacts/Release/pluginval
+          xvfb-run -a "$PLUGINVAL" \
+            --validate-in-process --strictness-level 5 --output-dir /tmp/pluginval-out "$VST3"
+
+      - name: PluginVal (strictness 5, Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: drum-machine
+        run: |
+          $vst3 = Get-ChildItem build/KitForge_artefacts/Release/VST3 -Filter *.vst3 | Select-Object -First 1
+          if (-not $vst3) { throw "KitForge VST3 bundle not found" }
+          $pluginval = Get-ChildItem -Path /tmp/pluginval/build -Recurse -Filter pluginval.exe | Select-Object -First 1
+          & $pluginval.FullName --validate-in-process --strictness-level 5 --output-dir $env:RUNNER_TEMP\pluginval-out $vst3.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
