@@ -43,8 +43,10 @@ claude
 | `/disk-autoresearch-cpp` | `memory-curator` → `dsp-architect` → `qa-validator` → `memory-curator` | `cpp-voice-dsp-loop`, `mem0-dsp-memory` |
 | `/disk-mem0-recall` | `memory-curator` | `mem0-dsp-memory` |
 | `/disk-rt-audit` | `dsp-rt-auditor` | `dsp-rt-verification` |
+| `/disk-marketing-kit` | `marketing-strategist` | `marketing-pack-launch` |
+| `/disk-outreach-drafts` | `marketing-strategist` | `producer-outreach-draft` |
 
-See `.claude/commands/` for prompts.
+See `.claude/commands/` for prompts. Marketing overview: `docs/dev/marketing-agents-claude-cursor.md`.
 
 ---
 

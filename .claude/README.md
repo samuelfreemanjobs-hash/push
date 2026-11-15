@@ -10,3 +10,5 @@ rules/      → path-scoped memory (lazy load)
 ```
 
 Operator: copy `settings.json.example` → `settings.json`. Full guide: `docs/dev/claude-code-best-practice.md`.
+
+Marketing: `/disk-marketing-kit`, `/disk-outreach-drafts` → `docs/dev/marketing-agents-claude-cursor.md`.
