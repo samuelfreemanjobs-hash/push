@@ -16,12 +16,16 @@
 
 ### Windows (PowerShell)
 
+Paste as one block:
+
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 cd C:\Dev\push
 $env:DLZ_REPO_ROOT = (Get-Location).Path
 .\openclaw\scripts\setup-disklordz-telegram.ps1
 ```
+
+If the repo lives elsewhere, change `C:\Dev\push`. Requires **Node 24+ or 26+** before `openclaw` install (script still copies workspaces if Node is older).
 
 ### Linux / VPS / WSL
 
