@@ -9,6 +9,7 @@
     "tripwire": "node scripts/tripwire-status.mjs",
     "biz-metrics": "node scripts/biz-metrics.mjs",
     "research:stub": "node scripts/research-weekly.mjs",
+    "tech-radar": "node scripts/tech-intel-aidevsignals.mjs",
     "backup-sync": "node scripts/backup-ops-sync.mjs"
   },
   "dependencies": {

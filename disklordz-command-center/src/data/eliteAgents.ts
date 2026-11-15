@@ -69,6 +69,15 @@ export const ELITE_AGENTS: EliteAgent[] = [
     iAm: "Gates G1–G6, kanban priority",
   },
   {
+    id: "radar",
+    prefix: "RADAR",
+    displayName: "Tech Intelligence",
+    group: "ops",
+    tier: "elite",
+    freeModel: "gemini-2.0-flash",
+    iAm: "AI Dev Signals → six-category screening reports",
+  },
+  {
     id: "flow",
     prefix: "FLOW",
     displayName: "Workflow Elite",

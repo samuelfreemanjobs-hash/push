@@ -38,7 +38,18 @@
         ],
       },
       mkt: {
-        skills: ["research_consume", "tripwire_positioning", "telegram_brief"],
+        skills: [
+          "research_consume",
+          "tech_radar_signals",
+          "tripwire_positioning",
+          "telegram_brief",
+        ],
+      },
+      radar: {
+        skills: ["tech_radar_signals", "memory_vault", "telegram_brief"],
+      },
+      arch: {
+        skills: ["tech_radar_signals", "memory_vault"],
       },
       biz: {
         skills: ["launch_gates", "friday_kpi", "tripwire_positioning", "vault_kanban"],

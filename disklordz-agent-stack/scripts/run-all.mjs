@@ -28,3 +28,4 @@ async function run(name) {
 const day = new Date().getUTCDay();
 if (day === 5) await run("biz-metrics.mjs");
 if (day === 1) await run("research-weekly.mjs");
+await run("tech-intel-aidevsignals.mjs");
