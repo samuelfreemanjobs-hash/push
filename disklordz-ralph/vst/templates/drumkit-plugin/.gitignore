@@ -1,3 +1,5 @@
 build/
+.deep-agent-logs/
+RELEASE_SUMMARY.md
 CMakeUserPresets.json
 .vs/
