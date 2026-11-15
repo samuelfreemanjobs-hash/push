@@ -198,8 +198,17 @@ def export_commercial_pack(emit_sfz: bool = False) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sfz", action="store_true", help="Write DiskLordz_Kit.sfz for SFZ/Ableton import")
+    ap.add_argument(
+        "--handoff",
+        action="store_true",
+        help="After export, stage assets to OPENMONTAGE_ROOT (../marketing-studio)",
+    )
     args = ap.parse_args()
-    export_commercial_pack(emit_sfz=args.sfz)
+    out_root = export_commercial_pack(emit_sfz=args.sfz)
+    if args.handoff:
+        from handoff_openmontage import stage_handoff
+
+        stage_handoff(pack_dir=out_root)
 
 
 if __name__ == "__main__":

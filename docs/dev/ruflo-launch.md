@@ -67,3 +67,17 @@ npx ruflo@latest memory search --query "saturation filter loss"
 **Audition:** `disklordz-ralph\vst\autoresearch-cpp\outputs\rendered_kick.wav`  
 **Kit:** `outputs\kits\kick_vel*.wav` after `export_kit_velocities.ps1`  
 **Demo beat:** `factory\autoresearch\outputs\best_kit.wav` (Python track)
+
+---
+
+## Optional — OpenMontage handoff (marketing)
+
+After pack export:
+
+```powershell
+python disklordz-ralph\factory\autoresearch\export_kit.py --handoff
+# or: .\scripts\handoff-pack-to-openmontage.ps1
+```
+
+Clone [OpenMontage](https://github.com/calesthio/OpenMontage) to `C:\Dev\marketing-studio`, then open that folder in Claude Code/Cursor.  
+Prompts: `docs/marketing/openmontage-prompt-templates.md` · setup: `docs/dev/openmontage.md`

@@ -48,11 +48,14 @@ After autoresearch wins on `drum_engine.py`:
 cd disklordz-ralph\factory\autoresearch
 python export_kit.py
 python export_kit.py --sfz
+python export_kit.py --handoff   # + stage for OpenMontage ../marketing-studio
 ```
 
 Writes `outputs/packs/<PACK_NAME>_<timestamp>/` with 24-bit/48k WAVs + `manifest.json`.  
 Optional `DiskLordz_Kit.sfz` for SFZ players / Drum Rack drag references.  
-Env: `PACK_NAME=Louisiana_Bounce_V1`.
+Env: `PACK_NAME=Louisiana_Bounce_V1`, `OPENMONTAGE_ROOT` for handoff target.
+
+OpenMontage prompts: `docs/marketing/openmontage-prompt-templates.md`.
 
 Copy approved zip to `Assets/Releases/` per `docs/factory/kit_manifest.schema.json`.
 

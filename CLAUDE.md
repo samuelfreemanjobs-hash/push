@@ -25,8 +25,9 @@ Build, validate, and optimize:
 4. **Sample pack producer (`kit-producer`)** — After a **kept** Python or C++ DSP commit:
    - **C++ velocities:** `scripts/export_kit_velocities.ps1` → `autoresearch-cpp/outputs/kits/`
    - **Commercial pack:** `python disklordz-ralph/factory/autoresearch/export_kit.py` (add `--sfz` for sampler patch)
-   - **Trigger (coordinator):** when `TOTAL_LOSS` beats prior best **or** kick-only `SPECTRAL_LOSS < 0.35` (Python kit path), run `export_kit.py` and pass `manifest.json` to docs agent for Gumroad/Lemon copy — human approves publish.
+   - **Trigger (coordinator):** when `TOTAL_LOSS` beats prior best **or** kick-only `SPECTRAL_LOSS < 0.35` (Python kit path), run `export_kit.py --handoff` and pass `manifest.json` + staged `brief.json` to docs agent (Gumroad/Lemon copy) and optional `media-studio` (Shorts/trailer) — human approves publish and video checkpoints.
 5. **Docs / storefront** (optional 5th) — `storefront/`, `PRODUCT.md` only; human approves paid copy.
+6. **Media launch (`media-studio`, optional)** — After `export_kit.py`, run `scripts/handoff-pack-to-openmontage.ps1` (or `export_kit.py --handoff`). Open sibling `../marketing-studio` (OpenMontage) and execute `assets/disklordz/*/AGENT_PROMPT.md`; **human approves** storyboard and draft render before final MP4. See `docs/dev/openmontage.md`.
 
 Ship plugin merge target: `TrapCoreDSP` / `PluginProcessor` — **not** in autoresearch loop. Wiring reference: `autoresearch-cpp/examples/PluginProcessorAutoresearch.example.cpp`.
 
@@ -81,6 +82,7 @@ kit-producer runs scripts/export_kit_velocities.ps1 only after qa-validator pass
 | Best render | `autoresearch-cpp/outputs/rendered_kick.wav` |
 | Kit velocities | `autoresearch-cpp/outputs/kits/` |
 | Full launch | `docs/dev/ruflo-launch.md` |
+| OpenMontage | `docs/dev/openmontage.md`, `docs/marketing/openmontage-prompt-templates.md` |
 
 ---
 
