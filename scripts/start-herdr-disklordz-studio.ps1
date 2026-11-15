@@ -43,5 +43,5 @@ foreach ($c in $cmds) {
 }
 
 Write-Host ""
-Write-Host "Coordination: config\herdr\AGENTS-herdr-coordination.md"
-Write-Host "Layout JSON:  config\herdr\layouts\disklordz-vst-studio.json"
+Write-Host "Prefer one-click: disklordz-ralph\vst\templates\drumkit-plugin\launch-studio.ps1"
+Write-Host "Coordination: drumkit-plugin\AGENTS.md + config\herdr\AGENTS-herdr-coordination.md"

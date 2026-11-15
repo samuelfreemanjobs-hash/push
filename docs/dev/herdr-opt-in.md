@@ -54,13 +54,21 @@ Environment overrides:
 
 ## Layout file (copy to user config)
 
-Template: `config/herdr/layouts/disklordz-vst-studio.json`
+**Canonical layout (Herdr UI format):** `config/herdr/layouts/vst-studio.json`
+
+**Extended layout (mesh handoffs):** `config/herdr/layouts/disklordz-vst-studio.json`
+
+**One-click boot from plugin template:**
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\herdr-app\layouts"
-Copy-Item config\herdr\layouts\disklordz-vst-studio.json `
-  "$env:USERPROFILE\.config\herdr-app\layouts\"
+cd disklordz-ralph\vst\templates\drumkit-plugin
+.\launch-studio.ps1                  # attach control room
+.\launch-studio.ps1 -WatchRawAudio   # + FileSystemWatcher on factory raw_audio
 ```
+
+`launch-studio.ps1` copies `vst-studio.json` to `%USERPROFILE%\.config\herdr-app\layouts\`.
+
+**Studio AGENTS.md (mesh protocol):** `disklordz-ralph/vst/templates/drumkit-plugin/AGENTS.md`
 
 Import via Herdr UI or CLI per [herdr docs](https://github.com/herdrdev/herdr) (version-specific).
 

@@ -1,0 +1,25 @@
+{
+  "name": "vst-studio",
+  "working_directory": "C:\\Dev\\push\\disklordz-ralph\\vst\\templates\\drumkit-plugin",
+  "windows": [
+    {
+      "name": "ProductionControl",
+      "layout": "main-vertical",
+      "panes": [
+        {
+          "title": "Pane-0: DSP_Architect (Claude + Context7)",
+          "command": "claude",
+          "focus": true
+        },
+        {
+          "title": "Pane-1: Factory_Runner (Goose + Mastering)",
+          "command": "goose session"
+        },
+        {
+          "title": "Pane-2: QA_And_Release_Gate (CMake + pluginval)",
+          "command": "powershell -NoExit"
+        }
+      ]
+    }
+  ]
+}
