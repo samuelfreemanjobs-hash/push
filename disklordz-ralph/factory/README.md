@@ -10,6 +10,7 @@ Source-only in git; **WAV demos are not committed** (unpack zips locally to `Ass
 | `drum-architecture/` | Drum_Design_Architecture | **R&D** — `ThreeLayerDrum.h` + master meta prompt. |
 | `../luger-drum-lab/` | (in-repo) | **R&D** — Luger DNA on three-layer; M1 tests + optional JUCE. |
 | `../tm88-drum-lab/` | (in-repo) | **R&D** — TM88-*inspired* dark/emo/space trap DNA; M1 tests + optional JUCE. |
+| `../maybach-drum-lab/` | (in-repo) | **R&D** — luxury/cinematic hip-hop DNA (6 banks + Live/Hybrid/Trap morph); M1. |
 
 ## Ship priority (STACK-FROZEN)
 
