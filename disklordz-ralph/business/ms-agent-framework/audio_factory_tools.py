@@ -284,7 +284,7 @@ def generate_drum_sample_map_xml(pack_name: str = "AudioFactoryPack") -> str:
     role_midi = {"808": 36, "Kick": 36, "Snare": 38, "Hat": 42}
     rr_index: dict[str, int] = {}
 
-    root = ET.Element("DrumSampleMap", name=pack_name, version="1")
+    root = ET.Element("DrumSampleMap", attrib={"name": pack_name, "version": "1"})
     for entry in manifest:
         role = entry.get("role", "Kick")
         midi = str(role_midi.get(role, 36))
