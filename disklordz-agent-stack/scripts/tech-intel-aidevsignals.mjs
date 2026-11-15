@@ -5,6 +5,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { OPPORTUNITIES } from "../lib/opportunities.mjs";
 import {
   CATEGORIES,
   DISKLORDZ_PRODUCTS,
@@ -110,6 +111,16 @@ function productsListMd() {
     .join("\n");
 }
 
+function opportunitiesTableMd() {
+  const header =
+    "| Rank | id | Build | Benefit |\n|------|-----|-------|---------|";
+  const rows = OPPORTUNITIES.map(
+    (o) =>
+      `| ${o.rank} | \`${o.id}\` | ${o.buildPriority} | ${o.businessBenefit} |`
+  ).join("\n");
+  return `${header}\n${rows}`;
+}
+
 function buildReviewPrompt({ issueTitle, issueUrl, inboxPath, feedError }) {
   const iso = new Date().toISOString();
   const date = iso.slice(0, 10);
@@ -131,6 +142,12 @@ ${categoryTableMd()}
 
 ${productsListMd()}
 
+## Opportunity stack (assign \`opportunity_ids\` — proposed DiskLordz apps)
+
+${opportunitiesTableMd()}
+
+**Adopt bias:** prefer tools that unblock rank **1–5** (build priority \`immediate\`) when integration_difficulty ≤ 3.
+
 ## Per interesting item (0–6 entries total across the issue)
 
 For each item worth keeping, output one block:
@@ -144,6 +161,7 @@ licensing: ""
 integration_difficulty: 1-5
 expected_cost: ""
 product_fit: vst_factory | tripwire_packs | command_center | agent_stack | none
+opportunity_ids: [drum_sample_factory, ...]  # rank 1–12 ids from table
 improves: ""
 verdict: adopt | watch | skip
 next_action: null or one concrete step
@@ -189,6 +207,7 @@ async function main() {
       label,
       watchFor,
     })),
+    opportunities: OPPORTUNITIES,
   };
 
   const reviewBody = buildReviewPrompt({
@@ -201,6 +220,11 @@ async function main() {
   const intakePath = await writeHermesOut(
     "research/tech-radar/intake.json",
     intake,
+    { json: true }
+  );
+  const oppPath = await writeHermesOut(
+    "research/opportunities.json",
+    { generated_at: generatedAt, opportunities: OPPORTUNITIES },
     { json: true }
   );
   const reviewPath = await writeHermesOut(
@@ -239,6 +263,7 @@ Or set \`DLZ_TECH_INTEL_INBOX\` to any file path.
   );
 
   console.log("Wrote", intakePath);
+  console.log("Wrote", oppPath);
   console.log("Wrote", reviewPath);
   console.log("Wrote", stubPath);
   if (feedError && !inbox) {

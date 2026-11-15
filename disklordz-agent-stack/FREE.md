@@ -69,7 +69,7 @@ crontab -e
 
 Morning: agent-stack → OpenClaw sage cron reads `hermes-out/`.
 
-Technology radar: `npm run tech-radar` ingests [AI Dev Signals](https://www.aidevsignals.com/); `RADAR:` agent writes screened reports — see `TECH-RADAR.md`.
+Technology radar: `npm run tech-radar` ingests [AI Dev Signals](https://www.aidevsignals.com/); `RADAR:` agent writes screened reports — see `TECH-RADAR.md` and opportunity stack `OPPORTUNITIES.md`.
 
 ## Telegram prompts
 

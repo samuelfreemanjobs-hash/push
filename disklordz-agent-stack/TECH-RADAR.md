@@ -2,6 +2,8 @@
 
 Lightweight **technology radar** for solo founder ops: one input feed ([AI Dev Signals](https://www.aidevsignals.com/)), six screening categories, short reports instead of article hoarding.
 
+Screened signals are mapped to the **[12 ranked DiskLordz opportunities](./OPPORTUNITIES.md)** (proposed applications, not vendor products).
+
 ## Categories
 
 | Category | What to watch for |

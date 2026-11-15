@@ -1,5 +1,7 @@
 /** DiskLordz Technology Intelligence — categories, products, report shape */
 
+export { OPPORTUNITIES, CATEGORY_OPPORTUNITY_HINTS } from "./opportunities.mjs";
+
 export const SOURCE = {
   id: "ai_dev_signals",
   name: "AI Dev Signals",
@@ -142,6 +144,7 @@ export const reportItemSchema = {
   integration_difficulty: "1 (trivial) – 5 (major R&D)",
   expected_cost: "e.g. $0 self-host, API $/1M tokens, GPU hourly",
   product_fit: "DISKLORDZ_PRODUCTS[].id",
+  opportunity_ids: "opportunities.mjs id(s), rank 1–12",
   improves: "what gets better if adopted",
   verdict: "adopt | watch | skip",
   next_action: "optional single concrete step or null",
