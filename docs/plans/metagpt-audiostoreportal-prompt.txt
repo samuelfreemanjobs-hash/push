@@ -8,7 +8,7 @@ CORE FEATURES:
 2. VST3 Machine Activation & Cryptographic Licensing API:
    - Endpoint POST /api/license/activate accepting {serial_key, machine_id, plugin_version}.
    - Enforce a strict 3-machine seat limit using atomic database row locking (SELECT FOR UPDATE / transaction isolation) to prevent race-condition seat bypasses.
-   - Return an Ed25519-signed JSON license payload containing {serial_key, machine_id, issued_at, expires_at, signature} so the C++ JUCE plugin can verify authenticity offline using only an embedded public key.
+   - Return license file JSON: { "payload": "<compact JSON string>", "signature_hex": "<128 hex chars>" } where payload is {"serial_key","machine_id","expires_at"} and signature is Ed25519 over raw payload bytes (match business/reference/sign_license_payload.py and Source/LicenseVerifier.cpp).
    - Endpoint POST /api/license/deactivate to release a machine seat.
 3. Protected Sample Pack Downloads & Web Audio Audition Player:
    - Endpoint GET /api/downloads/{order_id}/{product_slug} requiring a valid customer JWT/session token (strict ownership check to prevent IDOR) and generating a 15-minute presigned S3/R2 download URL.

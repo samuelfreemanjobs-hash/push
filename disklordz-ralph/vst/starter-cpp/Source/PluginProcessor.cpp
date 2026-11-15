@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "LicenseVerifier.h"
 #include "../Factory808.h"
 #include "../../Modules/TrapCoreDSP/SoftClipper.h"
 #include "../../Modules/TrapCoreDSP/Trap808Voice.h"
@@ -21,9 +22,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout DetroitPhonkTrapAudioProcess
     };
 }
 
+void DetroitPhonkTrapAudioProcessor::refreshLicenseFromDisk()
+{
+#if defined(DLZ_LICENSE_ED25519) && DLZ_LICENSE_ED25519
+    const auto file = LicenseVerifier::defaultLicenseFile();
+    if (!file.existsAsFile())
+    {
+        isLicensed.store(false, std::memory_order_relaxed);
+        return;
+    }
+    const auto result = LicenseVerifier::verifyLicenseJson(file.loadFileAsString());
+    isLicensed.store(result.isValid, std::memory_order_relaxed);
+#else
+    isLicensed.store(true, std::memory_order_relaxed);
+#endif
+}
+
 void DetroitPhonkTrapAudioProcessor::prepareToPlay(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
+    refreshLicenseFromDisk();
     synthesiser.setCurrentPlaybackSampleRate(sampleRate);
     synthesiser.clearVoices();
     synthesiser.clearSounds();
@@ -75,6 +93,19 @@ void DetroitPhonkTrapAudioProcessor::processBlock(juce::AudioBuffer<float>& buff
         for (int i = 0; i < buffer.getNumSamples(); ++i)
             samples[i] = SoftClipper::processSample(samples[i], clipDrive);
     }
+
+#if defined(DLZ_LICENSE_ED25519) && DLZ_LICENSE_ED25519
+    if (!isLicensed.load(std::memory_order_relaxed))
+    {
+        demoDipSampleCounter += buffer.getNumSamples();
+        const int period = static_cast<int>(currentSampleRate * 20.0);
+        if (period > 0 && demoDipSampleCounter >= period)
+        {
+            demoDipSampleCounter = 0;
+            buffer.applyGain(0.75f);
+        }
+    }
+#endif
 }
 
 juce::AudioBuffer<float>* DetroitPhonkTrapAudioProcessor::getPadBuffer(int i)

@@ -76,14 +76,23 @@ target_sources(DetroitPhonkTrapMaker
         Source/PluginProcessor.cpp
         Source/PluginProcessor.h
         Source/PluginEditor.cpp
-        Source/PluginEditor.h)
+        Source/PluginEditor.h
+        Source/LicenseVerifier.cpp
+        Source/LicenseVerifier.h
+        Modules/License/crypto/monocypher.c)
+
+set_source_files_properties(
+    Modules/License/crypto/monocypher.c
+    PROPERTIES LANGUAGE C)
 
 target_compile_definitions(DetroitPhonkTrapMaker
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
-        JUCE_DISPLAY_SPLASH_SCREEN=1)
+        JUCE_DISPLAY_SPLASH_SCREEN=1
+    PRIVATE
+        $<$<BOOL:${DLZ_LICENSE_ED25519}>:DLZ_LICENSE_ED25519=1>)
 
 target_link_libraries(DetroitPhonkTrapMaker
     PRIVATE

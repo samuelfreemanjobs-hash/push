@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../PadSampleStore.h"
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -42,6 +43,9 @@ public:
     void ensurePadPreview(int pad);
     double getLastKnownBpm() const { return padStore.getLastKnownBpm(); }
 
+    bool isLicensedForAudio() const { return isLicensed.load(std::memory_order_relaxed); }
+    void refreshLicenseFromDisk();
+
     PadSampleStore padStore;
 
 private:
@@ -51,6 +55,8 @@ private:
     juce::Synthesiser synthesiser;
     std::vector<std::unique_ptr<TrapSamplerSound>> sounds;
     double currentSampleRate = 44100.0;
+    std::atomic<bool> isLicensed{ true };
+    int demoDipSampleCounter = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DetroitPhonkTrapAudioProcessor)
 };

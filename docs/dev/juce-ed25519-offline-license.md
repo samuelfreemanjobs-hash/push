@@ -1,109 +1,58 @@
-# JUCE Ed25519 offline license verification (Core tier)
+# JUCE Ed25519 offline license (Monocypher)
 
-Pairs with MetaGPT **AudioStorePortal** (`docs/plans/metagpt-license-portal-blueprint.md`).  
-**Lite:** no cloud license — `DLZ_LICENSE_ED25519` off.
-
----
-
-## Server contract (AudioStorePortal)
-
-`POST /api/license/activate` returns JSON:
-
-```json
-{
-  "serial_key": "DLZ-AB12-CD34-EF56-GH78",
-  "machine_id": "host-fingerprint-sha256-hex",
-  "issued_at": 1731600000,
-  "expires_at": 1763136000,
-  "signature": "<base64 64-byte Ed25519 signature>"
-}
-```
-
-Backend signs **canonical UTF-8** string (order fixed):
-
-```text
-serial_key=<value>
-machine_id=<value>
-issued_at=<unix>
-expires_at=<unix>
-```
-
-Embed **only** the 32-byte Ed25519 **public** key in the plugin binary (`DLZ_ED25519_PUBLIC_KEY_HEX`).
+**Lite:** `DLZ_LICENSE_ED25519` **OFF** — plugin always licensed (factory-only).  
+**Core+:** `-DDLZ_LICENSE_ED25519=ON` — verify `license.json` on `prepareToPlay` (message thread).
 
 ---
 
-## Plugin code (this repo)
+## Vendored crypto (zero DLL deps)
 
 | File | Role |
 |------|------|
-| `starter-cpp/Modules/License/DlzOfflineLicense.h` | Parse + verify API |
-| `starter-cpp/Modules/License/DlzOfflineLicense.cpp` | JUCE JSON parse; verify stub |
+| `Modules/License/crypto/monocypher.c` | Ed25519 + Blake2b |
+| `Source/LicenseVerifier.{h,cpp}` | Verify + machine ID |
+| `Modules/License/DlzEd25519PublicKey.h` | Replace before release |
 
-**Message thread only:** HTTP activate → parse → `verifyEd25519Offline` → cache result atomically for audio gate.
+Refresh upstream: `scripts/vendor-monocypher.ps1`
 
 ---
 
-## Enable libsodium verify (Core builds)
+## On-disk license file
 
-1. Install libsodium (vcpkg: `libsodium` or system package).
-2. CMake:
+`%AppData%/DiskLordz/license.json` (see `LicenseVerifier::defaultLicenseFile()`):
 
-```cmake
-option(DLZ_LICENSE_ED25519 "Enable Ed25519 offline license verify" OFF)
-if (DLZ_LICENSE_ED25519)
-    target_compile_definitions(${TARGET} PRIVATE DLZ_LICENSE_ED25519=1)
-    find_package(unofficial-sodium CONFIG) # or PkgConfig
-    target_link_libraries(${TARGET} PRIVATE unofficial-sodium::sodium)
-endif()
-```
-
-3. Replace stub in `DlzOfflineLicense.cpp`:
-
-```cpp
-#include <sodium.h>
-
-bool verifyEd25519Offline(const SignedLicensePayload& payload,
-                          const std::array<std::uint8_t, 32>& publicKey32)
+```json
 {
-    if (sodium_init() < 0)
-        return false;
-
-    const auto message = canonicalSignPayload(payload);
-    const juce::MemoryBlock sig = juce::Base64::convertFromBase64(payload.signatureBase64);
-    if (sig.getSize() != crypto_sign_BYTES)
-        return false;
-
-    return crypto_sign_verify_detached(
-        static_cast<const unsigned char*>(sig.getData()),
-        reinterpret_cast<const unsigned char*>(message.toRawUTF8()),
-        static_cast<unsigned long long>(message.getNumBytesAsUTF8()),
-        publicKey32.data()) == 0;
+  "payload": "{\"serial_key\":\"DLZ-...\",\"machine_id\":\"<blake2b-hex>\",\"expires_at\":0}",
+  "signature_hex": "<128 hex chars, 64-byte Ed25519 sig>"
 }
 ```
 
-4. **Audio thread:** read `std::atomic<bool> licensed` — never call sodium from `processBlock`.
+Server must sign **exact** `payload` UTF-8 bytes (compact JSON). Python reference:
+
+`disklordz-ralph/business/reference/sign_license_payload.py`
 
 ---
 
-## Public key at build time
+## Audio thread
 
-```cpp
-// Generated at release: include/generated/DlzPublicKey.inc or env from CMake
-constexpr std::array<std::uint8_t, 32> kDlzEd25519PublicKey = { /* from hex */ };
+- `std::atomic<bool> isLicensed` updated only from `refreshLicenseFromDisk()`  
+- `processBlock`: relaxed load; optional 20s demo dip @ 0.75 gain when unlicensed (Core builds only)  
+- **Never** call Monocypher from `processBlock`
+
+---
+
+## CMake
+
+```powershell
+cmake -S . -B build -DDLZ_LICENSE_ED25519=ON
 ```
 
-Never ship `ED25519_PRIVATE_KEY` in the plugin.
-
 ---
 
-## Strix + pytest alignment
+## Strix + MetaGPT
 
-Before production portal:
+Portal `licensing.py` must use the same `sign_license_payload` contract.  
+Scan with `skills/vst_audio_security.md` before production.
 
-- `skills/vst_audio_security.md` §1 (replay, seat race, offline tamper)
-- Portal pytest: concurrent activate, webhook replay, download IDOR
-
-After wiring license gate in `PluginProcessor`:
-
-- pluginval @ strictness **8**
-- Strix on `starter-cpp/Source` with malformed preset tests (§4)
+Machine ID in API activate request must match `LicenseVerifier::getLocalMachineId()`.
