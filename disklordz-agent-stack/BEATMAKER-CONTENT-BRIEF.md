@@ -39,4 +39,5 @@ Then OpenClaw Monday automation → `MKT:` with skill `beatmaker_content_brief`.
 
 ## Superagent paste
 
-`openclaw/skills/shared/beatmaker_content_brief/references/superagent-scheduled-task.md`
+- `docs/superagent/weekly-content-workflow.md` (Base44 scheduled task)
+- `openclaw/skills/shared/beatmaker_content_brief/references/superagent-scheduled-task.md`

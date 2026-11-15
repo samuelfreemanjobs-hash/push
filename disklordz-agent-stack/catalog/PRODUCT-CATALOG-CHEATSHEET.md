@@ -2,6 +2,8 @@
 
 **Canonical file:** `product-catalog.yaml` in this folder. When matching trends to products, use **only** ids, preset labels, and `solves` bullets from that file.
 
+**Base44 upload:** Markdown mirror at `docs/superagent/superagent-catalog.md` + FAQ at `docs/superagent/superagent-faq.md`. See `docs/superagent/README.md`.
+
 ## Flagship offers for CTAs
 
 | Offer | ID | Hook |
