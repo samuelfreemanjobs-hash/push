@@ -39,7 +39,7 @@ if (-not (Test-Path "CMakeLists.txt") -and (Test-Path (Join-Path $Starter "CMake
   Copy-Item "$Starter\*.h" "Source\" -Force -ErrorAction SilentlyContinue
   $VstDoc = Join-Path $PushRoot "disklordz-ralph\vst"
   Copy-Item (Join-Path $VstDoc "AGENTS.md") "AGENTS.md" -Force -ErrorAction SilentlyContinue
-  foreach ($dir in @("Modules", "tests", "docs", "Assets")) {
+  foreach ($dir in @("Modules", "Tests", "docs", "Assets")) {
     $src = Join-Path $VstDoc $dir
     if (Test-Path $src) {
       Copy-Item $src $dir -Recurse -Force

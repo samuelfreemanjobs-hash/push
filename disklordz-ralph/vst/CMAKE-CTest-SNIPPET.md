@@ -1,25 +1,17 @@
-# Catch2 + CTest — already in `starter-cpp/CMakeLists.txt`
+# Catch2 v3 + CTest + TrapCoreDSP
 
-Superpowers can run headless tests immediately after bootstrap:
+Integrated in **`starter-cpp/CMakeLists.txt`** (copied to VST project root on bootstrap).
 
 ```powershell
 cmake -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_BUILD_TESTS=ON
-cmake --build build --config Release --target TrapCoreDSP_tests --parallel
+cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-## What CMake does
+| Target | Role |
+|--------|------|
+| `TrapCoreDSP` | `Modules/TrapCoreDSP/*.cpp` |
+| `TrapCoreDSPTests` | `Tests/Test808Glide.cpp`, `Tests/TestSoftClipper.cpp` |
+| `DetroitPhonkTrapMaker` | Links `TrapCoreDSP` |
 
-Root `CMakeLists.txt` (from `starter-cpp/`):
-
-1. `add_subdirectory(Modules/TrapCoreDSP)` — static lib
-2. `enable_testing()` + `add_subdirectory(tests)` when `DLZ_BUILD_TESTS=ON`
-3. `tests/CMakeLists.txt` — `FetchContent` Catch2 v3.7.1, `catch_discover_tests`
-
-## Extend TDD
-
-Add `tests/test_*.cpp`; link JUCE only when testing real `renderNextBlock`:
-
-```cmake
-target_link_libraries(TrapCoreDSP_tests PRIVATE TrapCoreDSP juce::juce_audio_basics)
-```
+Catch2 repo: `https://github.com/catchorg/Catch2.git` tag **v3.7.1** (not bare `github.com`).
