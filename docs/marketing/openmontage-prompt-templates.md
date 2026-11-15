@@ -1,14 +1,48 @@
 # OpenMontage prompt templates — DiskLordz
 
 Use these in **Cursor / Claude Code** with the OpenMontage project open at `marketing-studio/`.  
-Replace `{{PACK_TITLE}}`, `{{AUDIO_PATH}}`, and paths after running `handoff-pack-to-openmontage.ps1`.
+After `python publish_to_openmontage.py` or `export_kit.py --handoff`, assets live at **`assets/latest_release/`**.
 
 **Brand:** hardware booth, gunmetal `#121216`, amber accents, synthesis-only drums, FL Studio–friendly drag workflow on Core+.  
 **Never claim:** copyrighted samples, “AI-generated kits” vaporware tone, iLok.
 
 ---
 
-## 1. Drum kit — 30s vertical Short (9:16)
+## Template A — Automated drum kit promo (9:16, ~25s)
+
+```text
+Read assets/latest_release/release_brief.json and inspect the audio files in assets/latest_release/. Produce a high-energy, 25-second 9:16 vertical product promo video for this sample pack (DiskLordz, synthesis-only):
+
+1. 0:00–0:05 (Solo hit showcase): Play hero_kick.wav, hero_snare.wav, and hero_hat.wav back-to-back with dark studio waveform/oscilloscope visuals and bold kinetic text: "24-Bit / 48 kHz · Analog DSP Drums".
+2. 0:05–0:22 (Full beat drop): Transition into demo_beat.wav on the downbeat. Use audio transient detection to cut visual scenes, zoom pulses, and spec callouts (total sample count and velocity layers from release_brief.json, royalty-free / synthesis-only) strictly on kick and snare hits.
+3. 0:22–0:25 (CTA): Clean product card with pack_name from release_brief.json and "Download Now — Link in Bio" as the beat tails out.
+
+Pause after generating the storyboard so I can approve pacing before the final MP4. Run ffprobe loudness check before final export; peak must not clip.
+```
+
+---
+
+## Template B — Commercial VST3 launch trailer (16:9, ~45s)
+
+```text
+Create a 45-second 16:9 widescreen launch trailer for **Detroit Phonk Trap Maker** (DiskLordz VST3), not a generic "DrumSynth" name.
+
+Use assets/latest_release/demo_beat.wav as the background soundtrack unless a fresher plugin bounce exists at assets/latest_release/plugin_demo.wav.
+
+Screen footage: assets/latest_release/plugin_ui_capture.mp4 (if missing, stop and ask me to add a capture from starter-cpp).
+
+1. Hook (0:00–0:08): Sub-heavy kick hits synced to macro close-ups of the plugin UI; typography: "Zero Samples. Pure Circuit Math." (synthesis-only — no sampled loops).
+2. Feature walkthrough (0:08–0:32): Cuts between BR 808 glide, soft clip, pad workflow; lower-thirds on snare transients: "Real-Time C++20 DSP", "VST3 · Ultra-Low CPU", "Lite free / Core drag WAV".
+3. Outro (0:32–0:45): Full UI over final beat drop; end card: "Windows first · FL Studio friendly".
+
+Run OpenMontage audio loudness and subtitle quality gates before final MP4 export. Pause at storyboard first.
+```
+
+Drop `plugin_ui_capture.mp4` into `assets/latest_release/` after recording `disklordz-ralph/vst/starter-cpp`.
+
+---
+
+## 1. Drum kit — 30s vertical Short (9:16, legacy paths)
 
 ```text
 You are producing a promo for DiskLordz, a synthesis-only drum brand (southern trap / Baton Rouge bounce).
@@ -99,5 +133,5 @@ Prepare `assets/disklordz/vst-launch/brief.json` manually or copy from template 
 ## 4. Coordinator one-liner (Ruflo / Claude Code)
 
 ```text
-Read CLAUDE.md. Kit export is done. Run scripts/handoff-pack-to-openmontage.ps1, open ../marketing-studio, load assets/disklordz/*/AGENT_PROMPT.md, and execute template "Drum kit — 30s vertical Short" with human approval at storyboard and draft render.
+Read CLAUDE.md. Kit export is done. Run publish_to_openmontage.py, open ../marketing-studio, load assets/latest_release/AGENT_PROMPT.md, and execute Template A (or B for VST) with human approval at storyboard and draft render.
 ```

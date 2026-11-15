@@ -76,7 +76,7 @@ After pack export:
 
 ```powershell
 python disklordz-ralph\factory\autoresearch\export_kit.py --handoff
-# or: .\scripts\handoff-pack-to-openmontage.ps1
+# or: python disklordz-ralph\factory\autoresearch\publish_to_openmontage.py
 ```
 
 Clone [OpenMontage](https://github.com/calesthio/OpenMontage) to `C:\Dev\marketing-studio`, then open that folder in Claude Code/Cursor.  

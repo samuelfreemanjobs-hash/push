@@ -21,7 +21,7 @@ if (-not $py) {
     throw "python or python3 not found on PATH"
 }
 
-$handoff = Join-Path $repoRoot "disklordz-ralph\factory\autoresearch\handoff_openmontage.py"
+$handoff = Join-Path $repoRoot "disklordz-ralph\factory\autoresearch\publish_to_openmontage.py"
 $args = @($handoff.Path)
 if ($PackDir) {
     $args += @("--pack-dir", $PackDir)

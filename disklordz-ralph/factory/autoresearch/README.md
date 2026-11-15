@@ -48,7 +48,8 @@ After autoresearch wins on `drum_engine.py`:
 cd disklordz-ralph\factory\autoresearch
 python export_kit.py
 python export_kit.py --sfz
-python export_kit.py --handoff   # + stage for OpenMontage ../marketing-studio
+python export_kit.py --handoff   # + publish_to_openmontage → ../marketing-studio/assets/latest_release/
+python publish_to_openmontage.py
 ```
 
 Writes `outputs/packs/<PACK_NAME>_<timestamp>/` with 24-bit/48k WAVs + `manifest.json`.  

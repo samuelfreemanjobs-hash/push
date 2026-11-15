@@ -206,9 +206,9 @@ def main() -> None:
     args = ap.parse_args()
     out_root = export_commercial_pack(emit_sfz=args.sfz)
     if args.handoff:
-        from handoff_openmontage import stage_handoff
+        from publish_to_openmontage import stage_latest_release
 
-        stage_handoff(pack_dir=out_root)
+        stage_latest_release(pack_dir=out_root)
 
 
 if __name__ == "__main__":

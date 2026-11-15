@@ -53,7 +53,7 @@ After a commercial pack export:
 ```powershell
 cd C:\Dev\push
 python disklordz-ralph\factory\autoresearch\export_kit.py
-.\scripts\handoff-pack-to-openmontage.ps1
+python disklordz-ralph\factory\autoresearch\publish_to_openmontage.py
 ```
 
 Or one step:
@@ -62,6 +62,15 @@ Or one step:
 python disklordz-ralph\factory\autoresearch\export_kit.py --handoff
 ```
 
+### Autonomous business loop (opt-in R&D)
+
+| Stage | Tool | Output |
+|-------|------|--------|
+| 1. DSP optimization | Ruflo + `VoiceDSP.h` / `drum_engine.py` + judges | `results.tsv`, kept commits |
+| 2. Product packaging | `export_kit.py` | `outputs/packs/…/manifest.json` |
+| 3. Asset handoff | `publish_to_openmontage.py` | `marketing-studio/assets/latest_release/` |
+| 4. Video production | OpenMontage agent | Shorts / trailers (human checkpoint) |
+
 Env overrides:
 
 | Variable | Default | Purpose |
@@ -69,11 +78,13 @@ Env overrides:
 | `OPENMONTAGE_ROOT` | `../marketing-studio` (relative to repo root) | Clone location |
 | `PACK_NAME` | `DiskLordz_Autoresearch_Vol1` | Used by `export_kit.py` |
 
-The handoff copies:
+`publish_to_openmontage.py` copies into **`assets/latest_release/`**:
 
-- Latest `outputs/packs/<PACK>_<timestamp>/` (or the pack you pass)
-- `factory/autoresearch/outputs/best_kit.wav` when present (loop demo)
-- `manifest.json`, hero WAVs (Hard/Crack/Open layers), `AGENT_PROMPT.md`, `brief.json`
+- `manifest.json`, `release_brief.json`, `AGENT_PROMPT.md`
+- `demo_beat.wav` from `outputs/best_kit.wav`
+- `hero_kick.wav`, `hero_snare.wav`, `hero_hat.wav` (Hard / Crack / Open layers)
+
+Optional archive handoff per pack: `handoff_openmontage.py` → `assets/disklordz/<pack>/`
 
 **Ruflo (`kit-producer`):** after `export_kit.py`, run the handoff script; optional **media-studio** agent loads `AGENT_PROMPT.md` in `marketing-studio` — human approves storyboard before final render (see `CLAUDE.md`).
 

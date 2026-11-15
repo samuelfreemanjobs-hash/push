@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 AUTORESEARCH = Path(__file__).resolve().parent
-REPO_ROOT = AUTORESEARCH.parents[2]
+REPO_ROOT = AUTORESEARCH.parents[2]  # repo root (push)
 PACKS = AUTORESEARCH / "outputs" / "packs"
 BEST_KIT = AUTORESEARCH / "outputs" / "best_kit.wav"
 

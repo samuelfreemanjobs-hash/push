@@ -6,6 +6,8 @@
       "Bash(python disklordz-ralph/factory/autoresearch/evaluate.py)",
       "Bash(python disklordz-ralph/factory/autoresearch/export_kit.py)",
       "Bash(python disklordz-ralph/factory/autoresearch/export_kit.py *)",
+      "Bash(python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py *)",
       "Bash(python disklordz-ralph/factory/autoresearch/handoff_openmontage.py)",
       "Bash(python disklordz-ralph/factory/autoresearch/handoff_openmontage.py *)",
       "Bash(powershell *handoff-pack-to-openmontage.ps1*)",
