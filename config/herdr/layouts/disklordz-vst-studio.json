@@ -1,0 +1,59 @@
+{
+  "$schema": "https://herdr.dev/layouts/v1",
+  "name": "disklordz-vst-studio",
+  "title": "DiskLordz VST + Audio Factory",
+  "description": "DSP (drumkit-plugin) | audio-factory swarm | pluginval gate. Copy to ~/.config/herdr-app/layouts/",
+  "session": "DiskLordzStudio",
+  "env": {
+    "DLZ_REPO_ROOT": "${HOME}/Dev/push",
+    "DLZ_VST_PROJECT_ROOT": "${DLZ_REPO_ROOT}/disklordz-ralph/vst/templates/drumkit-plugin",
+    "DLZ_AUDIO_FACTORY_ROOT": "${DLZ_REPO_ROOT}/disklordz-ralph/factory/audio-factory",
+    "CONTEXT7_API_KEY": ""
+  },
+  "panes": [
+    {
+      "id": "0.0",
+      "title": "DSP Engineer",
+      "cwd": "${DLZ_VST_PROJECT_ROOT}",
+      "shell": "pwsh",
+      "init": [
+        "Write-Host 'Pane 0.0 — Context7 + JUCE. Use: python vst_rd_swarm.py or claude'",
+        "$env:DLZ_REPO_ROOT = $env:DLZ_REPO_ROOT ?? (Resolve-Path ..\\..\\..\\..).Path"
+      ],
+      "suggestedCommand": "claude",
+      "tags": ["dsp", "juce", "context7"]
+    },
+    {
+      "id": "0.1",
+      "title": "Sample + Preset Factory",
+      "cwd": "${DLZ_AUDIO_FACTORY_ROOT}",
+      "shell": "pwsh",
+      "init": [
+        "Write-Host 'Pane 0.1 — factory_swarm.py or run-audio-factory-swarm.ps1'"
+      ],
+      "suggestedCommand": "python factory_swarm.py",
+      "tags": ["factory", "autogen", "wav"]
+    },
+    {
+      "id": "0.2",
+      "title": "Build QA / pluginval",
+      "cwd": "${DLZ_REPO_ROOT}",
+      "shell": "pwsh",
+      "init": [
+        "Write-Host 'Pane 0.2 — scripts\\vst-build-pluginval-gate.ps1 or cmake validate_vst3'"
+      ],
+      "suggestedCommand": ".\\scripts\\vst-build-pluginval-gate.ps1",
+      "tags": ["qa", "pluginval", "cmake"]
+    }
+  ],
+  "splits": [
+    { "type": "horizontal", "from": "0.0", "to": "0.1" },
+    { "type": "vertical", "from": "0.1", "to": "0.2" }
+  ],
+  "handoffs": {
+    "DSP_COMPILE_OK": { "notify": ["0.1"], "message": "HANDOFF_FACTORY:presets" },
+    "SWARM_VERIFIED_COMPLETE": { "notify": ["0.2"], "message": "HANDOFF_QA:build" },
+    "ALL_FACTORIES_COMPLETE": { "notify": ["0.0"], "message": "HANDOFF_MARKETING:drafts" },
+    "PLUGINVAL FAILED": { "notify": ["0.0"], "message": "HANDOFF_DSP:fix" }
+  }
+}

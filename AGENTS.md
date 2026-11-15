@@ -68,6 +68,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Hybrid commercial stack:** `docs/dev/hybrid-agent-stack.md` — Cursor=C++/pluginval, Python=kits, RAGFlow=retrieval; gate script `scripts/vst-build-pluginval-gate.ps1`.
 
+**Herdr (opt-in, Windows mission control):** `docs/dev/herdr-opt-in.md` — parallel panes (DSP / `audio-factory` / pluginval); mesh handoffs `config/herdr/AGENTS-herdr-coordination.md`; boot `scripts/start-herdr-disklordz-studio.ps1`.
+
 **C++ autoresearch:** `vst/autoresearch-cpp/` — `Source/VoiceDSP.h`, `HeadlessRender`, `evaluate_vst.py`, `-DDLZ_AUTORESEARCH=ON`.
 
 ## 5. Sample pack & asset pipeline
