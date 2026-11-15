@@ -60,9 +60,13 @@ jobs:
 
       - name: PluginVal (strictness 5)
         if: runner.os == 'Linux'
+        working-directory: drum-machine
         run: |
-          curl -sLO https://github.com/Tracktion/pluginval/releases/download/latest_release/pluginval_Linux.zip
-          unzip -qo pluginval_Linux.zip
-          chmod +x pluginval
-          VST3=$(find drum-machine/build/KitForge_artefacts/Release/VST3 -name '*.vst3' -type f | head -1)
-          ./pluginval --validate-in-process --strictness-level 5 --output-dir /tmp/pluginval "$VST3"
+          sudo apt-get install -y libcurl4-openssl-dev
+          git clone --depth 1 --branch 1.0.3 https://github.com/Tracktion/pluginval.git /tmp/pluginval
+          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+          cmake --build /tmp/pluginval/build -j 4
+          VST3=$(find build/KitForge_artefacts/Release/VST3 -maxdepth 1 -name '*.vst3' | head -1)
+          test -n "$VST3"
+          /tmp/pluginval/build/pluginval_artefacts/Release/pluginval \
+            --validate-in-process --strictness-level 5 --output-dir /tmp/pluginval "$VST3"
