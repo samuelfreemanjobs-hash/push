@@ -4,7 +4,7 @@ Autonomous VST R&D swarm: DSP_Architect + RT_Audio_Auditor + Build_QA_Runner.
 
 Context7 MCP + sandboxed file tools + cmake/pluginval on Windows.
 
-Default project: webview-drum-starter template (not starter-cpp ship tree).
+Default project: drumkit-plugin template (not starter-cpp ship tree).
 """
 
 from __future__ import annotations

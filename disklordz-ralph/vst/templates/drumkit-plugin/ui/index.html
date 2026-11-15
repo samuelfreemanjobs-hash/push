@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DrumKit Pro</title>
+  <style>
+    body {
+      margin: 0;
+      background: #141416;
+      color: #f4f4f6;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 1rem;
+    }
+    h1 { letter-spacing: 0.08em; font-size: 1.4rem; margin-bottom: 0.25rem; }
+    p { color: #8e8e93; font-size: 0.9rem; margin: 0; }
+    label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: #c7c7cc;
+    }
+    input[type="range"] { width: 220px; }
+  </style>
+</head>
+<body>
+  <h1>DRUMKIT PRO ENGINE</h1>
+  <p>JUCE 8 + WebView2 + Context7 Ready</p>
+  <label>
+    Output Gain
+    <input type="range" id="outputGain" min="0" max="1" step="0.01" value="0.5" />
+  </label>
+</body>
+</html>

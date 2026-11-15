@@ -20,7 +20,7 @@ if (-not $env:DLZ_REPO_ROOT) { $env:DLZ_REPO_ROOT = $Root }
 if ($ProjectRoot) {
     $env:DLZ_VST_PROJECT_ROOT = $ProjectRoot
 } elseif (-not $env:DLZ_VST_PROJECT_ROOT) {
-    $env:DLZ_VST_PROJECT_ROOT = Join-Path $Root "disklordz-ralph\vst\templates\webview-drum-starter"
+    $env:DLZ_VST_PROJECT_ROOT = Join-Path $Root "disklordz-ralph\vst\templates\drumkit-plugin"
 }
 
 $Pv = Join-Path $Root "disklordz-ralph\vst\tools\pluginval\pluginval.exe"

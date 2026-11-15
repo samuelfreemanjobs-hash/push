@@ -50,7 +50,7 @@ $env:OPENAI_API_KEY = "..."
 | Safeguard | Behavior |
 |-----------|----------|
 | Write sandbox | Only `src/`, `ui/`, `CMakeLists.txt` under `DLZ_VST_PROJECT_ROOT` |
-| Default target | `vst/templates/webview-drum-starter` (not ship `starter-cpp`) |
+| Default target | `vst/templates/drumkit-plugin` (DrumKit Pro; not ship `starter-cpp`) |
 | Ship tree | Blocked unless `DLZ_SWARM_ALLOW_SHIP=1` + human review |
 | Turn cap | `DLZ_SWARM_MAX_TURNS` (default 15) |
 | pluginval | `PLUGINVAL_STRICTNESS` default **8** (set **10** for torture mode) |
