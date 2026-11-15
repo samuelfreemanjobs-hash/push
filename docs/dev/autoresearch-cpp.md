@@ -22,6 +22,14 @@ Use when Python winners need **real-time** validation on `TrapCoreDSP` or `Three
 - Any sample non-finite
 - Peak > 0 dBFS target
 
+## Multi-voice kit export (phase 2b)
+
+After kit autoresearch stabilizes `drum_engine.py`:
+
+1. Map `synthesize_kick/snare/hat` constants into three offline render CLIs or one `KitVoiceRender.cpp`.
+2. Run the **same** `evaluate.py` metrics on emitted WAVs (subprocess — judge unchanged).
+3. Load winners into `Factory808` / pad map in `starter-cpp`.
+
 ## Merge policy
 
 1. Python autoresearch lowers profile/STFT loss.

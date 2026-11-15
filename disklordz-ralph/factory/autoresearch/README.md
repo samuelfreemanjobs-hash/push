@@ -1,53 +1,45 @@
-# DiskLordz Autoresearch (Python)
+# DiskLordz drum kit autoresearch
 
-Karpathy-style loop: edit **`drum_engine.py`** only → **`python evaluate.py`** → git commit or revert.
+Multi-voice Karpathy loop under `disklordz-ralph/factory/autoresearch/` (same role as `drum-autoresearch/` in tutorials).
 
-## Minimal folder (standalone or in repo)
-
-| File | Role |
-|------|------|
-| `target.wav` | Reference kick/808 (you provide; gitignored) |
-| `program.md` | Agent system prompt |
-| `evaluate.py` | Immutable judge → `TOTAL_LOSS` |
-| `drum_engine.py` | Agent sandbox |
-| `results.tsv` | Experiment log |
-
-Also supported: `targets/reference_808.wav` if `target.wav` is absent.
-
-On each **improving** `TOTAL_LOSS`, `evaluate.py` writes **`best_attempt.wav`** for listening.
+```
+factory/autoresearch/
+├── targets/
+│   ├── kick.wav
+│   ├── snare.wav
+│   └── hat.wav
+├── outputs/
+│   └── best_kit.wav      # on new best TOTAL_LOSS
+├── program.md
+├── evaluate.py           # immutable judge
+└── drum_engine.py        # agent sandbox
+```
 
 ## Quick start
 
 ```powershell
-cd disklordz-ralph\factory\autoresearch
 pip install -r requirements.txt
-copy C:\exports\my_kick.wav target.wav
+# add the three targets (see targets/README.md)
 python evaluate.py
 ```
 
-```
-RENDER_TIME: 0.0412s
-SPECTRAL_LOSS: 1.234567
-ENVELOPE_LOSS: 0.045678
-TOTAL_LOSS: 1.462957
-```
+## Outputs
 
-## Agent launch
+| Metric | Meaning |
+|--------|---------|
+| `KICK_LOSS` / `SNARE_LOSS` / `HAT_LOSS` | Per-voice spectral + envelope |
+| `TOTAL_LOSS` | Sum of the three |
+| `outputs/best_kit.wav` | Audition loop when total improves |
 
-```
-Read program.md and start running the autoresearch loop indefinitely.
-```
-
-Optional wrapper:
+## Velocity testing (optional)
 
 ```powershell
-python run_harness.py --log --status kept --description "asymmetric tanh knee"
+$env:KIT_VELOCITY_TEST=1
+python evaluate.py
 ```
 
-## Multi-voice
+Blends full-velocity loss with hits at MIDI **~30, 80, 127** (as velocity 0.24, 0.63, 1.0).
 
-**Kick only** in this template. Snare/hat = separate targets + functions later (`synthesize_snare`, etc.).
+## C++ / VST bridge
 
-## C++ port
-
-`docs/dev/autoresearch-cpp.md` — same playbook, offline JUCE render, 5 ms RT budget.
+See `docs/dev/autoresearch-cpp.md` — promote winning constants into `TrapCoreDSP`; agents do not edit JUCE in the loop.

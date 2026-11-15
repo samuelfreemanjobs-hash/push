@@ -1,11 +1,15 @@
-# Reference targets (optional)
+# Reference targets (required for kit mode)
 
-Prefer **`../target.wav`** in the autoresearch folder (agent template default).
+Add **your own** mono one-shots — do not commit copyrighted kits.
 
-| File | Use |
-|------|-----|
-| `reference_808.wav` | Fallback if `target.wav` missing (44.1 kHz mono) |
+| File | Voice |
+|------|--------|
+| `kick.wav` | Kick / 808 |
+| `snare.wav` | Snare |
+| `hat.wav` | Closed hat |
 
-**Suggested source:** your own `TrapCoreDSP` / Forge render — not commercial kits.
+44.1 kHz or 48 kHz (resampled to 44.1 in judge). Peak-normalized references work best.
 
-Listen to progress: **`best_attempt.wav`** updates when `TOTAL_LOSS` improves.
+**Sources:** TrapCoreDSP bounce render, Drum Forge QC, or Edison exports from your sessions.
+
+**Legacy:** `../target.wav` substitutes for `kick.wav` only.

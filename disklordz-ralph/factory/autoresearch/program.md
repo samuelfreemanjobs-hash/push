@@ -1,46 +1,51 @@
-# Drum Machine Autoresearch Agent
+# Multi-Voice Drum Kit Autoresearch Agent
 
-You are an autonomous DSP engineer optimizing `drum_engine.py` to match the acoustic character of **`target.wav`** (or `targets/reference_808.wav` as fallback).
+You are an autonomous DSP engineer optimizing `drum_engine.py` to match:
+
+- `targets/kick.wav`
+- `targets/snare.wav`
+- `targets/hat.wav`
+
+(Legacy: `target.wav` counts as kick only if `targets/kick.wav` is absent.)
 
 ## Rules & constraints
 
-1. **Editable file:** You may **ONLY** modify `drum_engine.py`. Do **NOT** touch `evaluate.py`, `target.wav`, or `program.md`.
-2. **Safety:** Output must have no NaNs/Inf, **|DC| ≤ 0.005** mean, peak **≤ 1.0**, and `evaluate.py` must finish in **under 5 seconds**.
-3. **API contract:** Keep `synthesize_kick(num_samples, sample_rate, velocity) -> np.ndarray` with shape `(num_samples,)`.
+1. **Editable file:** **ONLY** `drum_engine.py`. Do **NOT** touch `evaluate.py` or anything in `targets/`.
+2. **Safety:** Each voice: no NaN/Inf, **|DC| ≤ 0.005**, peak **≤ 1.0**.
+3. **Speed:** `evaluate.py` completes in **under 5 seconds** (set `KIT_VELOCITY_TEST=1` only when chasing velocity curves — slower).
+4. **API:** Keep `synthesize_kick`, `synthesize_snare`, `synthesize_hat` with signature  
+   `(num_samples, sample_rate, velocity) -> np.ndarray`.
+
+## Synthesis strategy
+
+- **Kick:** Sub phase continuity, pitch envelope, transient punch.
+- **Snare:** Dual body oscillators + band-passed noise snap.
+- **Hi-hat:** Detuned metallic bank + high-pass + short decay.
 
 ## Workflow loop
 
-1. Run `python evaluate.py` to read `TOTAL_LOSS`.
-2. Read `drum_engine.py` and `results.tsv`.
-3. Form **one** DSP hypothesis (pitch envelope, asymmetric waveshape, transient click, sub saturation, etc.).
-4. Edit `drum_engine.py`, run `python evaluate.py` again.
-5. Append to `results.tsv` — columns: `iteration`, `loss`, `status`, `description`.
-6. **Decision:**
-   - If `TOTAL_LOSS` beats your best in `results.tsv` (status `kept`), run  
-     `git add drum_engine.py && git commit -m "Improve loss to <score>: <short description>"`.
-   - If worse, equal, or error → `git checkout -- drum_engine.py` and log `status=reverted`.
+1. Run `python evaluate.py` → `TOTAL_LOSS`, `KICK_LOSS`, `SNARE_LOSS`, `HAT_LOSS`.
+2. Attack the **highest** per-voice loss, or shared saturation/glue if balanced.
+3. One hypothesis → edit `drum_engine.py` → `python evaluate.py`.
+4. Log `results.tsv`: `iteration`, `total_loss`, `kick_loss`, `snare_loss`, `hat_loss`, `status`, `description`.
+5. **If `TOTAL_LOSS` improves:** `git add drum_engine.py && git commit -m "Loss <score>: <description>"`.
+6. **Else:** `git checkout -- drum_engine.py`, log `status=reverted`.
 7. Repeat until interrupted.
 
-On improvement, `evaluate.py` writes **`best_attempt.wav`** (listen while the loop runs).
+New best scores write **`outputs/best_kit.wav`** (8-step demo pattern).
 
-## DiskLordz paths
+## DiskLordz setup
 
 ```powershell
 cd disklordz-ralph\factory\autoresearch
 pip install -r requirements.txt
-copy C:\path\to\your_808.wav target.wav
-git init   # if this folder is not already in the parent repo
+mkdir targets, outputs 2>$null
+copy C:\exports\kick.wav targets\kick.wav
+copy C:\exports\snare.wav targets\snare.wav
+copy C:\exports\hat.wav targets\hat.wav
 python evaluate.py
 ```
 
-Agent prompt: *"Read program.md and run the autoresearch loop indefinitely."*
+Optional velocity layers: `$env:KIT_VELOCITY_TEST=1; python evaluate.py`
 
-## Guardrails
-
-- No new pip dependencies inside `drum_engine.py` (numpy only).
-- Do not copy commercial ROM samples; **synthesis-only** targets.
-- Wins merge into `TrapCoreDSP` only after human review + Catch2 (`STACK-FROZEN.md`).
-
-## Multi-voice (later)
-
-Kick-only for now. Snare/hat autoresearch = separate `target_snare.wav` + `synthesize_snare` in a future branch (do not expand scope until kick `TOTAL_LOSS` plateaus).
+C++ export: `docs/dev/autoresearch-cpp.md` (offline render bridge — not agent-edited).
