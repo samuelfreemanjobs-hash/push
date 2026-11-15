@@ -24,13 +24,20 @@ CONFIG = os.environ.get("DLZ_BUILD_CONFIG", "Release")
 STRICTNESS = os.environ.get("PLUGINVAL_STRICTNESS", "5")
 
 VST3 = BUILD_DIR / "DetroitPhonkTrapMaker_artefacts" / CONFIG / "VST3" / "Detroit Phonk Trap Maker.vst3"
-HEADLESS = BUILD_DIR / "autoresearch-cpp" / CONFIG / "DiskLordzHeadlessRender"
-if sys.platform == "win32":
-    HEADLESS = HEADLESS.with_suffix(".exe")
-if not HEADLESS.is_file():
-    HEADLESS = BUILD_DIR / "autoresearch-cpp" / "DiskLordzHeadlessRender"
+def headless_candidates() -> list[Path]:
+    base = BUILD_DIR / "autoresearch-cpp"
+    names = [
+        base / "HeadlessRender_artefacts" / CONFIG / "HeadlessRender",
+        base / CONFIG / "HeadlessRender",
+        base / CONFIG / "DiskLordzHeadlessRender",
+        base / "DiskLordzHeadlessRender",
+    ]
     if sys.platform == "win32":
-        HEADLESS = HEADLESS.with_suffix(".exe")
+        return [p.with_suffix(".exe") for p in names]
+    return names
+
+
+HEADLESS = next((p for p in headless_candidates() if p.is_file()), headless_candidates()[0])
 
 TARGET = ROOT / "targets" / "kick.wav"
 if not TARGET.is_file():
@@ -85,7 +92,7 @@ def find_pluginval() -> str | None:
 def evaluate() -> int:
     # 1) Build headless + VST3 (operator configures -DDLZ_AUTORESEARCH=ON once)
     ok, log = run_cmd(
-        ["cmake", "--build", str(BUILD_DIR), "--config", CONFIG, "--target", "DiskLordzHeadlessRender", "-j"],
+        ["cmake", "--build", str(BUILD_DIR), "--config", CONFIG, "--target", "HeadlessRender", "-j"],
         cwd=STARTER,
     )
     if not ok:

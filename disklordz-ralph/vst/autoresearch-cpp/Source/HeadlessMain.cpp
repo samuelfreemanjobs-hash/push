@@ -1,6 +1,7 @@
-#include "VoiceDSPSandbox.h"
+#include "VoiceDSP.h"
 
 #include <juce_audio_formats/juce_audio_formats.h>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 
@@ -8,21 +9,22 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cerr << "Usage: HeadlessRender <output.wav> [velocity 0-1]\n";
+        std::cerr << "Usage: HeadlessRender <output.wav> [velocity 0-1] [midi-note]\n";
         return 1;
     }
 
     const double sampleRate = 44100.0;
     const int numSamples = static_cast<int>(sampleRate * 1.1);
     const float velocity = argc >= 3 ? static_cast<float>(std::atof(argv[2])) : 1.0f;
+    const int midiNote = argc >= 4 ? std::atoi(argv[3]) : 36;
 
     juce::AudioBuffer<float> buffer(1, numSamples);
     buffer.clear();
 
-    VoiceDSPSandbox dsp;
+    VoiceDSP dsp;
     dsp.prepare(sampleRate, 512);
-    dsp.triggerKick(velocity);
-    dsp.renderKick(buffer.getWritePointer(0), numSamples);
+    dsp.triggerNote(midiNote, velocity);
+    dsp.processBlock(buffer);
 
     float peak = 0.0f;
     for (int i = 0; i < numSamples; ++i)

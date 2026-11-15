@@ -2,8 +2,10 @@
 
 | File | Role |
 |------|------|
-| `VoiceDSPSandbox.h` | **Agent sandbox** |
-| `HeadlessMain.cpp` | WAV render CLI (not agent-edited) |
+| `Source/VoiceDSP.h` | **Agent sandbox** (header-only RT-safe kick) |
+| `Source/HeadlessMain.cpp` | `HeadlessRender` CLI (not agent-edited) |
+| `examples/PluginProcessorAutoresearch.example.cpp` | MIDI + `processBlock` wiring reference |
+| `STRUCTURE.md` | Folder map vs generic DrumSynth-Autoresearch |
 | `evaluate_vst.py` | Build + pluginval + acoustic loss |
 | `program_cpp.md` | Agent playbook |
 

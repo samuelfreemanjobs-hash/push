@@ -66,7 +66,7 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Hybrid commercial stack:** `docs/dev/hybrid-agent-stack.md` — Cursor=C++/pluginval, Python=kits, RAGFlow=retrieval; gate script `scripts/vst-build-pluginval-gate.ps1`.
 
-**C++ autoresearch:** `vst/autoresearch-cpp/` — `VoiceDSPSandbox.h`, `evaluate_vst.py`, `-DDLZ_AUTORESEARCH=ON` in `starter-cpp` CMake.
+**C++ autoresearch:** `vst/autoresearch-cpp/` — `Source/VoiceDSP.h`, `HeadlessRender`, `evaluate_vst.py`, `-DDLZ_AUTORESEARCH=ON`.
 
 ## 5. Sample pack & asset pipeline
 

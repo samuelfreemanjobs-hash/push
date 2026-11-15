@@ -1,13 +1,16 @@
-# Headless kick renderer for C++ autoresearch — built from starter-cpp with -DDLZ_AUTORESEARCH=ON
+# Built via starter-cpp: cmake ... -DDLZ_AUTORESEARCH=ON
 
-cmake_minimum_required(VERSION 3.22)
+juce_add_console_app(HeadlessRender PRODUCT_NAME "HeadlessRender")
 
-add_executable(DiskLordzHeadlessRender HeadlessMain.cpp)
-target_include_directories(DiskLordzHeadlessRender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_features(DiskLordzHeadlessRender PRIVATE cxx_std_20)
+target_sources(HeadlessRender PRIVATE Source/HeadlessMain.cpp Source/VoiceDSP.h)
 
-target_link_libraries(DiskLordzHeadlessRender
+target_compile_definitions(HeadlessRender
+    PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+
+target_link_libraries(HeadlessRender
     PRIVATE
+        juce::juce_audio_basics
         juce::juce_audio_formats
+        juce::juce_dsp
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
