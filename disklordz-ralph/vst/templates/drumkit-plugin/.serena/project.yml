@@ -1,0 +1,21 @@
+project_name: "DrumKitPlugin"
+languages:
+  - cpp
+  - python
+  - typescript
+
+# Keep clangd/Serena off JUCE blobs and artefacts (RAM + latency)
+ignored_paths:
+  - "build/**"
+  - "dist_release/**"
+  - "dist_sample_pack/**"
+  - "dist_presets/**"
+  - "raw_audio/**"
+  - "viking_workspace/**"
+  - ".git/**"
+  - "**/_deps/**"
+  - "**/JUCE/**"
+
+# Force symbol surgery instead of whole-file regex (C++ brace safety)
+excluded_tools:
+  - replace_content

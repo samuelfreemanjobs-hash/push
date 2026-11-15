@@ -1,0 +1,21 @@
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    - -std=c++20
+    - -DJUCE_WEB_BROWSER=1
+    - -DJUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
+  Remove:
+    - /W4
+    - /permissive-
+    - /MP
+    - /Zc:*
+
+Diagnostics:
+  UnusedIncludes: Strict
+  ClangTidy:
+    Add:
+      - bugprone-*
+      - performance-*
+      - modernize-use-nullptr
+    Remove:
+      - bugprone-easily-swappable-parameters

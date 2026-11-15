@@ -83,6 +83,8 @@ Agent workflow after C++ edits:
 
 **AutoGen closed loop (operator):** `vst_rd_swarm.py` / `scripts/run-vst-rd-swarm.ps1` — see `docs/dev/ms-agent-framework-opt-in.md`.
 
+**Serena symbolic refactor (operator):** `vst/templates/drumkit-plugin/setup-serena.ps1` + `.serena/memories/dsp_refactoring_sop.md` — see `docs/dev/serena-context7-juce.md`.
+
 ### C. Index proprietary DSP
 
 Keep shared blocks in-repo (`TrapCoreDSP`, `ThreeLayerDrum`, lab `*Identity.h`). External private repo can be added to Context7 when you have one.
