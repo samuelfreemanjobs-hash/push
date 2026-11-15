@@ -5,7 +5,7 @@ DrumSynthAudioProcessorEditor::DrumSynthAudioProcessorEditor(DrumSynthAudioProce
     : AudioProcessorEditor(&p),
       audioProcessor(p)
 {
-    setSize(480, 320);
+    setSize(520, 340);
 
     triggerButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2563eb));
     triggerButton.onClick = [this] { audioProcessor.triggerTestHit(); };
@@ -24,6 +24,13 @@ DrumSynthAudioProcessorEditor::DrumSynthAudioProcessorEditor(DrumSynthAudioProce
     licenseInput.setMultiLine(false);
     licenseInput.setTextToShowWhenEmpty("Paste signed license JSON here...", juce::Colours::grey);
     addAndMakeVisible(licenseInput);
+
+    copyMachineIdButton.onClick = [this] {
+        juce::SystemClipboard::copyTextToClipboard(LicenseVerifier::getLocalMachineId());
+        statusLabel.setText("STATUS: Machine ID copied to clipboard", juce::dontSendNotification);
+        statusLabel.setColour(juce::Label::textColourId, juce::Colours::lightblue);
+    };
+    addAndMakeVisible(copyMachineIdButton);
 
     activateButton.onClick = [this] {
         if (audioProcessor.activateLicenseJson(licenseInput.getText()))
@@ -76,7 +83,10 @@ void DrumSynthAudioProcessorEditor::resized()
     gainLabel.setBounds(knobArea.removeFromTop(20));
     gainSlider.setBounds(knobArea);
 
-    area.removeFromTop(12);
+    area.removeFromTop(8);
+    auto idRow = area.removeFromTop(28);
+    copyMachineIdButton.setBounds(idRow.removeFromRight(160).reduced(2));
+
     statusLabel.setBounds(area.removeFromTop(24));
 
     auto licRow = area.removeFromTop(36);

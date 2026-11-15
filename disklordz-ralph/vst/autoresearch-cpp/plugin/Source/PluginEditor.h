@@ -21,6 +21,7 @@ private:
 
     juce::TextEditor licenseInput;
     juce::TextButton activateButton{ "ACTIVATE LICENSE" };
+    juce::TextButton copyMachineIdButton{ "COPY MACHINE ID" };
     juce::Label statusLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;

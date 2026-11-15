@@ -70,3 +70,8 @@ Hypothesis → edit C++ OR drum_engine.py
 ```
 
 C++ agents must **not** skip pluginval for “audio-only” improvements.
+
+## 6. Release bundle (post-gate)
+
+When all gates pass: `disklordz-ralph/business/release/package_release.py` or `scripts/package-release.ps1`  
+→ `dist/Release_v*` + `SHA256SUMS.txt` for R2/S3 / portal presign (`docs/dev/commercial-release-packaging.md`).
