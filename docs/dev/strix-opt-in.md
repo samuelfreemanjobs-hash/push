@@ -59,29 +59,38 @@ Verify CLI flags against current Strix README — command names evolve between r
 
 ---
 
+## Custom instruction file (required)
+
+Repo skill (pass to `--instruction-file`):
+
+**`skills/vst_audio_security.md`**
+
+Copy to your local Strix skills folder if your Strix build loads skills from a global path only.
+
 ## Example commands (adapt flags to your Strix version)
 
 From repo root `C:\Dev\push`:
 
 ```powershell
-# Quick — local source (no network)
-strix -n -t .\disklordz-ralph\vst\starter-cpp\Source --scan-mode quick
+# Recommended — wrapper passes instruction file
+.\scripts\strix-pre-release.ps1 -Quick
+.\scripts\strix-pre-release.ps1 -Standard -StagingUrl https://staging.yourdisklordz.com
+.\scripts\strix-pre-release.ps1 -Deep -StagingUrl https://staging.yourdisklordz.com
 
-# Quick — storefront + openbb widget (local files)
-strix -n -t .\storefront --scan-mode quick
-strix -n -t .\disklordz-ralph\business\openbb --scan-mode quick
+# Manual — C++ ship tree + custom skill
+strix -n `
+  --target .\disklordz-ralph\vst\starter-cpp `
+  --instruction-file .\skills\vst_audio_security.md `
+  --scan-mode standard
 
-# Standard — staging storefront + license API (network; staging only)
-strix --target https://staging.yourdisklordz.com --scan-mode standard
+# Staging license + download endpoints (staging only)
+strix -n `
+  --target https://staging.yourdisklordz.com `
+  --instruction-file .\skills\vst_audio_security.md `
+  --scan-mode deep
 ```
 
-Use the custom playbook so the agent prioritizes audio-business surfaces:
-
-```powershell
-$env:STRIX_EXTRA_CONTEXT = "file:///$PWD/docs/security/strix-vst-audit-playbook.md"
-```
-
-(Exact env var name — confirm in Strix docs.)
+Extended checklist: `docs/security/strix-vst-audit-playbook.md`.
 
 ---
 

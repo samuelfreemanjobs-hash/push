@@ -52,7 +52,7 @@ In `factory/autoresearch/evaluate.py`, a future `MIN_SPECTRAL_DISTANCE` env can 
 
 Before **Core/Suite** checkout goes live:
 
-- Run `scripts/strix-pre-release.ps1 -Quick` on `starter-cpp/Source`, `storefront/`, `business/openbb/`
+- Run `scripts/strix-pre-release.ps1 -Quick` with `skills/vst_audio_security.md`
 - Staging URL scan per `docs/security/strix-vst-audit-playbook.md` (license API + signed kit downloads)
 - No open **critical** findings on webhook forgery or unauthenticated ZIP access
 

@@ -1,6 +1,8 @@
 # Strix audit playbook — DiskLordz VST & drum kits
 
-Use this file as **extra context** when running [Strix](https://github.com/usestrix/strix) against DiskLordz staging or local trees.  
+**Primary Strix instruction file:** `skills/vst_audio_security.md` (pass `--instruction-file`).
+
+Use this playbook as **extended context** when running [Strix](https://github.com/usestrix/strix) against DiskLordz staging or local trees.  
 Product: **Detroit Phonk Trap Maker** (VST3), **DiskLordz** WAV kits (24-bit), tiers in `disklordz-ralph/vst/LICENSING.md`.
 
 ---

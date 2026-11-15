@@ -20,9 +20,10 @@ Before acting, read `references/audit-checklist.md` in this skill directory.
 
 1. Confirm **staging** URLs and test payment keys — never production customer data.  
 2. Install Strix per `docs/dev/strix-opt-in.md` (Docker + pipx).  
-3. Attach playbook: `docs/security/strix-vst-audit-playbook.md`.  
-4. Run quick local scan on `disklordz-ralph/vst/starter-cpp/Source`, then staging URL if live.  
-5. Triage findings — **do not auto-merge** Strix patches; run `pluginval` after C++ fixes.
+3. Pass instruction file: `skills/vst_audio_security.md` (`--instruction-file`).
+4. Optional extended checklist: `docs/security/strix-vst-audit-playbook.md`.  
+5. Run `scripts/strix-pre-release.ps1 -Quick`, then staging with `-Standard` if live.
+6. Triage findings — **do not auto-merge** Strix patches; run `pluginval` after C++ fixes.
 
 ## Targets (repo)
 

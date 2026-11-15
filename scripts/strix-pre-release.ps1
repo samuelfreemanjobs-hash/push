@@ -1,7 +1,10 @@
-# Opt-in Strix pre-release scans (requires Docker + strix-agent on operator PATH).
+# Opt-in Strix pre-release scans (Docker + strix-agent on operator PATH).
 param(
     [switch]$Quick,
-    [string]$StagingUrl = ""
+    [switch]$Standard,
+    [switch]$Deep,
+    [string]$StagingUrl = "",
+    [string]$InstructionFile = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,22 +17,54 @@ if (-not $strix) {
     exit 1
 }
 
+if (-not $InstructionFile) {
+    $InstructionFile = Join-Path $repoRoot "skills\vst_audio_security.md"
+}
+if (-not (Test-Path $InstructionFile)) {
+    Write-Host "Missing instruction file: $InstructionFile"
+    exit 1
+}
+
+$sourceTarget = Join-Path $repoRoot "disklordz-ralph\vst\starter-cpp"
 $playbook = Join-Path $repoRoot "docs\security\strix-vst-audit-playbook.md"
-if (Test-Path $playbook) {
-    Write-Host "Playbook: $playbook"
+Write-Host "Instruction: $InstructionFile"
+if (Test-Path $playbook) { Write-Host "Playbook:   $playbook" }
+
+function Invoke-StrixScan {
+    param([string]$Target, [string]$Mode)
+    $args = @("-n", "--target", $Target, "--instruction-file", $InstructionFile, "--scan-mode", $Mode)
+    & strix @args
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 if ($Quick) {
-    & strix -n -t (Join-Path $repoRoot "disklordz-ralph\vst\starter-cpp\Source") --scan-mode quick
-    & strix -n -t (Join-Path $repoRoot "storefront") --scan-mode quick
-    & strix -n -t (Join-Path $repoRoot "disklordz-ralph\business\openbb") --scan-mode quick
+    Invoke-StrixScan -Target (Join-Path $repoRoot "disklordz-ralph\vst\starter-cpp\Source") -Mode "quick"
+    Invoke-StrixScan -Target (Join-Path $repoRoot "storefront") -Mode "quick"
+    Invoke-StrixScan -Target (Join-Path $repoRoot "disklordz-ralph\business\openbb") -Mode "quick"
 }
 
-if ($StagingUrl) {
-    & strix --target $StagingUrl --scan-mode standard
+if ($Standard) {
+    Invoke-StrixScan -Target $sourceTarget -Mode "standard"
+    if ($StagingUrl) {
+        Invoke-StrixScan -Target $StagingUrl -Mode "standard"
+    }
 }
 
-if (-not $Quick -and -not $StagingUrl) {
-    Write-Host "Usage: .\scripts\strix-pre-release.ps1 -Quick"
-    Write-Host "       .\scripts\strix-pre-release.ps1 -StagingUrl https://staging.example.com"
+if ($Deep) {
+    if (-not $StagingUrl) {
+        Write-Host "-Deep requires -StagingUrl https://staging.example.com"
+        exit 1
+    }
+    Invoke-StrixScan -Target $StagingUrl -Mode "deep"
+}
+
+if (-not $Quick -and -not $Standard -and -not $Deep) {
+    @"
+Usage:
+  .\scripts\strix-pre-release.ps1 -Quick
+  .\scripts\strix-pre-release.ps1 -Standard [-StagingUrl https://staging.example.com]
+  .\scripts\strix-pre-release.ps1 -Deep -StagingUrl https://staging.example.com
+
+Custom skill: skills\vst_audio_security.md
+"@ | Write-Host
 }
