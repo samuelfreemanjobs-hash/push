@@ -22,7 +22,10 @@ Build, validate, and optimize:
    - `disklordz-ralph/factory/autoresearch/drum_engine.py` (Python)  
    Real-time rules: zero heap allocs in `processBlock`, no locks, no `std::cout` on audio thread, `juce::ScopedNoDenormals`.
 3. **QA & pluginval gatekeeper (`qa-validator`)** — Runs `evaluate_vst.py`; ensures `pluginval` pass (`PLUGINVAL_STRICTNESS` default 5, pre-release **8**); `CPU_RENDER_MS < 15`; no `ERROR:` in judge output.
-4. **Sample pack producer (`kit-producer`)** — After a **kept** DSP commit, run `scripts/export_kit_velocities.ps1` → `disklordz-ralph/vst/autoresearch-cpp/outputs/kits/` (vel 40/85/127); log metrics to Ruflo memory.
+4. **Sample pack producer (`kit-producer`)** — After a **kept** Python or C++ DSP commit:
+   - **C++ velocities:** `scripts/export_kit_velocities.ps1` → `autoresearch-cpp/outputs/kits/`
+   - **Commercial pack:** `python disklordz-ralph/factory/autoresearch/export_kit.py` (add `--sfz` for sampler patch)
+   - **Trigger (coordinator):** when `TOTAL_LOSS` beats prior best **or** kick-only `SPECTRAL_LOSS < 0.35` (Python kit path), run `export_kit.py` and pass `manifest.json` to docs agent for Gumroad/Lemon copy — human approves publish.
 5. **Docs / storefront** (optional 5th) — `storefront/`, `PRODUCT.md` only; human approves paid copy.
 
 Ship plugin merge target: `TrapCoreDSP` / `PluginProcessor` — **not** in autoresearch loop. Wiring reference: `autoresearch-cpp/examples/PluginProcessorAutoresearch.example.cpp`.

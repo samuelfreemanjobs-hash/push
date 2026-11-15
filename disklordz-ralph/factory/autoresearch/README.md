@@ -40,6 +40,22 @@ python evaluate.py
 
 Blends full-velocity loss with hits at MIDI **~30, 80, 127** (as velocity 0.24, 0.63, 1.0).
 
+## Commercial batch export
+
+After autoresearch wins on `drum_engine.py`:
+
+```powershell
+cd disklordz-ralph\factory\autoresearch
+python export_kit.py
+python export_kit.py --sfz
+```
+
+Writes `outputs/packs/<PACK_NAME>_<timestamp>/` with 24-bit/48k WAVs + `manifest.json`.  
+Optional `DiskLordz_Kit.sfz` for SFZ players / Drum Rack drag references.  
+Env: `PACK_NAME=Louisiana_Bounce_V1`.
+
+Copy approved zip to `Assets/Releases/` per `docs/factory/kit_manifest.schema.json`.
+
 ## C++ / VST bridge
 
 See `docs/dev/autoresearch-cpp.md` — promote winning constants into `TrapCoreDSP`; agents do not edit JUCE in the loop.
