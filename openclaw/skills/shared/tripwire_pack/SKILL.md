@@ -1,8 +1,13 @@
 ---
 name: tripwire_pack
 description: Package tripwire-sample-v1.zip with manifest and credits copy.
+version: 1.0.0
 user-invocable: true
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/tripwire_pack
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 Before packaging:
 

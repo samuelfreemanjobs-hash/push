@@ -1,8 +1,13 @@
 ---
 name: delegate_subagent
 description: Hierarchical delegation from sage to dev, mkt, biz, drum-lead, review.
+version: 1.0.0
 user-invocable: true
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/delegate_subagent
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 When task matches a specialist:
 

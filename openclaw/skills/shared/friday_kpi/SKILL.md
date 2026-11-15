@@ -1,8 +1,13 @@
 ---
 name: friday_kpi
 description: Friday KPI narrative from biz-metrics.json and ops-snapshot only.
+version: 1.0.0
 user-invocable: true
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/friday_kpi
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 Read `~/.openclaw/hermes-out/biz-metrics.json` and ops-snapshot.
 

@@ -1,8 +1,13 @@
 ---
 name: telegram_brief
 description: Format concise Telegram briefs for phone readability.
+version: 1.0.0
 user-invocable: true
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/telegram_brief
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 Rules:
 

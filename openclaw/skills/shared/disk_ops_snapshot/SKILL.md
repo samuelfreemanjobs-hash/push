@@ -1,10 +1,15 @@
 ---
 name: disk_ops_snapshot
 description: Read DiskLordz ops-snapshot.json and hermes-out for morning briefs and status.
+version: 1.0.0
 user-invocable: true
 metadata:
   {"openclaw":{"emoji":"📊","requires":{"env":["DLZ_REPO_ROOT"]}}}
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/disk_ops_snapshot
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 When asked for ops status, morning brief input, or kanban counts:
 

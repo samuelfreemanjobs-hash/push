@@ -1,0 +1,56 @@
+publisher_handle: YOUR_CLAWHUB_HANDLE
+version: 1.0.0
+tags: [latest, disklordz, solo-founder, openclaw]
+license_note: MIT-0 on ClawHub; source in github.com/samuelfreemanjobs-hash/push
+skills:
+  - dir: disk_ops_snapshot
+    slug: disklordz-disk-ops-snapshot
+    display_name: DiskLordz Ops Snapshot
+  - dir: vault_kanban
+    slug: disklordz-vault-kanban
+    display_name: DiskLordz Vault Kanban
+  - dir: tripwire_qc
+    slug: disklordz-tripwire-qc
+    display_name: DiskLordz Tripwire QC
+  - dir: tripwire_pack
+    slug: disklordz-tripwire-pack
+    display_name: DiskLordz Tripwire Pack
+  - dir: kit_spec_grok
+    slug: disklordz-kit-spec-grok
+    display_name: Grok Kit Spec Ingest
+  - dir: github_pr_review
+    slug: disklordz-github-pr-review
+    display_name: DiskLordz PR Review
+  - dir: overnight_branch
+    slug: disklordz-overnight-branch
+    display_name: Overnight Branch Agent
+  - dir: launch_gates
+    slug: disklordz-launch-gates
+    display_name: DiskLordz Launch Gates
+  - dir: vst_factory
+    slug: disklordz-vst-factory
+    display_name: DiskLordz VST Factory
+  - dir: friday_kpi
+    slug: disklordz-friday-kpi
+    display_name: Friday KPI Brief
+  - dir: delegate_subagent
+    slug: disklordz-delegate-subagent
+    display_name: Delegate Subagents
+  - dir: telegram_brief
+    slug: disklordz-telegram-brief
+    display_name: Telegram Brief Formatter
+  - dir: security_sentinel
+    slug: disklordz-security-sentinel
+    display_name: Security Sentinel
+  - dir: research_consume
+    slug: disklordz-research-consume
+    display_name: Research Consume
+  - dir: tripwire_positioning
+    slug: disklordz-tripwire-positioning
+    display_name: Tripwire Positioning
+  - dir: flow_github_actions
+    slug: disklordz-flow-github-actions
+    display_name: Flow GitHub Actions
+  - dir: memory_vault
+    slug: disklordz-memory-vault
+    display_name: Memory Vault Hygiene

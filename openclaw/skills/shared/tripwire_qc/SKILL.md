@@ -1,8 +1,13 @@
 ---
 name: tripwire_qc
 description: Tripwire WAV QC checklist aligned with qc_tripwire_pack.py and kit-spec qc block.
+version: 1.0.0
 user-invocable: true
+homepage: https://github.com/samuelfreemanjobs-hash/push/tree/main/openclaw/skills/shared/tripwire_qc
 ---
+
+Before acting, read `references/workflow.md` (and sibling files under `references/`) via skills_read.
+
 
 For SKU `tripwire-sample-v1`:
 

@@ -32,3 +32,15 @@ $kit_spec_grok validate ./kit-spec.yaml
 | Human-in-the-loop | skills mark `approval_required` steps |
 
 Registry: `../agents/REGISTRY.yaml`
+
+## References + ClawHub
+
+Each skill includes `references/workflow.md` (and extra refs where needed). Bodies tell agents to load them via `skills_read`. `install-skills.sh` copies full skill directories including `references/`.
+
+```bash
+npm install
+npm run verify          # frontmatter + references
+npm run publish:prep    # dry-run clawhub commands
+```
+
+Publish guide: `clawhub/PUBLISH.md`, slugs in `clawhub/manifest.yaml`, collection blurb in `clawhub/disklordz-founder-pack.md`. Set `publisher_handle` in the manifest before `./scripts/publish-prep.sh --publish`.
