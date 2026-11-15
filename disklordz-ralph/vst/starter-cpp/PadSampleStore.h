@@ -8,6 +8,7 @@
 /**
  * Per-pad sample buffers: load on message thread, read on audio thread via shared_ptr snapshot.
  * DLZ-VST-007 — pair with PadGridComponent + PluginProcessor hooks.
+ * shortcut: atomic shared_ptr per pad, upgrade to fixed pool + seqlock if loading during playback
  */
 class PadSampleStore
 {

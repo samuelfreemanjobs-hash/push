@@ -6,7 +6,7 @@
 
 1. Agent chat (**Ctrl+I**): `/add-plugin superpowers` or search Marketplace for **superpowers**.
 2. Confirm session bootstrap mentions skill routing.
-3. Keep project rules: `push/.cursor/rules/rea-juce-superpowers.mdc` + root `AGENTS.md`.
+3. Keep project rules: `push/.cursor/rules/rea-juce-superpowers.mdc`, `push/.cursor/rules/ponytail-juce.mdc` (minimal diffs), + root `AGENTS.md`.
 
 ## Skills → your lane
 
