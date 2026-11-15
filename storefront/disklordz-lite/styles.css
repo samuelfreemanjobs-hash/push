@@ -121,6 +121,7 @@ h1 {
 .tier-featured { border-top-color: var(--dl-accent); }
 .tier ul { padding-left: 18px; color: var(--dl-muted); }
 .price { font-size: 2rem; margin: 8px 0 16px; }
+.price-note { font-size: 0.45em; color: var(--dl-muted); font-weight: 500; margin-left: 0.25em; }
 
 .foot {
   text-align: center;
