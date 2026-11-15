@@ -1,5 +1,6 @@
 #pragma once
 
+#include <JuceHeader.h>
 #include <cmath>
 
 /** RT-safe scalar soft clip (Fruity-style cubic + tanh). Oversampling lives in plugin processor. */
