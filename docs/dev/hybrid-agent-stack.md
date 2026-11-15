@@ -17,6 +17,8 @@ Aligned with `disklordz-ralph/STACK-4-LAYER.md` and `STACK-FROZEN.md` (no new ag
 | **Storefront, manuals, support drafts** | RAGFlow or Gemini CLI | `storefront/`, `GEMINI.md`, OpenClaw copy |
 | **Launch cadence** | AutoGPT (opt-in Friday) | `openclaw/autogpt/` |
 | **Local multi-agent (Claude Code)** | Ruflo (opt-in) | `CLAUDE.md`, `docs/dev/ruflo-opt-in.md` |
+| **Finance & market ops** | OpenBB Workspace (opt-in) | `docs/dev/openbb-opt-in.md`, `business/openbb/` |
+| **Video / social launch** | OpenMontage (opt-in) | `docs/dev/openmontage.md` |
 
 ---
 

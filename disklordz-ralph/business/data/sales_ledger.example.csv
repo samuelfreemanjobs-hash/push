@@ -1,0 +1,5 @@
+order_id,product_name,amount_usd,net_usd,refunded,created_at,source,currency
+ex_stripe_001,Detroit Phonk Trap Maker — Core,44.00,42.72,0,2026-11-01T14:22:00+00:00,stripe,USD
+ex_stripe_002,Louisiana Bounce Kit Vol1,29.00,28.16,0,2026-11-02T09:05:00+00:00,stripe,USD
+ex_gum_003,DiskLordz Lite → Core upgrade,44.00,42.50,0,2026-11-03T18:40:00+00:00,gumroad,USD
+ex_gum_004,Phonk Expansion Pack,19.00,18.45,1,2026-11-04T11:12:00+00:00,gumroad,USD

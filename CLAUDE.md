@@ -28,10 +28,11 @@ Build, validate, and optimize:
    - **Trigger (coordinator):** when `TOTAL_LOSS` beats prior best **or** kick-only `SPECTRAL_LOSS < 0.35` (Python kit path), run `export_kit.py` (auto-stages OpenMontage unless `SKIP_OPENMONTAGE_PUBLISH=1`); pass `release_brief.json` to docs agent (Gumroad/Lemon copy) and optional `media-studio` — human approves storefront and video checkpoints.
 5. **Docs / storefront** (optional 5th) — `storefront/`, `PRODUCT.md` only; human approves paid copy.
 6. **Media launch (`media-studio`, optional)** — After `export_kit.py`, run `python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py` (or `scripts/handoff-pack-to-openmontage.ps1` if re-staging without re-export). Open sibling `../marketing-studio` and execute **`assets/latest_release/AGENT_PROMPT.md`** (Templates A/B in `docs/marketing/openmontage-prompt-templates.md`); **human approves** storyboard and draft render before final MP4. See `docs/dev/openmontage.md`.
+7. **Finance & market (`cfo-openbb`, optional)** — Read-only sync: `scripts/sync-sales-ledger.ps1 -Stripe -Gumroad` → `business/data/sales_ledger.csv`; `uvicorn store_backend:app --port 5050` for OpenBB Workspace widgets. **Never** change live checkout or prices without human approval. See `docs/dev/openbb-opt-in.md`.
 
 ### Marketing handoff rule (`kit-producer`)
 
-Immediately after `python disklordz-ralph/factory/autoresearch/export_kit.py` succeeds, run `python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py` to stage `demo_beat.wav`, hero one-shots, `manifest.json`, and `release_brief.json` into `../marketing-studio/assets/latest_release/`.
+`export_kit.py` auto-runs `publish_to_openmontage.py` unless `SKIP_OPENMONTAGE_PUBLISH=1`. Re-stage only with `publish_to_openmontage.py` or `scripts/handoff-pack-to-openmontage.ps1`.
 
 Ship plugin merge target: `TrapCoreDSP` / `PluginProcessor` — **not** in autoresearch loop. Wiring reference: `autoresearch-cpp/examples/PluginProcessorAutoresearch.example.cpp`.
 
@@ -87,6 +88,7 @@ kit-producer runs scripts/export_kit_velocities.ps1 only after qa-validator pass
 | Kit velocities | `autoresearch-cpp/outputs/kits/` |
 | Full launch | `docs/dev/ruflo-launch.md` |
 | OpenMontage | `docs/dev/openmontage.md`, `docs/marketing/openmontage-prompt-templates.md` |
+| OpenBB / ledger | `docs/dev/openbb-opt-in.md`, `business/openbb/sync_sales_ledger.py` |
 
 ---
 
