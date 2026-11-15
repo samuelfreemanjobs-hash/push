@@ -41,6 +41,23 @@ Chunk size: ~512 tokens; hybrid search on.
 
 ## MCP wiring (pattern)
 
+Example `mcp.json` entry (host/port per your RAGFlow deploy):
+
+```json
+{
+  "mcpServers": {
+    "ragflow-dsp-brain": {
+      "url": "http://localhost:9380/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_RAGFLOW_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Add the **Hardware Research Rule** from `vst/autoresearch-cpp/program_cpp.md` to your C++ agent when loss plateaus.
+
 Exact steps depend on your RAGFlow version; typical pattern:
 
 1. Enable RAGFlow **MCP server** or HTTP retrieval API.  

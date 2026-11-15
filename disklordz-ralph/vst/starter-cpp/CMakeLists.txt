@@ -93,3 +93,11 @@ target_link_libraries(DetroitPhonkTrapMaker
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+# ==============================================================================
+# 3. Optional C++ autoresearch headless render (VoiceDSPSandbox.h — agent sandbox)
+# ==============================================================================
+option(DLZ_AUTORESEARCH "Build DiskLordzHeadlessRender for evaluate_vst.py" OFF)
+if(DLZ_AUTORESEARCH)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../autoresearch-cpp ${CMAKE_BINARY_DIR}/autoresearch-cpp)
+endif()

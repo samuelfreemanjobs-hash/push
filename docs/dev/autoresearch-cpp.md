@@ -1,4 +1,6 @@
-# Autoresearch — C++ / JUCE workflow (phase 2)
+# Autoresearch — C++ / JUCE workflow
+
+**Implemented:** `disklordz-ralph/vst/autoresearch-cpp/` — `VoiceDSPSandbox.h`, `evaluate_vst.py`, `HeadlessMain.cpp`, build via `-DDLZ_AUTORESEARCH=ON`.
 
 Use when Python winners need **real-time** validation on `TrapCoreDSP` or `ThreeLayerDrum`.
 
