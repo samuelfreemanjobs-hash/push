@@ -52,6 +52,13 @@ def test_producer_storefront_buildable() -> None:
     assert "build" in data.get("scripts", {})
 
 
+def test_vst_factory_pods_registry() -> None:
+    pods = REPO / "openclaw/agents/vst-factory-pods.yaml"
+    text = pods.read_text(encoding="utf-8")
+    assert "vst-architect" in text and "vst-qa" in text
+    assert text.count("tier: factory") >= 7
+
+
 def test_elite_frameworks_manifest_lists_fourteen() -> None:
     manifest = REPO / "openclaw/elite-frameworks/manifest.yaml"
     text = manifest.read_text(encoding="utf-8")
@@ -74,6 +81,7 @@ def main() -> int:
         test_storefront_demos_present,
         test_factory_handoff_report,
         test_producer_storefront_buildable,
+        test_vst_factory_pods_registry,
         test_elite_frameworks_manifest_lists_fourteen,
         test_helix_seed_valid_json,
     ]
