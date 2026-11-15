@@ -3,10 +3,12 @@
 #include <JuceHeader.h>
 
 /**
- * Render one shot / loop to temp WAV and start OS drag (message thread).
+ * Render one shot / loop to temp WAV and start OS drag (message thread only).
  * DLZ-VST-007 — FL Channel Rack / Playlist file drop.
+ *
+ * PluginEditor must inherit juce::DragAndDropContainer and pass *this to beginDragExport.
  */
-class PadDragExport : public juce::DragAndDropContainer
+class PadDragExport
 {
 public:
     static bool writeTempWav24(const juce::AudioBuffer<float>& audio, double sampleRate,
@@ -28,11 +30,12 @@ public:
         return true;
     }
 
-    void beginDragExport(const juce::AudioBuffer<float>& audio, double sampleRate)
+    static void beginDragExport(juce::DragAndDropContainer& host, const juce::AudioBuffer<float>& audio,
+                                double sampleRate)
     {
         juce::File f;
         if (!writeTempWav24(audio, sampleRate, f))
             return;
-        performExternalDragDropOfFiles({ f.getFullPathName() }, true);
+        host.performExternalDragDropOfFiles({ f.getFullPathName() }, true);
     }
 };
