@@ -26,6 +26,8 @@ LEGACY_KICK = ROOT / "target.wav"
 SAMPLE_RATE = 44100
 VOICES = ("kick", "snare", "hat")
 MAX_WALL_SECONDS = 5.0
+# Commercial: penalize spectral convergence below this (too close to reference = cloning risk).
+MIN_SC_COMPONENT = float(os.environ.get("MIN_SPECTRAL_CONVERGENCE", "0"))
 KIT_VELOCITY_TEST = os.environ.get("KIT_VELOCITY_TEST", "").strip() in ("1", "true", "yes")
 VELOCITIES = (30 / 127.0, 80 / 127.0, 1.0)
 
@@ -70,6 +72,8 @@ def multi_res_stft_loss(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         mag_pred = np.abs(z_pred[:, :frames])
         sc_loss = float(np.linalg.norm(mag_true - mag_pred) / (np.linalg.norm(mag_true) + 1e-7))
         log_loss = float(np.mean(np.abs(np.log(mag_true + 1e-7) - np.log(mag_pred + 1e-7))))
+        if MIN_SC_COMPONENT > 0 and sc_loss < MIN_SC_COMPONENT:
+            sc_loss += (MIN_SC_COMPONENT - sc_loss) * 10.0
         loss += sc_loss + log_loss
         used += 1
     return loss / max(used, 1)

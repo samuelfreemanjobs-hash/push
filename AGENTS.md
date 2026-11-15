@@ -64,6 +64,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Autoresearch (optional):** `factory/autoresearch/` — edit only `drum_engine.py`; `program.md` + `evaluate.py`; C++ path `docs/dev/autoresearch-cpp.md`.
 
+**Hybrid commercial stack:** `docs/dev/hybrid-agent-stack.md` — Cursor=C++/pluginval, Python=kits, RAGFlow=retrieval; gate script `scripts/vst-build-pluginval-gate.ps1`.
+
 ## 5. Sample pack & asset pipeline
 
 - **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
