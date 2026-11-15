@@ -23,6 +23,7 @@ Aligned with `disklordz-ralph/STACK-4-LAYER.md` and `STACK-FROZEN.md` (no new ag
 | **PRD & web scaffold** | MetaGPT (opt-in) | `docs/dev/metagpt-opt-in.md`, `docs/plans/metagpt-license-portal-blueprint.md` |
 | **Python multi-agent + MCP (ops/R&D)** | AutoGen / MS Agent Framework (opt-in) | `docs/dev/ms-agent-framework-opt-in.md`, `business/ms-agent-framework/` |
 | **Parallel terminal panes (Windows)** | Herdr + herdr-mesh (opt-in) | `docs/dev/herdr-opt-in.md`, `config/herdr/` |
+| **24/7 configurator + merch scheduler** | Agno AgentOS (opt-in) | `docs/dev/agno-revenue-engine-opt-in.md`, `business/agno-revenue-engine/` |
 
 ---
 
