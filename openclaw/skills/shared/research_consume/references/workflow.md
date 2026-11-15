@@ -4,6 +4,7 @@
 
 - `hermes-out/` research stubs
 - `hermes-out/research/vst-market-latest.json` (from **vst_market_intel** cron; price drops only)
+- `hermes-out/research/producer-leads-latest.json` (weekly harvest summary; angles only, no PII in Telegram)
 - Public web only when operator enables browser/search tools
 
 ## Steps

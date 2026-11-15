@@ -21,6 +21,17 @@ Message user only when:
 - Scrape error on target URL
 - New product name not seen in `price_history.json`
 
+## Outreach outputs
+
+| File | Purpose |
+|------|---------|
+| `docs/outreach/producer_leads.csv` | Deduped leads (`pending_review` → operator) |
+| `docs/outreach/latest_harvest.json` | Last agent run summary |
+| `docs/outreach/drafts/*.md` | Personalized emails (not sent by agent) |
+| `hermes-out/research/producer-leads-latest.json` | MKT / sage brief |
+
 ## Legal
 
-Public pricing pages only. No DRM circumvention, no login-walled scraping, no cold email sends without operator `G3` approval.
+Public pricing pages only. No DRM circumvention, no login-walled scraping.
+
+Producer emails: **public promo addresses only**; drafts only until operator approves; no autonomous cold send (`references/outreach-compliance.md`).
