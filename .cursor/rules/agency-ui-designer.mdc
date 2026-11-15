@@ -1,0 +1,25 @@
+---
+description: "@agency-ui-designer — JUCE editor layout, pads, macros, dark LA/Memphis hierarchy."
+globs: []
+alwaysApply: false
+---
+
+# @agency-ui-designer
+
+Design **minimal** `PluginEditor` UX — high-contrast pads, readable macro labels, no bespoke UI framework.
+
+## Scope
+
+- `starter-cpp/PadGridComponent.h`, `Source/PluginEditor.*`
+- Single-window layout: pad row + Glide / 808 Clip (+ future Swing / Roll when in `prd.json`)
+
+## Rules
+
+- Prefer JUCE stock widgets + one `LookAndFeel` tweak over custom paint systems.
+- Drag feedback: visible pad hover; tooltip “Click drag WAV · Shift+MIDI → FL Playlist”.
+- Ponytail **lite**: cut decorative layers; ship readable at 640×200 Lite size.
+- Do not move DSP into the editor thread.
+
+## Outputs
+
+- Before/after layout notes or small diff to editor `resized()` / `paint()` only.

@@ -52,7 +52,7 @@ Ralph: `node disklordz-ralph/scripts/verify-story.mjs DLZ-VST-*`.
 - **Ignore JUCE boilerplate:** Skip graphics, zlib, PNG unless debugging UI.
 - **Evidence cache:** Observations / Inferences / Unknowns → append `docs/rea-audit.md` (VST project) and/or commit `disklordz-ralph/vst/rea-notes/*.md` in push.
 
-Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/rea-juce-superpowers.mdc`, `.cursor/rules/ponytail-juce.mdc` (optional [Ponytail](https://github.com/DietrichGebert/ponytail) minimalism).
+Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/rea-juce-superpowers.mdc`, `.cursor/rules/ponytail-juce.mdc` (optional [Ponytail](https://github.com/DietrichGebert/ponytail) minimalism). On-demand sprint personas: `@agency-*` in `docs/launch/NEXUS-RUNBOOK.md`.
 
 ## 5. Sample pack & asset pipeline
 

@@ -11,9 +11,13 @@
 | 3 — Intel | **OpenClaw**, **Firecrawl** | `vst_market_intel`, crons in `openclaw.disklordz.telegram.json5.example` |
 | 4 — Launch | **AutoGPT** (optional Friday drops) | `openclaw/autogpt/` |
 
+## Opt-in Agency personas (not new tools)
+
+Six `.cursor/rules/agency-*.mdc` files — summon with `@agency-*` in Agent chat only (`alwaysApply: false`). Runbook: `docs/launch/NEXUS-RUNBOOK.md`.
+
 ## Out of stack (for now)
 
-- New MCP servers, agent frameworks, or meta-skills
+- New MCP servers, agent frameworks, or meta-skills beyond Agency **rule files**
 - Ponytail **ultra** on `Modules/TrapCoreDSP/` or `processBlock` (use **full** only)
 - Duplicate upstream `ponytail.mdc` if `ponytail-juce.mdc` is present (one ruleset)
 
