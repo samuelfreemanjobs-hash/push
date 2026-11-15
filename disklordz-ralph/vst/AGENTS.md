@@ -6,7 +6,7 @@ Place at **`C:\Dev\DetroitPhonkTrapVST3\AGENTS.md`** (bootstrap copies this file
 
 - **Shared core library (`Modules/TrapCoreDSP/`):** Never duplicate DSP math, sample loaders, or MIDI state machines across plugins. All reusable audio code lives here and links into `DetroitPhonkTrapMaker`.
 - **Data-driven content:** Never hardcode kit paths, pad counts, or UI colors. Drive kits and themes via JSON/XML manifests and encrypted `.blob` sample containers (see `C:\Dev\push\openclaw\drum-kit-factory\handoff\`).
-- **Audio thread real-time safety:** Zero heap allocations (`new`, `malloc`, `std::vector::push_back`), zero locks, zero file or UI calls inside `processBlock()` or `renderNextBlock()`.
+- **Audio thread real-time safety:** Zero heap allocations (`new`, `malloc`, `std::vector::push_back`), zero locks, zero file or UI calls inside `processBlock()` or `renderNextBlock()`. Elite checklist: repo root `.cursor/rules/audio-dsp.mdc` + `/disk-rt-audit`.
 
 ## 2. Superpowers workflow rules
 

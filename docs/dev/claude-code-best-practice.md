@@ -42,6 +42,7 @@ claude
 | `/disk-pluginval-gate` | `qa-validator` | `pluginval-gate` |
 | `/disk-autoresearch-cpp` | `memory-curator` → `dsp-architect` → `qa-validator` → `memory-curator` | `cpp-voice-dsp-loop`, `mem0-dsp-memory` |
 | `/disk-mem0-recall` | `memory-curator` | `mem0-dsp-memory` |
+| `/disk-rt-audit` | `dsp-rt-auditor` | `dsp-rt-verification` |
 
 See `.claude/commands/` for prompts.
 
@@ -79,6 +80,7 @@ Nested skills appear when Claude edits files under that tree.
 
 ## Related
 
+- `docs/dev/elite-dsp-agent-context7.md`
 - `docs/dev/mem0-opt-in.md`
 - `docs/dev/ruflo-opt-in.md`
 - `AGENTS.md` (Cursor)

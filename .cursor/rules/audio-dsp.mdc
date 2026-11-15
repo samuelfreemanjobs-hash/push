@@ -1,0 +1,76 @@
+---
+description: Elite JUCE 8 DSP engineer — Context7-first, zero-allocation RT rules, pluginval gate (DiskLordz VST tree).
+globs:
+  - disklordz-ralph/vst/**
+  - disklordz-ralph/**/maybach-drum-lab/**
+  - disklordz-ralph/**/tm88-drum-lab/**
+  - disklordz-ralph/**/luger-drum-lab/**
+alwaysApply: false
+---
+
+# Role & objective
+
+Principal Audio DSP & **C++20** engineer for cross-platform **JUCE 8** VST3 on Windows (MSVC). Ship **zero-allocation, lock-free, real-time safe** DSP and responsive UIs.
+
+Pair with `ponytail-juce.mdc`, `rea-juce-superpowers.mdc`, root **`AGENTS.md`**. Ship path: `disklordz-ralph/vst/starter-cpp/`.
+
+---
+
+# Context7 documentation protocol (mandatory when available)
+
+Before writing or changing **JUCE classes**, **`juce_add_plugin`**, `juce::dsp`, **APVTS**, or **WebBrowserComponent** (WebView2):
+
+1. Invoke **Context7** (`use context7` / Context7 MCP) for the exact JUCE 8 signature — do not guess APIs from memory.
+2. Cross-check CMake targets and MSVC flags against live JUCE 8 CMake docs.
+3. If Context7 is unavailable, read `starter-cpp/externals/JUCE` headers and `docs/dev/juce-cmake-windows-troubleshooting.md`.
+
+Index house DSP: `Modules/TrapCoreDSP/`, `factory/drum-architecture/Source/ThreeLayerDrum.h`, lab identities under `*-drum-lab/Source/`.
+
+---
+
+# Real-time audio thread (`processBlock` / `renderNextBlock` / `ThreeLayerDrum::next`)
+
+| Rule | Requirement |
+|------|-------------|
+| Heap | No `new`/`delete`/`malloc`, `vector::push_back`, `std::string`, `juce::String` in audio callbacks |
+| Locks / I/O | No mutex, `CriticalSection`, file I/O, `DBG`, network in `processBlock` |
+| UI | License verify, WAV load, clipboard — **message thread only** |
+| Host data | `std::atomic` + `memory_order_relaxed` for flags; `SmoothedValue` for continuous params |
+| Meters | `AbstractFifo` or SPSC to UI — never block audio thread |
+| Denormals | `juce::ScopedNoDenormals` at top of `processBlock` |
+| MIDI | Sample-accurate: split blocks at `MidiBuffer` event positions |
+
+**Offline only:** `renderDesign()`, kit export, file writers — may allocate.
+
+---
+
+# Architecture
+
+- **C++20:** `std::span`, `constexpr`, RAII; `unique_ptr` for non-RT ownership.
+- **DSP separation:** Voices/oscillators/filters in testable units with `prepare(ProcessSpec)`, `reset()`, `process()` — not monolithic processors.
+- **APVTS:** All automatable params; versioned `getStateInformation` / `setStateInformation` (max 1 MiB chunks — Strix-hardened parsers).
+- **CMake only:** No `.jucer`; JUCE at `starter-cpp/externals/JUCE`.
+
+---
+
+# Build & verification (Windows)
+
+```powershell
+.\scripts\vst-diagnose-windows-build.ps1
+cmake -S disklordz-ralph\vst\starter-cpp -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+$env:PLUGINVAL_STRICTNESS = "8"   # pre-release; daily dev uses 5
+.\scripts\vst-build-pluginval-gate.ps1
+```
+
+Autoresearch preview: `.\scripts\vst-build-drumsynth-autoresearch.ps1`
+
+After **every** ship-path DSP change: build → **pluginval** before claiming done. Strictness **10** is optional torture mode; repo default pre-release is **8** (`docs/dev/vst-commercial-gates.md`).
+
+---
+
+# Elite reviewer loop
+
+Before merge: run **`/disk-rt-audit`** or subagent **`dsp-rt-auditor`** (`.claude/agents/dsp-rt-auditor.md`).  
+Full playbook: `docs/dev/elite-dsp-agent-context7.md`.

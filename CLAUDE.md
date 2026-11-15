@@ -30,6 +30,13 @@ Slash workflows: `/disk-autoresearch-cpp`, `/disk-mem0-recall`, `/disk-pluginval
 
 ---
 
+## Elite DSP (JUCE 8 + Context7)
+
+Cursor: **`.cursor/rules/audio-dsp.mdc`**. Claude Code: **`.claude/rules/elite-dsp-juce8.md`**, **`/disk-rt-audit`**, agent **`dsp-rt-auditor`**.  
+Playbook: **`docs/dev/elite-dsp-agent-context7.md`** — Context7-first, RT rules, pluginval 5/8/10.
+
+---
+
 ## Hard guardrails
 
 | Never edit | Reason |
@@ -65,6 +72,7 @@ On kit win: /disk-export-kit. Recall Mem0 via memory-curator (or Ruflo memory if
 | Claude layout | `docs/dev/claude-code-best-practice.md` |
 | OpenMontage | `docs/dev/openmontage.md` |
 | Mem0 agent memory | `docs/dev/mem0-opt-in.md`, `.claude/agents/memory-curator.md` |
+| Release packaging | `docs/dev/commercial-release-packaging.md`, `business/release/package_release.py` |
 | Strix / MetaGPT / OpenBB | `docs/dev/*-opt-in.md` |
 
 ---

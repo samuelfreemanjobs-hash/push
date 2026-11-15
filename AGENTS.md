@@ -2,6 +2,8 @@
 
 Cursor, Superpowers, Claude Code (**`CLAUDE.md`** + **`.claude/rules`**, **`docs/dev/claude-code-best-practice.md`**), and Ralph read this at session start.
 
+**Elite JUCE DSP:** `.cursor/rules/audio-dsp.mdc` (Context7 + RT + pluginval) — `docs/dev/elite-dsp-agent-context7.md`.
+
 ## Monorepo lanes
 
 | Path | Agent |
