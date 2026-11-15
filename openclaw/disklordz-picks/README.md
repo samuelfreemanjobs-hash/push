@@ -21,6 +21,16 @@ One **Telegram** front door on **OpenClaw**. **Hermes** runs webhooks, heavy cro
 
 Full pick lists: `PICKS.yaml`.
 
+## OpenClaw + Telegram (start here)
+
+Step-by-step: [`../SETUP-TELEGRAM.md`](../SETUP-TELEGRAM.md)
+
+```bash
+bash openclaw/scripts/setup-disklordz-telegram.sh
+```
+
+Windows: `.\openclaw\scripts\setup-disklordz-telegram.ps1`
+
 ## Install order
 
 ### Free ($0) — start here
