@@ -35,9 +35,17 @@ private:
 
 ## 2. Processor hooks (message thread)
 
-- `getPadBuffer` / `getPadSampleRate` — last rendered one-shot or loop per pad (or factory sample).
-- `getPadMidiPattern` — optional `MidiMessageSequence` for Triggerman rolls (Shift+click drag).
-- `loadUserWavOntoPad` — decode WAV, swap atomic pointer for sampler voice (see `TRAP-PHONK-ARCHITECTURE.md`).
+Embed `PadSampleStore padStore` on the processor:
+
+```cpp
+juce::AudioBuffer<float>* getPadBuffer(int i) { return padStore.getPadBufferForDrag(i); }
+double getPadSampleRate(int i) const { return padStore.getPadSampleRate(i); }
+juce::MidiMessageSequence getPadMidiPattern(int i) const { return padStore.getPadMidiPattern(i); }
+void loadUserWavOntoPad(int i, const juce::File& f) { padStore.loadUserWavOntoPad(i, f); }
+double getLastKnownBpm() const { return padStore.getLastKnownBpm(); }
+```
+
+In `processBlock`, call `padStore.setLastKnownBpm` from play head when available. Voices should read `padStore.getPublishedPad(i)` on the audio thread (never `loadUserWavOntoPad` there).
 
 ## 3. FL Studio QA
 

@@ -13,8 +13,11 @@ Use [Significant-Gravitas/AutoGPT](https://github.com/Significant-Gravitas/AutoG
 
 1. Clone AutoGPT: `git clone https://github.com/Significant-Gravitas/AutoGPT`
 2. From `autogpt_platform/`: `docker compose up -d` → UI at `http://localhost:3000`
-3. Merge volume mounts from `docker-compose.volumes.example.yml` (this repo)
-4. Block graph: `workflows/kit-launch-blocks.md`
+3. Run `openclaw/scripts/setup-dlz-shared-workspace.ps1 -RepoRoot C:\Dev\push` (sets `DLZ_REPO_ROOT` + `.env`)
+4. Merge volume mounts from `docker-compose.volumes.example.yml` (this repo)
+5. Block graph: `workflows/kit-launch-blocks.md`
+
+Stack overview: `disklordz-ralph/STACK-4-LAYER.md`
 
 ## Shared workspace (single source of truth)
 
