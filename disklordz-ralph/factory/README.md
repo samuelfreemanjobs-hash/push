@@ -9,6 +9,7 @@ Source-only in git; **WAV demos are not committed** (unpack zips locally to `Ass
 | `cinematic-dsp/` | Cinematic_DSP_CPP + 35 WAVs | **R&D** — procedural cinematic moods; offline renderer + proto JUCE processor. |
 | `drum-architecture/` | Drum_Design_Architecture | **R&D** — `ThreeLayerDrum.h` + master meta prompt. |
 | `../luger-drum-lab/` | (in-repo) | **R&D** — Luger DNA on three-layer; M1 tests + optional JUCE. |
+| `../tm88-drum-lab/` | (in-repo) | **R&D** — TM88-*inspired* dark/emo/space trap DNA; M1 tests + optional JUCE. |
 
 ## Ship priority (STACK-FROZEN)
 
