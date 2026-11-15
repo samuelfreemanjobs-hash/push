@@ -66,6 +66,8 @@ $env:PLUGINVAL_STRICTNESS = "8"   # pre-release; daily dev uses 5
 
 Autoresearch preview: `.\scripts\vst-build-drumsynth-autoresearch.ps1`
 
+WebView2 greenfield: `disklordz-ralph/vst/templates/webview-drum-starter/` + `docs/dev/juce8-cmake-webview-starter.md`
+
 After **every** ship-path DSP change: build → **pluginval** before claiming done. Strictness **10** is optional torture mode; repo default pre-release is **8** (`docs/dev/vst-commercial-gates.md`).
 
 ---

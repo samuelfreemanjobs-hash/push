@@ -93,15 +93,14 @@ WebView rotary knobs or storefront embeds: Context7 **WebBrowserComponent** + is
 
 ## 6. CMake reference (already in repo)
 
-Production boilerplate — do not greenfield duplicate:
-
 | Target | CMake entry |
 |--------|-------------|
 | Ship VST3 | `disklordz-ralph/vst/starter-cpp/CMakeLists.txt` |
+| **WebView2 + pluginval template** | `vst/templates/webview-drum-starter/` — `docs/dev/juce8-cmake-webview-starter.md` |
 | Autoresearch + DrumSynth preview | `-DDLZ_AUTORESEARCH=ON`, `autoresearch-cpp/CMakeLists.txt` |
-| Drum labs | `maybach-drum-lab/CMakeLists.txt` (optional `FetchContent` JUCE) |
+| Drum labs | `maybach-drum-lab/CMakeLists.txt` |
 
-pluginval paths: `scripts/vst-build-pluginval-gate.ps1`, `vst/tools/pluginval/`.
+WebView2 NuGet: `scripts/install-webview2-nuget.ps1`. pluginval: `validate_vst3` target or `vst-build-pluginval-gate.ps1`.
 
 ---
 
