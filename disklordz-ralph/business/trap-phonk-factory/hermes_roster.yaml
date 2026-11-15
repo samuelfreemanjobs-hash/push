@@ -1,0 +1,34 @@
+# Named bot roster template (Hermes Bot Mode / DeepSeek Harness compatible).
+# Wire to real harness when operator installs Nous + DeepSeek plugins.
+# Until then: run_factory.py delegates to kit_mastering.py + audio-factory tools.
+
+harness: deepseek-harness
+workspace: ../../factory/audio-factory
+
+bots:
+  - name: MemphisSoundArchitect
+    role: Generate raw 145 BPM phonk loops (synthesis or licensed models only)
+    tools:
+      - ace_step_xl_infer
+      - diffrhythm_infer
+    prompt_template: >
+      Generate 10 royalty-free loops in {genre} at {bpm} BPM in {key}.
+      Distorted TR-808 cowbells, tape saturation, dry transients.
+
+  - name: KitMasteringEngineer
+    role: Slice, soft-clip, pitch-tag, ZIP lead magnet
+    tools:
+      - pedalboard_dsp
+      - librosa_pitch_tagger
+      - zip_packager
+    instructions: >
+      HPF melodic loops at 130 Hz. +4 dB tanh soft-clip on 808s/kicks.
+      Rename to {Type}_{Style}_{BPM}BPM_{RootNote}.wav
+
+  - name: PromoReelDirector
+    role: 15s vertical promo metadata (FFmpeg operator-run)
+    tools:
+      - ffmpeg_beat_mixer
+      - waveform_video_renderer
+    instructions: >
+      1080x1920 waveform + CTA. Human upload to TikTok/YouTube.

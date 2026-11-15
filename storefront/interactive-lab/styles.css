@@ -1,0 +1,44 @@
+:root {
+  --dl-bg: #0e0e12;
+  --dl-surface: #1a1a22;
+  --dl-pad: #2d2d38;
+  --dl-accent: #e8a83e;
+  --dl-muted: #9a9cad;
+  --dl-text: #ececf0;
+}
+
+.bg-dl-bg { background: var(--dl-bg); }
+.text-dl-text { color: var(--dl-text); }
+.text-dl-muted { color: var(--dl-muted); }
+.text-dl-accent { color: var(--dl-accent); }
+.border-dl-pad { border-color: var(--dl-pad); }
+
+.hardware-panel {
+  background: linear-gradient(180deg, #1a1a22 0%, #14141a 100%);
+  border: 1px solid #2d2d38;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#bassPulse {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 80%, rgba(255, 30, 86, 0.35), transparent 55%);
+  transition: transform 0.05s ease-out, opacity 0.08s;
+}
+
+.pad-btn {
+  border-radius: 12px;
+  padding: 1rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--dl-pad);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.pad-btn:active {
+  transform: scale(0.97);
+}

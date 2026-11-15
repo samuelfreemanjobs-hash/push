@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Underground Phonk &amp; Trap — Live Kit Tester | DiskLordz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-dl-bg text-dl-text min-h-screen flex items-center justify-center p-4">
+  <motion-shell class="hardware-panel w-full max-w-3xl rounded-2xl p-6 relative overflow-hidden">
+    <motion-canvas id="bassPulse" aria-hidden="true"></motion-canvas>
+
+    <div class="relative z-10 space-y-6">
+      <header>
+        <p class="text-dl-accent text-xs tracking-widest uppercase">Live tester</p>
+        <h1 class="text-xl font-semibold">2026 Underground Phonk &amp; Trap Engine</h1>
+        <p class="text-dl-muted text-sm">BPM <span id="bpmLabel">145</span> · synthesis demos · keys 1–4</p>
+      </header>
+
+      <div id="padGrid" class="grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+
+      <aside class="border border-dl-pad rounded-xl p-4 bg-black/40">
+        <h2 class="font-medium mb-1">Like how hard those 808s hit?</h2>
+        <p class="text-sm text-dl-muted mb-3">
+          VST3 plugin + royalty-free WAV/MIDI bundle. Checkout placeholder — human gate before Stripe live.
+        </p>
+        <a
+          id="ctaCheckout"
+          href="../index.html#tiers"
+          class="inline-block px-4 py-2 rounded-lg bg-dl-accent text-black font-semibold text-sm"
+        >Unlock Full Producer Bundle</a>
+      </aside>
+    </div>
+  </motion-shell>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

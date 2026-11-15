@@ -3,6 +3,7 @@
 | Path | Purpose |
 |------|---------|
 | **`index.html`** | Primary Tailwind landing — Web Audio audition, tiers, checkout placeholders |
+| **`interactive-lab/`** | GPU-style bass-reactive pad grid — keys 1–4, CTA to tiers |
 | `disklordz-lite/` | Token-based CSS variant (same funnel, smaller surface) |
 | `plugin-faceplate/` | WebView mock — `/impeccable distill` before optional `WebBrowserComponent` |
 

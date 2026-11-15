@@ -82,10 +82,10 @@ This doc maps MarkTechPost-style ideas to **this repo** and **honest sequencing*
 | **Engineering** | vgpu shaders + sample trigger from **your** WAV URLs (CDN); not generative unless Pillar 2 wired |
 | **Security** | Strix storefront XSS/redirect audit before public |
 
-**Phase 0:**
+**Phase 0:** ✅ scaffold
 
-1. `storefront/interactive-lab/` — static prototype: pads trigger pre-mastered WAVs (no WebGPU).
-2. Add vgpu frequency visual **after** pads work.
+1. `storefront/interactive-lab/` — Web Audio pads + bass-reactive CSS (vgpu-ready).
+2. Add `@vercel/vgpu` shader **after** demo WAV CDN paths are stable.
 3. `cursor-cloud-publish-app` or Vercel deploy — private preview first.
 
 **Reuse:** `dist_sample_pack/manifest.json`, `velocity_layers.json`.
