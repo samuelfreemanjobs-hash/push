@@ -5,7 +5,8 @@ One tree for **DSP benchmark → mastered WAV pack → APVTS presets + velocity 
 ```
 audio-factory/
 ├── factory_swarm.py       # AutoGen + Context7 (delegates to ms-agent-framework)
-├── dsp_harness/           # SaturationDSP.h + offline CLI (swarm-editable)
+├── src/dsp/VintageSaturator.h   # JUCE DSP (swarm-editable)
+├── dsp_harness/dsp_harness.cpp  # Offline 24-bit WAV CLI
 ├── raw_audio/
 ├── dist_sample_pack/
 └── dist_presets/
@@ -21,8 +22,10 @@ pip install soundfile numpy scipy
 ## Windows
 
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_USE_MONOREPO_JUCE=ON
 cmake --build build --config Release --target dsp_harness
+
+.\build\dsp_harness_artefacts\Release\dsp_harness.exe raw_audio\test_loop.wav dist_sample_pack\test_out.wav 0.65
 
 $env:OPENAI_API_KEY = "..."
 # optional: $env:CONTEXT7_API_KEY = "..."

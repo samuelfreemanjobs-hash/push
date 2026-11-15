@@ -14,7 +14,7 @@ from scipy.fft import rfft, rfftfreq
 
 FACTORY_ROOT: Path = Path(".").resolve()
 
-DSP_HEADER_REL = "dsp_harness/SaturationDSP.h"
+DSP_HEADER_REL = "src/dsp/VintageSaturator.h"
 ALLOWED_DSP_HEADER = frozenset({DSP_HEADER_REL})
 
 
@@ -29,14 +29,14 @@ def _resolve_under_factory(relative_path: str) -> Path | None:
 
 
 def _find_harness_exe() -> Path | None:
-    candidates = [
-        FACTORY_ROOT / "build" / "Release" / "dsp_harness.exe",
-        FACTORY_ROOT / "build" / "dsp_harness" / "Release" / "dsp_harness.exe",
-        FACTORY_ROOT / "build" / "dsp_harness",
-    ]
-    for c in candidates:
-        if c.is_file():
-            return c
+    build = FACTORY_ROOT / "build"
+    preferred = build / "dsp_harness_artefacts" / "Release" / "dsp_harness.exe"
+    if preferred.is_file():
+        return preferred
+    if build.is_dir():
+        for exe in sorted(build.glob("**/dsp_harness.exe")):
+            if exe.is_file():
+                return exe
     return None
 
 
@@ -50,7 +50,18 @@ def _configure_cmake_if_needed() -> str | None:
         return "Error: dsp_harness build requires Windows MSVC."
 
     cfg = subprocess.run(
-        ["cmake", "-S", ".", "-B", "build", "-G", "Visual Studio 17 2022", "-A", "x64"],
+        [
+            "cmake",
+            "-S",
+            ".",
+            "-B",
+            "build",
+            "-G",
+            "Visual Studio 17 2022",
+            "-A",
+            "x64",
+            "-DDLZ_USE_MONOREPO_JUCE=ON",
+        ],
         cwd=FACTORY_ROOT,
         capture_output=True,
         text=True,
@@ -65,7 +76,7 @@ def _configure_cmake_if_needed() -> str | None:
 
 
 def update_and_compile_dsp(cpp_header_path: str, new_code: str) -> str:
-    """Write SaturationDSP.h and build dsp_harness (Windows MSVC)."""
+    """Write VintageSaturator.h and build dsp_harness (Windows MSVC)."""
     if cpp_header_path.replace("\\", "/") not in ALLOWED_DSP_HEADER:
         return f"Error: Only {DSP_HEADER_REL} may be edited."
     if len(new_code) > 120_000:
@@ -255,7 +266,49 @@ def generate_velocity_layer_map() -> str:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "velocity_layers.json"
     out_path.write_text(json.dumps(layers, indent=2), encoding="utf-8")
-    return f"VELOCITY_MAP_SAVED: {len(manifest)} samples → {out_path.name}"
+
+    xml_msg = generate_drum_sample_map_xml()
+    if xml_msg.startswith("Error"):
+        return f"VELOCITY_MAP_SAVED: {out_path.name}; {xml_msg}"
+
+    return f"{xml_msg} | VELOCITY_JSON: {out_path.name}"
+
+
+def generate_drum_sample_map_xml(pack_name: str = "AudioFactoryPack") -> str:
+    """Emit DrumSampleMap.xml (velocity layers + round-robin) for VST3 sample mapping."""
+    manifest_path = FACTORY_ROOT / "dist_sample_pack" / "manifest.json"
+    if not manifest_path.is_file():
+        return "Error: manifest.json missing."
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    role_midi = {"808": 36, "Kick": 36, "Snare": 38, "Hat": 42}
+    rr_index: dict[str, int] = {}
+
+    root = ET.Element("DrumSampleMap", name=pack_name, version="1")
+    for entry in manifest:
+        role = entry.get("role", "Kick")
+        midi = str(role_midi.get(role, 36))
+        rr = rr_index.get(role, 0)
+        rr_index[role] = rr + 1
+
+        ET.SubElement(
+            root,
+            "Sample",
+            path=entry["file"],
+            midiNote=midi,
+            velocityMin="1",
+            velocityMax="127",
+            roundRobin=str(rr),
+            roundRobinGroup=role,
+        )
+
+    out_dir = FACTORY_ROOT / "dist_presets"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "DrumSampleMap.xml"
+    ET.indent(root, space="  ")
+    tree = ET.ElementTree(root)
+    tree.write(out_path, encoding="unicode", xml_declaration=True)
+    return f"SAMPLE_MAP_XML_SAVED: {len(manifest)} pads → {out_path.name}"
 
 
 def read_factory_manifest() -> str:

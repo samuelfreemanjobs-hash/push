@@ -76,7 +76,7 @@ async def main_async(task: str, max_turns: int) -> None:
             tools=[factory.update_and_compile_dsp, factory.benchmark_dsp_audio],
             system_message=(
                 "DSP engineer. Context7 for juce::dsp before suggesting JUCE upgrades. "
-                "Only edit dsp_harness/SaturationDSP.h via update_and_compile_dsp. "
+                "Only edit src/dsp/VintageSaturator.h via update_and_compile_dsp. "
                 "Target warm 12-bit punch: crest_factor_db 6.5–9.5, spectral_centroid_hz < 2200 "
                 "at drive 0.65 on raw_audio/test_loop.wav."
             ),
@@ -99,6 +99,7 @@ async def main_async(task: str, max_turns: int) -> None:
             tools=[
                 factory.write_and_validate_vst_preset,
                 factory.generate_velocity_layer_map,
+                factory.generate_drum_sample_map_xml,
                 factory.read_factory_manifest,
             ],
             system_message=(
@@ -106,7 +107,8 @@ async def main_async(task: str, max_turns: int) -> None:
                 + preset_ids
                 + ". Root <Parameters> with <PARAM id=\"...\" value=\"...\"/>. "
                 "Save 3 presets (Memphis_94_Crunch, Atlanta_808_Knock, Clean_Studio_Punch). "
-                "Then generate_velocity_layer_map. End with ALL_FACTORIES_COMPLETE."
+                "Then generate_velocity_layer_map (JSON + DrumSampleMap.xml). "
+                "End with ALL_FACTORIES_COMPLETE."
             ),
         )
 
