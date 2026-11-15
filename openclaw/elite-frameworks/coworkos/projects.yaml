@@ -1,0 +1,31 @@
+# CoworkOS — long-running DiskLordz program board
+version: 1
+programs:
+  - id: starter-cpp-ship
+    status: active
+    owner: human
+    agents: [dev, review]
+    milestones:
+      - pluginval_gate_green
+      - storefront_tripwire_live
+    helix_tags: [vst, ship-path]
+
+  - id: neural-phonk-vst-lab
+    status: opt-in
+    owner: dev
+    agents: [dev, drum-lead]
+    spec: disklordz-ralph/labs/gpu-inference/README.md
+    egm_required: true
+    milestones:
+      - trt_thread_rt_audit
+      - editor_panel_wired
+    gui_smoke_last_pass: null
+
+  - id: trap-phonk-factory
+    status: opt-in
+    owner: drum-lead
+    agents: [drum-lead, drum-pack, drum-qc]
+    harness: deepseek-harness/harness_manifest.yaml
+    milestones:
+      - nightly_zip_drop
+      - promo_reel_template

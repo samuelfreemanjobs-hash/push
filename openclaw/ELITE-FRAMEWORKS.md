@@ -34,3 +34,9 @@ Gemini Flash + skills + `disklordz-agent-stack` = no Hermes required. See `diskl
 ## Registry
 
 `agents/REGISTRY.yaml` lists every elite/subagent and skill allowlist.
+
+## Fourteen-framework composition (EGM, MCode, Waza, …)
+
+Implemented under **`openclaw/elite-frameworks/`** — manifest, runnable EGM duel, Waza pytest evals, TokenEconomizer pruner, Helix seed graph, OpenDuet gates.
+
+Operator doc: `docs/dev/elite-frameworks-implementation.md`

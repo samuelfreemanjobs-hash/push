@@ -1,0 +1,22 @@
+# TokenEconomizer — per-agent context budgets (lines of handoff text, not LLM tokens).
+defaults:
+  max_handoff_lines: 120
+  max_spec_words: 2500
+  strip_patterns:
+    - "^\\s*```.*?```\\s*$"
+    - "^\\s*#+\\s*Table of contents.*"
+
+panes:
+  DSP_Architect:
+    allow_paths:
+      - disklordz-ralph/vst/**
+      - disklordz-ralph/labs/gpu-inference/**
+    deny_globs:
+      - "**/node_modules/**"
+      - "**/build/**"
+  Factory_Runner:
+    allow_paths:
+      - disklordz-ralph/factory/**
+      - disklordz-ralph/business/trap-phonk-factory/**
+  QA_And_Release_Gate:
+    max_log_tail_lines: 40

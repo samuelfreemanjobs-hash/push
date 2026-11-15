@@ -1,6 +1,30 @@
 # GPU inference lab (TensorRT Model Connect) — R&D only
 
-**Not** linked to `starter-cpp` ship path. Commercial model license required before any SKU claims.
+## Goal
+
+Generate 8-second stereo phonk/trap loops via local TensorRT **off the audio thread**, with factory WAV fallback when no GPU engine is loaded.
+
+## Scope
+
+- Headers: `include/NeuralLoopGeneratorThread.h`, `TrtAudioRunner.h`
+- Prototype host: `vst/templates/drumkit-plugin` or separate plugin ID
+- Operator-side engine export (ACE-Step XL or licensed checkpoint)
+
+## Non-goals
+
+- Not linked to `starter-cpp` Lite ship path
+- No cloud inference in RT or UI hot paths
+- No SKU/marketing claims until commercial model license is recorded
+
+## Architecture
+
+UI / `PluginEditor` → `triggerGeneration()` → `NeuralLoopGeneratorThread` → `TrtAudioRunner` → atomic ready flag → playback buffer read from `processBlock()` (copy only).
+
+## RT safety
+
+- **Never** call TensorRT inside `processBlock()`.
+- Worker: `juce::Thread` only; preallocated `AudioBuffer`; `std::atomic<bool>` handoff.
+- REA: no CUDA sync on audio thread.
 
 ## Step A — Export engine (operator Windows + CUDA)
 
@@ -14,19 +38,24 @@ Adjust `sm_XX` for target GPU. Store `.trt` under `%ProgramData%\DiskLordz\engin
 
 ## Step B — JUCE contract
 
-- **Never** call TensorRT inside `processBlock()`.
-- Use `NeuralLoopGeneratorThread` (see `include/NeuralLoopGeneratorThread.h`) on `juce::Thread`.
-- Playback: lock-free handoff via `std::atomic<bool>` + preallocated `AudioBuffer`.
-- **CPU fallback:** ship 8-bar WAV stems in `Assets/FactoryFallback/` when `TrtAudioRunner::isLoaded()` is false.
+- Use `NeuralLoopGeneratorThread` on `juce::Thread` (see `include/NeuralLoopGeneratorThread.h`).
+- **CPU fallback:** 8-bar WAV stems in `Assets/FactoryFallback/` when `TrtAudioRunner::isLoaded()` is false.
 
-## Integration target
+## Acceptance
 
-Prototype host: `vst/templates/drumkit-plugin` or separate product `DiskLordz Neural Phonk` (new plugin ID).
+- [ ] EGM duel pass: `python openclaw/elite-frameworks/egm/run_spec_duel.py --spec <this file>`
+- [ ] Waza eval green after editor wiring
+- [ ] pluginval with thread stress
+- [ ] Offline latency < 8s for 8-bar gen on RTX-class GPU (operator benchmark)
 
-## QA
+## Test plan
 
-- pluginval with thread stress
-- Offline latency benchmark (target: < 8s for 8-bar gen on RTX class GPU)
-- REA: verify no CUDA sync on audio thread
+- pluginval thread stress + REA audit of `processBlock`
+- Manual: trigger gen while audio plays — no xruns
+- Fallback path when `.trt` missing
 
-See `docs/plans/ai-native-growth-roadmap.md`.
+## Rollout
+
+Opt-in lab SKU only; document engine path in installer; Helix node `spec:neural-trt-thread` updated on merge.
+
+Commercial model license required before any SKU claims. See `docs/plans/ai-native-growth-roadmap.md`.

@@ -26,6 +26,7 @@ Aligned with `disklordz-ralph/STACK-4-LAYER.md` and `STACK-FROZEN.md` (no new ag
 | **24/7 configurator + merch scheduler** | Agno AgentOS (opt-in) | `docs/dev/agno-revenue-engine-opt-in.md`, `business/agno-revenue-engine/` |
 | **Long-horizon launch orchestration** | Deep Agents / LangGraph (opt-in) | `docs/dev/deep-agents-opt-in.md`, `business/deep-agents/` |
 | **AI-native VST + storefront vision (planning)** | TensorRT / demo engines / vgpu — not ship | `docs/plans/ai-native-growth-roadmap.md` |
+| **Elite frameworks meta-layer (EGM, Waza, Helix, …)** | Static evals + opt-in harnesses | `docs/dev/elite-frameworks-implementation.md`, `openclaw/elite-frameworks/` |
 
 ---
 

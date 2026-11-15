@@ -31,6 +31,8 @@ agents:
       - vst_factory
       - flow_github_actions
       - security_sentinel
+      - egm_spec_challenge
+      - waza_agent_eval
 
   mkt:
     tier: elite
@@ -88,7 +90,7 @@ agents:
     tier: elite
     role: Pre-merge reviewer
     workspace: workspace-review
-    skills: [github_pr_review, security_sentinel, vst_factory]
+    skills: [github_pr_review, security_sentinel, vst_factory, egm_spec_challenge, waza_agent_eval]
 
   code:
     tier: elite

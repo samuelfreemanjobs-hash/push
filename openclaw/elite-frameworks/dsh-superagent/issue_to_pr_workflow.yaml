@@ -1,0 +1,25 @@
+# Prototype: GitHub issue → cloud agent branch → PR (human merge only).
+name: issue_to_pr
+gates:
+  - openduet/approval_gates.yaml#issue_to_pr
+
+steps:
+  - id: triage
+    agent: sage
+    skill: delegate_subagent
+    output: issue_labels + scope_one_liner
+  - id: egm_spec
+    agent: dev
+    skill: egm_spec_challenge
+    when: scope touches vst/ or labs/gpu-inference/
+  - id: implement
+    agent: dev
+    skill: overnight_branch
+    constraints:
+      - mcode/CHECKLIST-vst-dsp.md
+  - id: waza_verify
+    run: openclaw/elite-frameworks/waza/evals/run_all.sh
+  - id: pr_draft
+    agent: review
+    skill: github_pr_review
+    human_merge: true

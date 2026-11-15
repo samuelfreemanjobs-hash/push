@@ -1,0 +1,109 @@
+# Elite frameworks map — opt-in overlays on STACK-FROZEN Lite path.
+# Set enabled: true only after operator reads linked doc and accepts scope.
+version: 1
+
+frameworks:
+  egm:
+    name: Elephant-Goldfish Model
+    purpose: Complementary agents develop and challenge specifications before C++ work
+    enabled: true
+    entry: openclaw/elite-frameworks/egm/run_spec_duel.py
+    skill: egm_spec_challenge
+    doc: docs/dev/elite-frameworks-implementation.md#egm
+
+  mcode:
+    name: MCode Stack
+    purpose: Standardize Cursor/Claude coding workflows, checklists, reviews
+    enabled: true
+    entry: openclaw/elite-frameworks/mcode/
+    doc: docs/dev/elite-frameworks-implementation.md#mcode
+
+  waza:
+    name: Waza
+    purpose: Repeatable agent evals — verify fixes and artifacts, not vibes
+    enabled: true
+    entry: openclaw/elite-frameworks/waza/evals/run_all.sh
+    skill: waza_agent_eval
+    doc: docs/dev/elite-frameworks-implementation.md#waza
+
+  token_economizer:
+    name: TokenEconomizer
+    purpose: Context budgets and handoff pruning for multi-pane agent work
+    enabled: true
+    entry: openclaw/elite-frameworks/token-economizer/prune_handoff.py
+    config: openclaw/elite-frameworks/token-economizer/context_budget.yaml
+    doc: docs/dev/elite-frameworks-implementation.md#token-economizer
+
+  agent_desktop:
+    name: Agent Desktop
+    purpose: Native GUI smoke tests (faceplate + optional desktop automation)
+    enabled: true
+    entry: storefront/plugin-faceplate/
+    doc: docs/dev/elite-frameworks-implementation.md#agent-desktop
+
+  deepseek_harness:
+    name: DeepSeek Harness
+    purpose: Plugin-based multi-agent runtime for VST factory bots
+    enabled: false
+    entry: disklordz-ralph/business/trap-phonk-factory/hermes_roster.yaml
+    manifest: openclaw/elite-frameworks/deepseek-harness/harness_manifest.yaml
+    doc: docs/dev/trap-phonk-factory-opt-in.md
+
+  dsh_superagent:
+    name: dsh-superagent-prototype
+    purpose: Issue → branch → PR automation prototype
+    enabled: false
+    entry: openclaw/elite-frameworks/dsh-superagent/issue_to_pr_workflow.yaml
+    doc: docs/dev/elite-frameworks-implementation.md#dsh-superagent
+
+  coworkos:
+    name: CoworkOS
+    purpose: Human/AI coordination on long-running multi-plugin programs
+    enabled: true
+    entry: openclaw/elite-frameworks/coworkos/projects.yaml
+    doc: docs/dev/elite-frameworks-implementation.md#coworkos
+
+  openbot:
+    name: OpenBot
+    purpose: Self-hosted coworkers with isolated workspaces
+    enabled: true
+    entry: openclaw/elite-frameworks/openbot/workspaces.template.yaml
+    registry: openclaw/agents/REGISTRY.yaml
+    doc: openclaw/SETUP-TELEGRAM.md
+
+  helix_foundry:
+    name: Helix Foundry
+    purpose: Queryable knowledge graph for specs, bugs, DSP research
+    enabled: true
+    entry: openclaw/elite-frameworks/helix-foundry/seed/vst-helix-seed.json
+    schema: openclaw/elite-frameworks/helix-foundry/schema/knowledge-graph.schema.json
+    doc: docs/dev/elite-frameworks-implementation.md#helix-foundry
+
+  document_parsing_protocol:
+    name: Document Parsing Protocol
+    purpose: Ingest manuals and SDK PDFs into structured chunks
+    enabled: true
+    entry: openclaw/elite-frameworks/document-parsing-protocol/ingest.py
+    doc: docs/dev/elite-frameworks-implementation.md#document-parsing-protocol
+
+  reverse_engineer_anything:
+    name: Reverse Engineer Anything
+    purpose: Legal format research logs — no ship-path cracking
+    enabled: true
+    entry: openclaw/elite-frameworks/reverse-engineer-anything/LEGAL.md
+    doc: docs/dev/elite-frameworks-implementation.md#reverse-engineer-anything
+
+  vercel_security_review:
+    name: Vercel Security Review
+    purpose: Security checklist for customer portal and Next storefront
+    enabled: true
+    entry: openclaw/elite-frameworks/vercel-security-review/checklist-storefront.md
+    cursor_task: security-review
+    doc: docs/dev/elite-frameworks-implementation.md#vercel-security-review
+
+  openduet:
+    name: OpenDuet
+    purpose: Approval-based autonomous workflows
+    enabled: true
+    entry: openclaw/elite-frameworks/openduet/approval_gates.yaml
+    doc: docs/dev/elite-frameworks-implementation.md#openduet

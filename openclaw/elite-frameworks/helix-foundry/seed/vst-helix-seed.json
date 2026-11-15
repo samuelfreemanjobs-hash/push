@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "spec:neural-trt-thread",
+      "kind": "spec",
+      "title": "GPU inference off audio thread",
+      "path": "disklordz-ralph/labs/gpu-inference/README.md",
+      "tags": ["vst", "rt-safety", "tensorrt"]
+    },
+    {
+      "id": "dsp:soft-clip",
+      "kind": "dsp_ref",
+      "title": "tanh soft-clip mastering",
+      "path": "disklordz-ralph/business/trap-phonk-factory/kit_mastering.py",
+      "tags": ["phonk", "808"]
+    },
+    {
+      "id": "product:storefront",
+      "kind": "product_doc",
+      "title": "Producer Next.js storefront",
+      "path": "storefront/producer-storefront/app/page.tsx",
+      "tags": ["conversion", "lead-magnet"]
+    },
+    {
+      "id": "test:waza",
+      "kind": "test",
+      "title": "Waza artifact evals",
+      "path": "openclaw/elite-frameworks/waza/evals/run_all.sh",
+      "tags": ["agents"]
+    },
+    {
+      "id": "skill:egm",
+      "kind": "skill",
+      "title": "EGM spec challenge",
+      "path": "openclaw/skills/shared/egm_spec_challenge/SKILL.md",
+      "tags": ["spec"]
+    }
+  ],
+  "edges": [
+    { "from": "spec:neural-trt-thread", "to": "dsp:soft-clip", "rel": "references" },
+    { "from": "test:waza", "to": "spec:neural-trt-thread", "rel": "tests" },
+    { "from": "product:storefront", "to": "dsp:soft-clip", "rel": "references" },
+    { "from": "skill:egm", "to": "spec:neural-trt-thread", "rel": "documents" }
+  ]
+}
