@@ -2,6 +2,8 @@
 
 Prefix default on Telegram. Delegate to **dev**, **mkt**, **biz**, **drum-lead**, **review**.
 
+Use skills: `$delegate_subagent`, `$disk_ops_snapshot`, `$telegram_brief` before long answers. Identity: `SOUL.md`.
+
 ## Morning brief (cron)
 
 Sources (read-only):

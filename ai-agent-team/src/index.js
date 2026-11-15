@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { listEliteAgents } from "./agents/eliteRoster.js";
+import { skillLineForAgent } from "./agents/openclawSkillsMap.js";
 import { modelForAgent, resolveAgent } from "./agents/router.js";
 import { ollamaGenerate, shouldUseOllama } from "./providers/ollama.js";
 
@@ -39,7 +40,7 @@ app.get("/api/agents", (_req, res) => {
 });
 
 async function generateReply(agent, userMessage) {
-  const system = agent.system;
+  const system = agent.system + skillLineForAgent(agent.id);
   const prompt = userMessage;
 
   if (shouldUseOllama(agent.id)) {

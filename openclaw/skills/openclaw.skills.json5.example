@@ -1,0 +1,54 @@
+// Merge into ~/.openclaw/openclaw.json
+{
+  skills: {
+    load: {
+      extraDirs: ["/absolute/path/to/push/openclaw/skills/shared"],
+      watch: true,
+    },
+    entries: {
+      disk_ops_snapshot: { enabled: true },
+      kit_spec_grok: { enabled: true },
+      overnight_branch: { enabled: true },
+      github_pr_review: { enabled: true },
+    },
+  },
+  agents: {
+    defaults: {
+      skills: ["disk_ops_snapshot", "telegram_brief", "memory_vault"],
+    },
+    entries: {
+      sage: {
+        skills: [
+          "disk_ops_snapshot",
+          "vault_kanban",
+          "launch_gates",
+          "delegate_subagent",
+          "telegram_brief",
+          "memory_vault",
+          "friday_kpi",
+        ],
+      },
+      dev: {
+        skills: [
+          "overnight_branch",
+          "github_pr_review",
+          "vst_factory",
+          "flow_github_actions",
+          "security_sentinel",
+        ],
+      },
+      mkt: {
+        skills: ["research_consume", "tripwire_positioning", "telegram_brief"],
+      },
+      biz: {
+        skills: ["launch_gates", "friday_kpi", "tripwire_positioning", "vault_kanban"],
+      },
+      "drum-lead": {
+        skills: ["kit_spec_grok", "tripwire_qc", "tripwire_pack", "disk_ops_snapshot"],
+      },
+      review: {
+        skills: ["github_pr_review", "security_sentinel", "vst_factory"],
+      },
+    },
+  },
+}

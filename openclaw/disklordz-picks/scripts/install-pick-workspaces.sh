@@ -10,7 +10,13 @@ for id in sage dev mkt biz; do
   mkdir -p "$dest"
   [[ -f "$ROOT/workspaces/$id/AGENTS.md" ]] && cp "$ROOT/workspaces/$id/AGENTS.md" "$dest/AGENTS.md"
   [[ -f "$ROOT/workspaces/$id/OVERNIGHT.md" ]] && cp "$ROOT/workspaces/$id/OVERNIGHT.md" "$dest/OVERNIGHT.md"
+  [[ -f "$ROOT/workspaces/$id/SOUL.md" ]] && cp "$ROOT/workspaces/$id/SOUL.md" "$dest/SOUL.md"
 done
+
+SKILLS_ROOT="$(cd "$ROOT/../skills" && pwd)"
+if [[ -x "$SKILLS_ROOT/install-skills.sh" ]]; then
+  OPENCLAW_STATE_DIR="$STATE" "$SKILLS_ROOT/install-skills.sh"
+fi
 
 echo "Shared memory dir: $SHARED (clone vault docs here)"
 echo "Hermes handoff dir: $STATE/hermes-out/"
