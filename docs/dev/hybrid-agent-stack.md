@@ -21,6 +21,7 @@ Aligned with `disklordz-ralph/STACK-4-LAYER.md` and `STACK-FROZEN.md` (no new ag
 | **Video / social launch** | OpenMontage (opt-in) | `docs/dev/openmontage.md` |
 | **Security red team** | Strix (opt-in) | `docs/dev/strix-opt-in.md`, `docs/security/strix-vst-audit-playbook.md` |
 | **PRD & web scaffold** | MetaGPT (opt-in) | `docs/dev/metagpt-opt-in.md`, `docs/plans/metagpt-license-portal-blueprint.md` |
+| **Python multi-agent + MCP (ops/R&D)** | AutoGen / MS Agent Framework (opt-in) | `docs/dev/ms-agent-framework-opt-in.md`, `business/ms-agent-framework/` |
 
 ---
 

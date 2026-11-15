@@ -73,6 +73,7 @@ On kit win: /disk-export-kit. Recall Mem0 via memory-curator (or Ruflo memory if
 | OpenMontage | `docs/dev/openmontage.md` |
 | Mem0 agent memory | `docs/dev/mem0-opt-in.md`, `.claude/agents/memory-curator.md` |
 | Release packaging | `docs/dev/commercial-release-packaging.md`, `business/release/package_release.py` |
+| AutoGen / Agent Framework (opt-in) | `docs/dev/ms-agent-framework-opt-in.md` |
 | Strix / MetaGPT / OpenBB | `docs/dev/*-opt-in.md` |
 
 ---
