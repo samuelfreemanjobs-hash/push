@@ -32,6 +32,13 @@ Server must sign **exact** `payload` UTF-8 bytes (compact JSON). Python referenc
 
 `disklordz-ralph/business/reference/sign_license_payload.py`
 
+Generate a dev keypair (operator machine):
+
+```powershell
+pip install pynacl
+python disklordz-ralph/business/reference/generate_ed25519_keypair.py
+```
+
 ---
 
 ## Audio thread

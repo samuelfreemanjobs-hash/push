@@ -12,6 +12,8 @@
 
 ## Windows setup
 
+Troubleshooting: `docs/dev/juce-cmake-windows-troubleshooting.md` · `scripts/vst-diagnose-windows-build.ps1`
+
 ```powershell
 cd disklordz-ralph\vst\starter-cpp
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDLZ_AUTORESEARCH=ON -DDLZ_AUTORESEARCH_VST=ON

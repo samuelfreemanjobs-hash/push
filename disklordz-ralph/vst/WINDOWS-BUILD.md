@@ -1,5 +1,7 @@
 # Windows MSVC build — REA + FL Studio
 
+**First build failing?** Run `..\..\..\scripts\vst-diagnose-windows-build.ps1` and read `docs/dev/juce-cmake-windows-troubleshooting.md`.
+
 ## Configure & build
 
 ```powershell
