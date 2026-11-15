@@ -6,6 +6,7 @@ Source-only in git; **WAV demos are not committed** (unpack zips locally to `Ass
 |--------|------------|----------------|
 | `drum-forge-v4/` | DiskLordz_Drum_Forge_4 | **Layer 2** — Python synthesis kit factory (memphis, drift_phonk, southern_trap). Output → `Assets/Releases/`. |
 | `autoresearch/` | (in-repo) | **R&D** — Karpathy-style `drum_engine.py` + immutable `evaluate.py` overnight loop. |
+| `audio-factory/` | (in-repo) | **Opt-in** — unified AutoGen pipeline: DSP harness → mastered packs → APVTS presets. |
 | `cinematic-dsp/` | Cinematic_DSP_CPP + 35 WAVs | **R&D** — procedural cinematic moods; offline renderer + proto JUCE processor. |
 | `drum-architecture/` | Drum_Design_Architecture | **R&D** — `ThreeLayerDrum.h` + master meta prompt. |
 | `../luger-drum-lab/` | (in-repo) | **R&D** — Luger DNA on three-layer; M1 tests + optional JUCE. |

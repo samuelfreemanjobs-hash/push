@@ -37,6 +37,25 @@ Copy-Item disklordz-ralph\business\ms-agent-framework\.env.example disklordz-ral
 
 ---
 
+## Unified Audio Factory (DSP + packs + presets)
+
+Single AutoGen loop under `disklordz-ralph/factory/audio-factory/`:
+
+```powershell
+$env:OPENAI_API_KEY = "..."
+.\scripts\run-audio-factory-swarm.ps1
+```
+
+| Stage | Agent | Output |
+|-------|--------|--------|
+| DSP | `DSP_Loop_Engineer` | `build/Release/dsp_harness.exe`, benchmark JSON |
+| Packs | `Sample_Pack_Factory` | `dist_sample_pack/` + `manifest.json` |
+| Presets | `VST_Preset_Factory` | `dist_presets/*.xml`, `velocity_layers.json` |
+
+Drop WAVs in `raw_audio/` (see `raw_audio/README.md`). Termination: `ALL_FACTORIES_COMPLETE`.
+
+---
+
 ## Autonomous VST R&D swarm (3-agent loop)
 
 Round-robin: **DSP_Architect** (Context7 + file write) → **RT_Audio_Auditor** → **Build_QA_Runner** (cmake + pluginval).

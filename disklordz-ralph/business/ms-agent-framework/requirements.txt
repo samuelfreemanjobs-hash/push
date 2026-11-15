@@ -1,5 +1,8 @@
 # AutoGen 0.4 stack (maintenance mode upstream — see docs/dev/ms-agent-framework-opt-in.md)
 autogen-agentchat>=0.4.0
 autogen-ext[openai,mcp]>=0.4.0
+soundfile>=0.12.1
+numpy>=1.26.0
+scipy>=1.11.0
 # Microsoft Agent Framework (greenfield production):
 # pip install agent-framework

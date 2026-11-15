@@ -1,0 +1,4 @@
+build/
+dist_sample_pack/**/*.wav
+dist_presets/*.xml
+.raw_audio_local/
