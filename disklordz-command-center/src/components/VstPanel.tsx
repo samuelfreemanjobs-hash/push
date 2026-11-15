@@ -1,16 +1,18 @@
-import { VST_FLEET } from "../data/seed";
+import { useOpsData } from "../context/OpsDataContext";
+import type { VstSku } from "../data/types";
 
-function ciBadge(status: (typeof VST_FLEET)[number]["ciStatus"]): string {
+function ciBadge(status: VstSku["ciStatus"]): string {
   return `ci ci--${status}`;
 }
 
 export function VstPanel() {
+  const { snapshot } = useOpsData();
+
   return (
     <section className="panel">
       <h2 className="panel__title">VST fleet — Instruments main</h2>
       <p className="panel__desc">
-        HEAD <code>a1a1c298</code> (2026-11-15). Latest dedicated workflow run per
-        SKU where available.
+        Latest dedicated workflow run per SKU from GitHub Actions (automated sync).
       </p>
       <table className="data-table">
         <thead>
@@ -23,7 +25,7 @@ export function VstPanel() {
           </tr>
         </thead>
         <tbody>
-          {VST_FLEET.map((row) => (
+          {snapshot.vstFleet.map((row) => (
             <tr key={row.name}>
               <td>{row.name}</td>
               <td>

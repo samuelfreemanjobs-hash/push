@@ -1,51 +1,63 @@
 import { useCallback, useEffect, useState } from "react";
+import { useOpsData } from "../context/OpsDataContext";
 import type { KanbanCard, KanbanColumnId } from "../data/types";
-import { KANBAN_CARDS, KANBAN_WIP } from "../data/seed";
 
-const STORAGE_KEY = "dlz-command-center-kanban-v1";
+const STORAGE_KEY = "dlz-command-center-kanban-overrides-v1";
 
-function loadCards(): KanbanCard[] {
+type Overrides = Record<string, KanbanColumnId>;
+
+function loadOverrides(): Overrides {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return KANBAN_CARDS;
-    const parsed = JSON.parse(raw) as KanbanCard[];
-    const seedIds = new Set(KANBAN_CARDS.map((c) => c.id));
-    const merged = [...parsed.filter((c) => seedIds.has(c.id))];
-    for (const seed of KANBAN_CARDS) {
-      if (!merged.some((c) => c.id === seed.id)) merged.push(seed);
-    }
-    return merged;
+    if (!raw) return {};
+    return JSON.parse(raw) as Overrides;
   } catch {
-    return KANBAN_CARDS;
+    return {};
   }
 }
 
+function applyOverrides(cards: KanbanCard[], overrides: Overrides): KanbanCard[] {
+  return cards.map((c) =>
+    overrides[c.id] ? { ...c, column: overrides[c.id] } : c,
+  );
+}
+
 export function useKanbanStorage() {
-  const [cards, setCards] = useState<KanbanCard[]>(() => loadCards());
+  const { snapshot } = useOpsData();
+  const baseline = snapshot.kanban.cards;
+  const wipLimit = snapshot.kanban.wipLimit;
+
+  const [overrides, setOverrides] = useState<Overrides>(() => loadOverrides());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-  }, [cards]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+  }, [overrides]);
 
-  const moveCard = useCallback((cardId: string, column: KanbanColumnId) => {
-    setCards((prev) => {
-      const inProgress = prev.filter((c) => c.column === "in_progress").length;
-      const target = prev.find((c) => c.id === cardId);
-      if (
-        column === "in_progress" &&
-        target?.column !== "in_progress" &&
-        inProgress >= KANBAN_WIP
-      ) {
-        return prev;
-      }
-      return prev.map((c) => (c.id === cardId ? { ...c, column } : c));
-    });
-  }, []);
+  const cards = applyOverrides(baseline, overrides);
+
+  const moveCard = useCallback(
+    (cardId: string, column: KanbanColumnId) => {
+      setOverrides((prev) => {
+        const merged = applyOverrides(baseline, prev);
+        const inProgress = merged.filter((c) => c.column === "in_progress").length;
+        const target = merged.find((c) => c.id === cardId);
+        if (
+          column === "in_progress" &&
+          target?.column !== "in_progress" &&
+          inProgress >= wipLimit
+        ) {
+          return prev;
+        }
+        return { ...prev, [cardId]: column };
+      });
+    },
+    [baseline, wipLimit],
+  );
 
   const resetKanban = useCallback(() => {
-    setCards(KANBAN_CARDS);
+    setOverrides({});
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  return { cards, moveCard, resetKanban, wipLimit: KANBAN_WIP };
+  return { cards, moveCard, resetKanban, wipLimit };
 }

@@ -1,5 +1,6 @@
 export type SectionId =
   | "overview"
+  | "automations"
   | "kanban"
   | "tripwire"
   | "gates"

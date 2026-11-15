@@ -1,27 +1,33 @@
-import { AGENT_LANES, KANBAN_CARDS, NORTH_STAR, REPOS, VST_FLEET } from "../data/seed";
+import { useOpsData } from "../context/OpsDataContext";
 
 export function Overview() {
-  const p0Ready = KANBAN_CARDS.filter(
+  const { snapshot, brief, agentLanes, repos, loading } = useOpsData();
+  const cards = snapshot.kanban.cards;
+
+  const p0Open = cards.filter(
     (c) => c.priority === "P0" && c.column !== "done",
   ).length;
-  const blocked = KANBAN_CARDS.filter((c) => c.column === "blocked").length;
-  const vstGreen = VST_FLEET.filter((v) => v.ciStatus === "success").length;
-  const vstRed = VST_FLEET.filter(
+  const blocked = cards.filter((c) => c.column === "blocked").length;
+  const vstGreen = snapshot.vstFleet.filter((v) => v.ciStatus === "success").length;
+  const vstRed = snapshot.vstFleet.filter(
     (v) => v.ciStatus === "failure" || v.ciStatus === "stale",
   ).length;
+
+  const snapshotDate = new Date(snapshot.generatedAt).toLocaleDateString();
+  const topActions = brief.actions.filter((a) => a.severity === "critical").slice(0, 3);
 
   return (
     <div className="stack">
       <section className="hero">
         <h1 className="hero__title">DiskLordz Command Center</h1>
         <p className="hero__lead">
-          Single pane for solo founder ops: revenue path (tripwire), factory
-          throughput, vault merge queue, and agent lanes. Data snapshot: 2026-11-15.
+          Automated solo founder ops: live vault kanban ingest, GitHub CI, merge
+          queue, and daily brief. {loading ? "Refreshing…" : `Snapshot ${snapshotDate}.`}
         </p>
       </section>
 
       <div className="stat-grid">
-        <StatCard label="Open P0 cards" value={String(p0Ready)} />
+        <StatCard label="Open P0 cards" value={String(p0Open)} />
         <StatCard label="Blocked cards" value={String(blocked)} />
         <StatCard label="VST CI green" value={`${vstGreen} SKUs`} />
         <StatCard label="CI attention" value={`${vstRed} items`} />
@@ -29,9 +35,9 @@ export function Overview() {
 
       <section className="panel">
         <h2 className="panel__title">North star</h2>
-        <p className="panel__desc mono">{NORTH_STAR.metric}</p>
+        <p className="panel__desc mono">{snapshot.northStar.metric}</p>
         <ul className="tag-list">
-          {NORTH_STAR.supporting.map((s) => (
+          {snapshot.northStar.supporting.map((s) => (
             <li key={s} className="tag">
               {s}
             </li>
@@ -40,9 +46,24 @@ export function Overview() {
       </section>
 
       <section className="panel">
+        <h2 className="panel__title">Automated focus (now)</h2>
+        {topActions.length > 0 ? (
+          <ol className="numbered">
+            {topActions.map((a) => (
+              <li key={a.id}>
+                <strong>{a.lane}</strong> — {a.title}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="panel__desc">No critical automated items — check Kanban ready column.</p>
+        )}
+      </section>
+
+      <section className="panel">
         <h2 className="panel__title">Source repos</h2>
         <ul className="repo-list">
-          {REPOS.map((r) => (
+          {repos.map((r) => (
             <li key={r.href}>
               <a href={r.href} target="_blank" rel="noreferrer">
                 {r.label}
@@ -53,22 +74,6 @@ export function Overview() {
         </ul>
       </section>
 
-      <section className="panel">
-        <h2 className="panel__title">Today&apos;s three (from SAGE meeting)</h2>
-        <ol className="numbered">
-          <li>
-            <strong>DRUM</strong> — QC tripwire WAV pack → launch assets
-          </li>
-          <li>
-            <strong>SAAS</strong> — Apply tripwire checkout to Instruments +
-            Vercel env
-          </li>
-          <li>
-            <strong>FLOW</strong> — Push integration bundle (Instruments PAT)
-          </li>
-        </ol>
-      </section>
-
       <section className="panel panel--compact">
         <h2 className="panel__title">Active agent lanes (sample)</h2>
         <p className="panel__desc">
@@ -76,7 +81,7 @@ export function Overview() {
           lanes).
         </p>
         <div className="agent-chips">
-          {AGENT_LANES.slice(0, 6).map((a) => (
+          {agentLanes.slice(0, 6).map((a) => (
             <span key={a.id} className="agent-chip">
               {a.prefix}: {a.displayName}
             </span>

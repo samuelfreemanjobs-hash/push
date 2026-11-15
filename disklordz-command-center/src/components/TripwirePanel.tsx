@@ -1,6 +1,7 @@
-import { TRIPWIRE_STEPS } from "../data/seed";
+import { useOpsData } from "../context/OpsDataContext";
+import type { TripwireStep } from "../data/types";
 
-function statusClass(status: (typeof TRIPWIRE_STEPS)[number]["status"]): string {
+function statusClass(status: TripwireStep["status"]): string {
   switch (status) {
     case "done":
       return "step step--done";
@@ -8,12 +9,19 @@ function statusClass(status: (typeof TRIPWIRE_STEPS)[number]["status"]): string 
       return "step step--active";
     case "blocked":
       return "step step--blocked";
-    default:
+    case "queued":
       return "step step--queued";
+    default: {
+      const _exhaustive: never = status;
+      void _exhaustive;
+      return "step step--queued";
+    }
   }
 }
 
 export function TripwirePanel() {
+  const { snapshot } = useOpsData();
+
   return (
     <section className="panel">
       <header className="panel__head">
@@ -26,7 +34,7 @@ export function TripwirePanel() {
         </div>
       </header>
       <ol className="tripwire-steps">
-        {TRIPWIRE_STEPS.map((step) => (
+        {snapshot.tripwireSteps.map((step) => (
           <li key={step.id} className={statusClass(step.status)}>
             <div className="step__head">
               <span className="step__id">{step.id}</span>

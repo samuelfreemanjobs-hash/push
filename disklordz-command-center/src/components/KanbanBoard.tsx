@@ -40,12 +40,12 @@ export function KanbanBoard({
         <div>
           <h2 className="panel__title">Solo kanban</h2>
           <p className="panel__desc">
-            Synced from vault <code>agents/disklordz/kanban.yaml</code>. Moves
-            persist in this browser. WIP limit: {wipLimit} ({inProgress} active).
+            Live from vault via automated sync. Column overrides persist in this
+            browser only. WIP limit: {wipLimit} ({inProgress} active).
           </p>
         </div>
         <button type="button" className="btn btn--ghost" onClick={onReset}>
-          Reset to vault seed
+          Clear local overrides
         </button>
       </header>
       <div className="kanban">

@@ -1,0 +1,49 @@
+name: DiskLordz ops snapshot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - sandbox/b287b60e-ecbc-40c4-ac41--k5zj
+      - cursor/disklordz-command-center-634f
+    paths:
+      - "disklordz-command-center/**"
+      - ".github/workflows/disklordz-ops-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install sync deps
+        working-directory: disklordz-command-center
+        run: npm ci
+
+      - name: Sync vault + GitHub → ops-snapshot.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISKDLORDZ_OPS_TOKEN: ${{ secrets.DISKDLORDZ_OPS_TOKEN }}
+        working-directory: disklordz-command-center
+        run: npm run sync:ops
+
+      - name: Commit snapshot if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add disklordz-command-center/public/ops-snapshot.json
+          if git diff --staged --quiet; then
+            echo "No snapshot changes"
+          else
+            git commit -m "chore(ops): refresh DiskLordz command center snapshot"
+            git push
+          fi

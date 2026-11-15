@@ -1,6 +1,8 @@
-import { VAULT_PRS } from "../data/seed";
+import { useOpsData } from "../context/OpsDataContext";
 
 export function VaultPanel() {
+  const { snapshot } = useOpsData();
+  const vaultPrs = snapshot.vaultPrs;
   return (
     <section className="panel">
       <h2 className="panel__title">Vault PR merge plan</h2>
@@ -18,7 +20,7 @@ export function VaultPanel() {
           </tr>
         </thead>
         <tbody>
-          {VAULT_PRS.map((pr) => (
+          {vaultPrs.map((pr) => (
             <tr key={pr.number}>
               <td>
                 <a href={pr.url} target="_blank" rel="noreferrer">

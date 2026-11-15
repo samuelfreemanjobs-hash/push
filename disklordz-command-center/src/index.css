@@ -586,6 +586,63 @@ code {
   color: var(--text-muted);
 }
 
+.sync-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sync-meta__warn {
+  color: var(--warn);
+}
+
+.action-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.action-item {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.action-item strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.action-item p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.action-item__lane {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-right: 0.5rem;
+}
+
+.action-item--critical {
+  border-left: 3px solid var(--danger);
+}
+
+.action-item--warn {
+  border-left: 3px solid var(--warn);
+}
+
+.action-item--info {
+  border-left: 3px solid var(--border);
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
