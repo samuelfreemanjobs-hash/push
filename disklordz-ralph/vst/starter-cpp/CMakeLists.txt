@@ -68,6 +68,8 @@ juce_add_plugin(DetroitPhonkTrapMaker
     FORMATS VST3 Standalone
     PRODUCT_NAME "Detroit Phonk Trap Maker")
 
+target_include_directories(DetroitPhonkTrapMaker PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 target_sources(DetroitPhonkTrapMaker
     PRIVATE
         Source/PluginProcessor.cpp

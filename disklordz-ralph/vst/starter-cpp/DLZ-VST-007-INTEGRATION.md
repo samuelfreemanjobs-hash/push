@@ -2,7 +2,7 @@
 
 Copy headers from this folder into `C:\Dev\DetroitPhonkTrapVST3\Source\`.
 
-**Fast path:** copy all of `starter-cpp/*.h` plus `integration/Source/PluginProcessor.*` and `PluginEditor.*` into your plugin `Source/` (adjust include paths to match your tree).
+**Fast path:** use `starter-cpp/Source/` as your plugin `Source/` (CMake in `starter-cpp/CMakeLists.txt` expects this layout) and keep pad headers in `starter-cpp/`.
 
 ## 1. Editor inherits drag host
 

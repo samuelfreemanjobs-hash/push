@@ -1,9 +1,13 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "../../PadSampleStore.h"
+#include "../PadSampleStore.h"
+#include <memory>
+#include <vector>
 
-/** Minimal processor stub for DLZ-VST-007 — extend with TrapCoreDSP voices in your Windows tree. */
+class Trap808Voice;
+class TrapSamplerSound;
+
 class DetroitPhonkTrapAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -11,7 +15,7 @@ public:
     ~DetroitPhonkTrapAudioProcessor() override = default;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
-    void releaseResources() override {}
+    void releaseResources() override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
@@ -30,16 +34,22 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
-    juce::AudioBuffer<float>* getPadBuffer(int i) { return padStore.getPadBufferForDrag(i); }
+    juce::AudioProcessorValueTreeState& getApvts() { return apvts; }
+    juce::AudioBuffer<float>* getPadBuffer(int i);
     double getPadSampleRate(int i) const { return padStore.getPadSampleRate(i); }
     juce::MidiMessageSequence getPadMidiPattern(int i) const { return padStore.getPadMidiPattern(i); }
-    void loadUserWavOntoPad(int i, const juce::File& f) { padStore.loadUserWavOntoPad(i, f); }
+    void loadUserWavOntoPad(int i, const juce::File& f);
+    void ensurePadPreview(int pad);
     double getLastKnownBpm() const { return padStore.getLastKnownBpm(); }
 
     PadSampleStore padStore;
 
 private:
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
     juce::AudioProcessorValueTreeState apvts;
+    juce::Synthesiser synthesiser;
+    std::vector<std::unique_ptr<TrapSamplerSound>> sounds;
     double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DetroitPhonkTrapAudioProcessor)

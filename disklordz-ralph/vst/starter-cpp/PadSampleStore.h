@@ -43,6 +43,19 @@ public:
         return pads[static_cast<size_t>(padIndex)].midiPattern;
     }
 
+    void assignPadBuffer(int padIndex, const juce::AudioBuffer<float>& buffer, double sampleRate)
+    {
+        jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+        if (!isPositiveAndBelow(padIndex, kMaxPads) || buffer.getNumSamples() == 0)
+            return;
+
+        PadData next;
+        next.sampleRate = sampleRate;
+        next.buffer.makeCopyOf(buffer);
+        pads[static_cast<size_t>(padIndex)] = std::move(next);
+        publishPadSnapshot(padIndex);
+    }
+
     void loadUserWavOntoPad(int padIndex, const juce::File& wavFile)
     {
         jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
