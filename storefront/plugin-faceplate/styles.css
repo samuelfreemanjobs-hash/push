@@ -1,0 +1,27 @@
+@import url("../disklordz-lite/styles.css");
+body { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.plugin-chrome {
+  width: min(640px, 100%);
+  background: var(--dl-surface);
+  border-radius: 12px;
+  padding: 16px 20px 20px;
+  box-shadow: inset 0 1px 0 #ffffff08;
+}
+.brand { font-size: 11px; letter-spacing: 0.14em; color: var(--dl-muted); margin-bottom: 12px; }
+.pads { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.pad {
+  min-height: 80px;
+  border: none;
+  border-radius: 8px;
+  background: var(--dl-pad);
+  color: var(--dl-text);
+  font-weight: 700;
+  box-shadow: 0 3px 0 #00000066;
+}
+.pad:active { transform: scale(0.97); background: var(--dl-pad-active); color: #0e0e12; }
+.macros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; font-size: 10px; text-transform: uppercase; color: var(--dl-muted); }
+.bar { height: 6px; background: #32323b; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--dl-accent); }
+.bar.led i { background: #ff5c4d; }
+.export-chips { display: flex; gap: 8px; margin: 16px 0 0; justify-content: center; }
+.chip { font-size: 11px; padding: 6px 10px; border: 1px solid var(--dl-muted); border-radius: 999px; color: var(--dl-muted); }

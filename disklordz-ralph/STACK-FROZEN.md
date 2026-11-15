@@ -17,6 +17,8 @@
 
 **Gemini CLI** — `npm i -g @google/gemini-cli`; root `GEMINI.md` + `docs/dev/gemini-cli.md`. Catalog audits, multimodal refs, SEO copy — **not** primary C++ IDE.
 
+**Impeccable** — `npx impeccable install`; `PRODUCT.md`, `DESIGN.md`, `storefront/` — UI polish only; native JUCE editor ships v1 Lite.
+
 ## Opt-in Agency personas (not new tools)
 
 Six `.cursor/rules/agency-*.mdc` files — summon with `@agency-*` in Agent chat only (`alwaysApply: false`). Runbook: `docs/launch/NEXUS-RUNBOOK.md`.

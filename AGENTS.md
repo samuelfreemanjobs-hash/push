@@ -58,6 +58,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Gemini CLI (optional, terminal):** root `GEMINI.md` — kit audits & release copy; `docs/dev/gemini-cli.md`. Do not use for MSVC/pluginval; Cursor owns C++.
 
+**Impeccable (optional, UI):** `docs/dev/impeccable.md`, `PRODUCT.md`, `DESIGN.md`, `storefront/` — landing + WebView mocks; not `TrapCoreDSP`.
+
 ## 5. Sample pack & asset pipeline
 
 - **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
