@@ -185,6 +185,20 @@
       "passes": false
     },
     {
+      "id": "DLZ-VST-009",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "Multi-output bus routing (kick, 808, hats) for Suite tier",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/PluginProcessor.cpp", "CMakeLists.txt"],
+      "doc": "disklordz-ralph/vst/LICENSING.md",
+      "verify": {
+        "platform": "windows",
+        "cmd": ".\\tools\\pluginval\\pluginval.exe --strictness-level 5 --validate \".\\build\\DetroitPhonkTrapMaker_artefacts\\Release\\VST3\\Detroit Phonk Trap Maker.vst3\""
+      },
+      "passes": false
+    },
+    {
       "id": "DLZ-SAAS-001",
       "lane": "SAAS",
       "priority": "P0",

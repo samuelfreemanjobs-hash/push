@@ -11,4 +11,4 @@ Files are **header-heavy** and JUCE 8–oriented. Wire into your `juce_add_plugi
 
 REA: scoped audits only — see `../REA-WORKFLOW.md`. After RelWithDebInfo build, run §3A; save to `../rea-notes/`.
 
-License tiers: `../LICENSING.md`.
+License tiers: `../LICENSING.md`. Agent workflow: `../AGENTS.md`, `../SUPERPOWERS.md`.

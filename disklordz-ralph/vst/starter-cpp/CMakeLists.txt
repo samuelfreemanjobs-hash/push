@@ -55,6 +55,10 @@ target_compile_definitions(DetroitPhonkTrapMaker
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=1)
 
+if(TARGET TrapCoreDSP)
+  target_link_libraries(DetroitPhonkTrapMaker PRIVATE TrapCoreDSP)
+endif()
+
 target_link_libraries(DetroitPhonkTrapMaker
     PRIVATE
         juce::juce_audio_utils
