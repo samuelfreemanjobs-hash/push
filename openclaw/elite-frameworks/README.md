@@ -4,6 +4,7 @@ Composable **opt-in** patterns for VST architecture, agent quality, and long-hor
 
 | Start here | File |
 |------------|------|
+| **VST factory (your 3 priorities)** | `docs/dev/vst-development-factory.md` |
 | Operator map (all 14) | `docs/dev/elite-frameworks-implementation.md` |
 | Enable flags | `manifest.yaml` |
 | OpenClaw agents | `../agents/REGISTRY.yaml` |
