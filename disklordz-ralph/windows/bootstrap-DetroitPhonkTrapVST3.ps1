@@ -33,5 +33,11 @@ if (-not (Test-Path "tools\pluginval\pluginval.exe")) {
 }
 
 Copy-Item "$PushRoot\disklordz-ralph\windows\VST-PROMPT-SNIPPET.md" "VST-LINK.md" -Force
-Write-Host "VST workspace ready at $VstRoot. Business Ralph: $PushRoot\disklordz-ralph\ralph.ps1" -ForegroundColor Green
+$Starter = Join-Path $PushRoot "disklordz-ralph\vst\starter-cpp"
+if (-not (Test-Path "CMakeLists.txt") -and (Test-Path (Join-Path $Starter "CMakeLists.txt"))) {
+  Copy-Item (Join-Path $Starter "CMakeLists.txt") "CMakeLists.txt" -Force
+  Copy-Item "$Starter\*.h" "Source\" -Force -ErrorAction SilentlyContinue
+}
+Write-Host "VST workspace ready at $VstRoot. Build: disklordz-ralph\vst\WINDOWS-BUILD.md" -ForegroundColor Green
+Write-Host "Business Ralph: $PushRoot\disklordz-ralph\ralph.ps1" -ForegroundColor Green
 Write-Host "Next: implement DLZ-VST-001 in this folder; verify via push repo: node disklordz-ralph/scripts/verify-story.mjs DLZ-VST-001" -ForegroundColor Cyan
