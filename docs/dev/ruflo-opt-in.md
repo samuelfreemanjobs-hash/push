@@ -2,7 +2,7 @@
 
 [Ruflo](https://github.com/ruvnet/ruflo) coordinates Claude Code swarms locally. **DiskLordz treats Ruflo as opt-in** — it does not replace Cursor Cloud Agents, OpenClaw, or `STACK-FROZEN.md`.
 
-**Already in repo:** swarm roles in root **`CLAUDE.md`**, autoresearch harnesses, pluginval gate.
+**Already in repo:** swarm roles in root **`CLAUDE.md`**, **`.claude/settings.json.example`**, **`docs/dev/ruflo-launch.md`**, `scripts/ruflo-seed-memory.ps1`, `scripts/export_kit_velocities.ps1`, autoresearch harnesses, pluginval gate.
 
 ---
 
