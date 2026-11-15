@@ -37,6 +37,28 @@ Copy-Item disklordz-ralph\business\ms-agent-framework\.env.example disklordz-ral
 
 ---
 
+## Autonomous VST R&D swarm (3-agent loop)
+
+Round-robin: **DSP_Architect** (Context7 + file write) → **RT_Audio_Auditor** → **Build_QA_Runner** (cmake + pluginval).
+
+```powershell
+$env:DLZ_REPO_ROOT = "C:\Dev\push"
+$env:OPENAI_API_KEY = "..."
+.\scripts\run-vst-rd-swarm.ps1 "Implement velocity-sensitive drive with SmoothedValue"
+```
+
+| Safeguard | Behavior |
+|-----------|----------|
+| Write sandbox | Only `src/`, `ui/`, `CMakeLists.txt` under `DLZ_VST_PROJECT_ROOT` |
+| Default target | `vst/templates/webview-drum-starter` (not ship `starter-cpp`) |
+| Ship tree | Blocked unless `DLZ_SWARM_ALLOW_SHIP=1` + human review |
+| Turn cap | `DLZ_SWARM_MAX_TURNS` (default 15) |
+| pluginval | `PLUGINVAL_STRICTNESS` default **8** (set **10** for torture mode) |
+
+**Overnight:** run from Task Scheduler; **commit manually** — swarm does not `git push`.
+
+---
+
 ## Run internal R&D team (Context7 + MCP)
 
 ```powershell

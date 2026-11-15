@@ -81,6 +81,8 @@ Agent workflow after C++ edits:
 3. `pluginval` at `PLUGINVAL_STRICTNESS`
 4. Only then update PR summary
 
+**AutoGen closed loop (operator):** `vst_rd_swarm.py` / `scripts/run-vst-rd-swarm.ps1` — see `docs/dev/ms-agent-framework-opt-in.md`.
+
 ### C. Index proprietary DSP
 
 Keep shared blocks in-repo (`TrapCoreDSP`, `ThreeLayerDrum`, lab `*Identity.h`). External private repo can be added to Context7 when you have one.

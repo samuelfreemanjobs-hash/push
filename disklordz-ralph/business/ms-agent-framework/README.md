@@ -6,6 +6,7 @@ Python orchestration **opt-in** — customer concierge + VST R&D pair with Conte
 |--------|---------|
 | `run_customer_concierge.py` | Triage → kit/MIDI vs VST support (no MCP required) |
 | `run_vst_rd_team.py` | VST engineer + RT reviewer with Context7 `McpWorkbench` |
+| `vst_rd_swarm.py` | **Closed loop:** Architect + RT auditor + cmake/pluginval (Windows) |
 
 Setup: `../../docs/dev/ms-agent-framework-opt-in.md`  
 Install: `../../../scripts/install-ms-agent-framework.ps1`
