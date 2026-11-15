@@ -42,44 +42,19 @@ Source/
 
 ### 1. Soft clipper & saturation (P0)
 
-Phonk/trap: harmonic density on kick/808 bus before limiter.
+Phonk/trap: harmonic density on kick/808 bus **with 2x oversampling** to limit aliasing on cowbell/808 harmonics.
 
-```cpp
-// dsp/SoftClipper.h — RT-safe, no heap
-struct SoftClipper {
-    float drive = 2.5f;      // APVTS: "kickDrive"
-    float mix = 1.0f;
-
-    float process(float x) const noexcept {
-        const float y = x * drive;
-        const float clipped = y / (1.0f + std::abs(y)); // soft knee
-        return x + (clipped - x) * mix;
-    }
-};
-```
-
-Optional tape stage: one-pole low-pass + gentle asymmetry on positive peaks (read chowdsp tape snippets for structure, implement inline).
+Production starter: `starter-cpp/TrapSoftClipChain.h` (`WaveShaper` + `Oversampling`, prepare in `prepareToPlay` only).
 
 **Beat competitors:** ROMplers ship macro “distortion” knobs; you expose **post-808 clip** tuned for FL clipping workflow.
 
 ### 2. Monophonic glide & pitch envelope (P0)
 
-808 slides: single active kick voice, pitch portamento in semitones per block.
+808 slides: `SmoothedValue<double, Multiplicative>` on **playback step** (pitch ratio), legato retrigger.
 
-```cpp
-// dsp/Glide808.h
-struct Glide808 {
-    float currentHz = 55.0f;
-    float targetHz = 55.0f;
-    float glideMs = 120.0f;
-    double sampleRate = 44100.0;
+Production starter: `starter-cpp/Trap808Voice.h` + `TrapSamplerSound.h`.
 
-    void setTargetMidiNote(int note, float bendSemitones = 0.f) noexcept;
-    float nextPitchRatio(); // call once per sample in kick voice
-};
-```
-
-MIDI: pitch wheel / slide notes (legato retrigger). **FL note:** wrapper pitch bend default 2 st — document user setting 12 st in FL MIDI settings.
+MIDI: pitch wheel; **FL note:** wrapper pitch bend default 2 st — set **12 st** (`FL-STUDIO-QA.md`).
 
 ### 3. Hi-hat choke & roll engine (P1)
 
