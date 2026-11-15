@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  PLUGINVAL_TAG: v1.0.3
+  PLUGINVAL_TAG: v1.0.4
 
 jobs:
   windows:
@@ -48,21 +48,16 @@ jobs:
           name: MemphisDust-VST3-Windows-x64
           path: memphis-dust/build/MemphisDust_artefacts/Release/VST3
 
-      - name: Build pluginval
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          git clone --depth 1 --branch "$PLUGINVAL_TAG" --recurse-submodules --shallow-submodules \
-            https://github.com/Tracktion/pluginval.git /tmp/pluginval
-          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build /tmp/pluginval/build --config Release -j 4
-
       - name: PluginVal (strictness 5)
         run: |
           $vst3 = "build/MemphisDust_artefacts/Release/VST3/Memphis Dust.vst3"
           if (-not (Test-Path $vst3)) { throw "VST3 not found: $vst3" }
-          $pluginval = Get-ChildItem -Path /tmp/pluginval/build -Recurse -Filter pluginval.exe | Select-Object -First 1
-          & $pluginval.FullName --validate-in-process --strictness-level 5 --output-dir $env:RUNNER_TEMP\pluginval-out $vst3
+          $zip = "$env:RUNNER_TEMP\pluginval.zip"
+          $bin = "$env:RUNNER_TEMP\pluginval-bin"
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/download/$env:PLUGINVAL_TAG/pluginval_Windows.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $bin -Force
+          $pluginval = Get-ChildItem -Path $bin -Recurse -Filter pluginval.exe | Select-Object -First 1
+          & $pluginval.FullName --validate-in-process --strictness-level 5 --output-dir "$env:RUNNER_TEMP\pluginval-out" $vst3
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package zip (release bundle)

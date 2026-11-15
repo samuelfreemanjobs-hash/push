@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PLUGINVAL_TAG: v1.0.3
+  PLUGINVAL_TAG: v1.0.4
 
 jobs:
   build:
@@ -71,14 +71,13 @@ jobs:
             drum-machine/build/KitForge_artefacts/Release/Standalone
 
       - name: Build pluginval
-        if: runner.os == 'Linux' || runner.os == 'Windows'
-        shell: bash
+        if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}
         run: |
           git clone --depth 1 --branch "$PLUGINVAL_TAG" --recurse-submodules --shallow-submodules \
             https://github.com/Tracktion/pluginval.git /tmp/pluginval
-          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build /tmp/pluginval/build --config Release -j 4
+          cmake -S /tmp/pluginval -B /tmp/pluginval/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+          cmake --build /tmp/pluginval/build -j 4
 
       - name: PluginVal (strictness 5, Linux)
         if: runner.os == 'Linux'
@@ -97,6 +96,10 @@ jobs:
         run: |
           $vst3 = Get-ChildItem build/KitForge_artefacts/Release/VST3 -Filter *.vst3 | Select-Object -First 1
           if (-not $vst3) { throw "KitForge VST3 bundle not found" }
-          $pluginval = Get-ChildItem -Path /tmp/pluginval/build -Recurse -Filter pluginval.exe | Select-Object -First 1
-          & $pluginval.FullName --validate-in-process --strictness-level 5 --output-dir $env:RUNNER_TEMP\pluginval-out $vst3.FullName
+          $zip = "$env:RUNNER_TEMP\pluginval.zip"
+          $bin = "$env:RUNNER_TEMP\pluginval-bin"
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/download/$env:PLUGINVAL_TAG/pluginval_Windows.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $bin -Force
+          $pluginval = Get-ChildItem -Path $bin -Recurse -Filter pluginval.exe | Select-Object -First 1
+          & $pluginval.FullName --validate-in-process --strictness-level 5 --output-dir "$env:RUNNER_TEMP\pluginval-out" $vst3.FullName
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
