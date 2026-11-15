@@ -1,73 +1,46 @@
-# Autoresearch playbook — DiskLordz drum voice sandbox
+# Drum Machine Autoresearch Agent
 
-You are an **overnight DSP autoresearch agent**. Your job is to lower `eval_loss` in `results.tsv` by editing **one file only**.
+You are an autonomous DSP engineer optimizing `drum_engine.py` to match the acoustic character of **`target.wav`** (or `targets/reference_808.wav` as fallback).
 
-## Goal (default run)
+## Rules & constraints
 
-Minimize weighted **eval loss** when synthesizing a **Southern trap 808** at 49 Hz (C1-ish), MIDI velocities **32, 64, 100, 127**, sample rate **48000 Hz**, while:
+1. **Editable file:** You may **ONLY** modify `drum_engine.py`. Do **NOT** touch `evaluate.py`, `target.wav`, or `program.md`.
+2. **Safety:** Output must have no NaNs/Inf, **|DC| ≤ 0.005** mean, peak **≤ 1.0**, and `evaluate.py` must finish in **under 5 seconds**.
+3. **API contract:** Keep `synthesize_kick(num_samples, sample_rate, velocity) -> np.ndarray` with shape `(num_samples,)`.
 
-- Render time for the full harness stays **under 60 ms** (Python offline harness; **5 ms** budget applies only after C++ port — see `docs/dev/autoresearch-cpp.md`).
-- Peak stays **≤ 0.999 linear** (no digital clip penalty).
-- **No NaN/Inf**, **|DC| < 1e-4** after high-pass check.
+## Workflow loop
 
-Optional timbre anchor: if `targets/reference_808.wav` exists, minimize multi-resolution **STFT magnitude distance** to that file. If missing, optimize **band-energy profile** toward sub-heavy BR 808 (see `evaluate.py` → `PROFILE_808`).
+1. Run `python evaluate.py` to read `TOTAL_LOSS`.
+2. Read `drum_engine.py` and `results.tsv`.
+3. Form **one** DSP hypothesis (pitch envelope, asymmetric waveshape, transient click, sub saturation, etc.).
+4. Edit `drum_engine.py`, run `python evaluate.py` again.
+5. Append to `results.tsv` — columns: `iteration`, `loss`, `status`, `description`.
+6. **Decision:**
+   - If `TOTAL_LOSS` beats your best in `results.tsv` (status `kept`), run  
+     `git add drum_engine.py && git commit -m "Improve loss to <score>: <short description>"`.
+   - If worse, equal, or error → `git checkout -- drum_engine.py` and log `status=reverted`.
+7. Repeat until interrupted.
 
-## Files you may edit
+On improvement, `evaluate.py` writes **`best_attempt.wav`** (listen while the loop runs).
 
-| Allowed | Forbidden |
-|---------|-----------|
-| `drum_engine.py` | `evaluate.py`, `program.md`, `run_harness.py`, anything under `../` |
+## DiskLordz paths
 
-## Files you read
-
-- `program.md` (this file)
-- `results.tsv` — past runs; **never** duplicate a failed hypothesis without change
-- `drum_engine.py` — current synthesis
-- Latest line of `results.tsv` for `best_loss`
-
-## Harness command (do not modify)
-
-```bash
-cd disklordz-ralph/factory/autoresearch
-python run_harness.py
+```powershell
+cd disklordz-ralph\factory\autoresearch
+pip install -r requirements.txt
+copy C:\path\to\your_808.wav target.wav
+git init   # if this folder is not already in the parent repo
+python evaluate.py
 ```
 
-Prints one line: `eval_loss=<float>` plus JSON metrics on stderr.
-
-## Git discipline (Karpathy-style)
-
-1. Before first edit: `git status` must be clean on `drum_engine.py` or commit baseline.
-2. Run harness. Parse `eval_loss`.
-3. **If** `eval_loss < best_loss` in `results.tsv` **and** `safety_pass=1`:
-   - Append row to `results.tsv`
-   - `git add drum_engine.py results.tsv`
-   - `git commit -m "autoresearch: loss <value> — <one-line hypothesis>"`
-4. **Else** (worse loss, crash, or safety fail):
-   - `git checkout -- drum_engine.py`
-   - Log failure row with `kept=0` (append only, do not commit code)
-5. Hypothesize again. Target **50–100** iterations per session; small diffs beat rewrites.
+Agent prompt: *"Read program.md and run the autoresearch loop indefinitely."*
 
 ## Guardrails
 
-- **No new dependencies** in `drum_engine.py` beyond `numpy`.
-- **No file I/O** in `render_batch()` — evaluate owns I/O.
-- **No randomness** unless `seed` argument is honored (deterministic renders).
-- Do **not** claim real-time JUCE readiness from Python scores; C++ port is a separate milestone (`docs/dev/autoresearch-cpp.md`).
-- Respect `STACK-FROZEN.md`: autoresearch does **not** replace `TrapCoreDSP` until a human merges winners with Catch2.
+- No new pip dependencies inside `drum_engine.py` (numpy only).
+- Do not copy commercial ROM samples; **synthesis-only** targets.
+- Wins merge into `TrapCoreDSP` only after human review + Catch2 (`STACK-FROZEN.md`).
 
-## Hypothesis examples (good)
+## Multi-voice (later)
 
-- "Increase pitch sweep from 110→49 Hz in 18 ms; reduce THD by easing tanh drive at velocity < 80."
-- "Add 2-pole one-zero emphasis at 2.2 kHz on attack layer only; tune crest without raising sub THD."
-- "Asymmetric clip: softer positive knee to preserve 55 Hz fundamental at vel 127."
-
-## Hypothesis examples (bad)
-
-- "Rewrite entire engine as neural net."
-- "Copy TR-808 ROM tables from the internet."
-- "Edit evaluate.py to return 0.0."
-
-## When to stop
-
-- `best_loss` flat for **20** runs → change metric weighting in a **human** PR to `evaluate.py`, not in-agent.
-- Loss improves but sounds wrong by ear → operator drops a new `targets/reference_808.wav` from **their** TrapCoreDSP render and restarts.
+Kick-only for now. Snare/hat autoresearch = separate `target_snare.wav` + `synthesize_snare` in a future branch (do not expand scope until kick `TOTAL_LOSS` plateaus).

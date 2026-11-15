@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+target.wav
+best_attempt.wav
+.autoresearch_best.json
+renders/

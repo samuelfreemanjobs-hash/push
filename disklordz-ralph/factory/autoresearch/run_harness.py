@@ -1,16 +1,31 @@
 #!/usr/bin/env python3
-"""Single evaluation entry — updates results.tsv when invoked with --log."""
+"""Parse evaluate.py output; optional log to results.tsv."""
 
 from __future__ import annotations
 
 import argparse
 import csv
-import datetime as dt
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
-from evaluate import evaluate
-
 RESULTS = Path(__file__).resolve().parent / "results.tsv"
+
+
+def run_evaluate() -> tuple[float | None, str]:
+    proc = subprocess.run(
+        [sys.executable, "evaluate.py"],
+        cwd=RESULTS.parent,
+        capture_output=True,
+        text=True,
+    )
+    out = proc.stdout + proc.stderr
+    m = re.search(r"TOTAL_LOSS:\s*([0-9.]+)", out)
+    loss = float(m.group(1)) if m else None
+    print(out, end="" if out.endswith("\n") else "\n")
+    return loss, out
 
 
 def best_loss() -> float:
@@ -18,66 +33,49 @@ def best_loss() -> float:
         return float("inf")
     with RESULTS.open(newline="") as f:
         rows = list(csv.DictReader(f, delimiter="\t"))
-    if not rows:
-        return float("inf")
-    kept = [float(r["eval_loss"]) for r in rows if r.get("kept") == "1"]
+    kept = []
+    for r in rows:
+        if r.get("status") == "kept" and r.get("loss"):
+            try:
+                kept.append(float(r["loss"]))
+            except ValueError:
+                pass
     return min(kept) if kept else float("inf")
 
 
-def append_row(m: dict, hypothesis: str, kept: int) -> None:
-    write_header = not RESULTS.exists()
+def append_row(loss: float, status: str, description: str) -> None:
+    write_header = not RESULTS.exists() or RESULTS.stat().st_size < 8
     with RESULTS.open("a", newline="") as f:
-        w = csv.DictWriter(
-            f,
-            fieldnames=[
-                "run_id",
-                "timestamp",
-                "eval_loss",
-                "timbre",
-                "crest_factor",
-                "attack_ms",
-                "thd_ratio",
-                "render_ms",
-                "safety_pass",
-                "kept",
-                "hypothesis",
-            ],
-            delimiter="\t",
-        )
+        w = csv.DictWriter(f, fieldnames=["iteration", "loss", "status", "description"], delimiter="\t")
         if write_header:
             w.writeheader()
         w.writerow(
             {
-                "run_id": dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S"),
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-                "eval_loss": f"{m['eval_loss']:.6f}",
-                "timbre": f"{m['timbre']:.6f}",
-                "crest_factor": f"{m['crest_factor']:.4f}",
-                "attack_ms": f"{m['attack_ms']:.4f}",
-                "thd_ratio": f"{m['thd_ratio']:.4f}",
-                "render_ms": f"{m['render_ms']:.4f}",
-                "safety_pass": str(m["safety_pass"]),
-                "kept": str(kept),
-                "hypothesis": hypothesis[:500],
+                "iteration": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+                "loss": f"{loss:.6f}",
+                "status": status,
+                "description": description[:500],
             }
         )
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--log", action="store_true", help="Append to results.tsv")
-    ap.add_argument("--hypothesis", default="", help="Short description for log row")
-    ap.add_argument("--kept", type=int, choices=(0, 1), default=0)
+    ap.add_argument("--log", action="store_true")
+    ap.add_argument("--description", default="")
+    ap.add_argument("--status", default="kept", choices=("kept", "reverted", "fail"))
     args = ap.parse_args()
 
-    m = evaluate()
-    print(f"eval_loss={m['eval_loss']:.6f}")
+    loss, out = run_evaluate()
+    if loss is None or "ERROR:" in out:
+        if args.log:
+            append_row(9999.0, "fail", args.description or "evaluate error")
+        return 2
+
     print(f"best_loss={best_loss():.6f}")
-
     if args.log:
-        append_row(m, args.hypothesis, args.kept)
-
-    return 0 if m["safety_pass"] else 2
+        append_row(loss, args.status, args.description)
+    return 0
 
 
 if __name__ == "__main__":

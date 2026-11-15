@@ -1,11 +1,11 @@
 # Reference targets (optional)
 
-Drop **your** rendered reference here — do not commit copyrighted kit WAVs.
+Prefer **`../target.wav`** in the autoresearch folder (agent template default).
 
 | File | Use |
 |------|-----|
-| `reference_808.wav` | STFT timbre loss anchor (mono, 44.1k or 48k) |
+| `reference_808.wav` | Fallback if `target.wav` missing (44.1 kHz mono) |
 
-**Suggested source:** export from `TrapCoreDSP` / `starter-cpp` 808 voice or Louisiana Forge QC hit, 1–2 s, root C1.
+**Suggested source:** your own `TrapCoreDSP` / Forge render — not commercial kits.
 
-Without a reference, `evaluate.py` uses band-energy **PROFILE_808** only.
+Listen to progress: **`best_attempt.wav`** updates when `TOTAL_LOSS` improves.

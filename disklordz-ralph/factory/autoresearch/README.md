@@ -1,50 +1,53 @@
 # DiskLordz Autoresearch (Python)
 
-Karpathy-style **edit → score → keep/revert** loop for **offline** drum voice math. Fits **Drum Forge** and feeds winners into `TrapCoreDSP` manually (Catch2 required).
+Karpathy-style loop: edit **`drum_engine.py`** only → **`python evaluate.py`** → git commit or revert.
 
-## Layout
+## Minimal folder (standalone or in repo)
 
 | File | Role |
 |------|------|
-| `drum_engine.py` | **Agent sandbox** (only editable file) |
-| `evaluate.py` | **Immutable judge** — loss + safety |
+| `target.wav` | Reference kick/808 (you provide; gitignored) |
 | `program.md` | Agent system prompt |
-| `run_harness.py` | CLI + optional `results.tsv` log |
-| `results.tsv` | Experiment ledger |
+| `evaluate.py` | Immutable judge → `TOTAL_LOSS` |
+| `drum_engine.py` | Agent sandbox |
+| `results.tsv` | Experiment log |
 
-## Quick start (Windows)
+Also supported: `targets/reference_808.wav` if `target.wav` is absent.
+
+On each **improving** `TOTAL_LOSS`, `evaluate.py` writes **`best_attempt.wav`** for listening.
+
+## Quick start
 
 ```powershell
 cd disklordz-ralph\factory\autoresearch
 pip install -r requirements.txt
-python run_harness.py
+copy C:\exports\my_kick.wav target.wav
+python evaluate.py
 ```
 
-With reference timbre:
+```
+RENDER_TIME: 0.0412s
+SPECTRAL_LOSS: 1.234567
+ENVELOPE_LOSS: 0.045678
+TOTAL_LOSS: 1.462957
+```
+
+## Agent launch
+
+```
+Read program.md and start running the autoresearch loop indefinitely.
+```
+
+Optional wrapper:
 
 ```powershell
-copy C:\path\to\your_808_render.wav targets\reference_808.wav
-python run_harness.py
+python run_harness.py --log --status kept --description "asymmetric tanh knee"
 ```
 
-## Agent session (Cursor / Claude Code)
+## Multi-voice
 
-1. Open `program.md` as the task instruction.
-2. Loop: edit `drum_engine.py` → `python run_harness.py` → compare `eval_loss` to `best_loss` in `results.tsv`.
-3. On win: `git add drum_engine.py results.tsv` + commit; on loss: `git checkout -- drum_engine.py`.
+**Kick only** in this template. Snare/hat = separate targets + functions later (`synthesize_snare`, etc.).
 
-Log a row:
+## C++ port
 
-```powershell
-python run_harness.py --log --kept 1 --hypothesis "Asymmetric clip knee for vel 127"
-```
-
-## Loss ingredients
-
-See `evaluate.py`: STFT or profile timbre, crest/attack targets, THD on fundamental, DC/peak/time penalties.
-
-## C++ / JUCE path
-
-Real-time plugin autoresearch is **phase 2**: `docs/dev/autoresearch-cpp.md` — render harness + immutable C++ judge, same `program.md` discipline.
-
-**STACK-FROZEN:** do not block Lite VST ship on autoresearch merges.
+`docs/dev/autoresearch-cpp.md` — same playbook, offline JUCE render, 5 ms RT budget.
