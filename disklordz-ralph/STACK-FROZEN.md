@@ -23,6 +23,8 @@
 
 Six `.cursor/rules/agency-*.mdc` files — summon with `@agency-*` in Agent chat only (`alwaysApply: false`). Runbook: `docs/launch/NEXUS-RUNBOOK.md`.
 
+**Ruflo (Claude Code swarms)** — operator-local `npx ruflo@latest init`; roles in root `CLAUDE.md`; security `docs/dev/ruflo-opt-in.md`. Not required to ship Lite; trim default agent permissions after init.
+
 ## Out of stack (for now)
 
 - New MCP servers, agent frameworks, or meta-skills beyond Agency **rule files**

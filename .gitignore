@@ -1,0 +1,3 @@
+# Ruflo / Claude Code local (operator machine — do not commit secrets)
+.claude-flow/
+.claude/settings.local.json

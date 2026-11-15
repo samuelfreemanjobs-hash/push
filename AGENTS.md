@@ -1,6 +1,6 @@
 # AGENTS.md — DiskLordz (monorepo + Trap/Phonk JUCE)
 
-Cursor, Superpowers, Claude Code, and Ralph read this at session start.
+Cursor, Superpowers, Claude Code (see root **`CLAUDE.md`** for Ruflo swarms), and Ralph read this at session start.
 
 ## Monorepo lanes
 
