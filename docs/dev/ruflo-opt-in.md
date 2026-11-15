@@ -2,7 +2,7 @@
 
 [Ruflo](https://github.com/ruvnet/ruflo) coordinates Claude Code swarms locally. **DiskLordz treats Ruflo as opt-in** — it does not replace Cursor Cloud Agents, OpenClaw, or `STACK-FROZEN.md`.
 
-**Already in repo:** swarm roles in root **`CLAUDE.md`**, **`.claude/settings.json.example`**, **`docs/dev/ruflo-launch.md`**, `scripts/ruflo-seed-memory.ps1`, `scripts/export_kit_velocities.ps1`, autoresearch harnesses, pluginval gate.
+**Already in repo:** short root **`CLAUDE.md`**, **`.claude/`** (rules, agents, commands, skills per [claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) — **`docs/dev/claude-code-best-practice.md`**), **`.claude/settings.json.example`**, **`docs/dev/ruflo-launch.md`**, `scripts/ruflo-seed-memory.ps1`, `scripts/export_kit_velocities.ps1`, autoresearch harnesses, pluginval gate.
 
 ---
 
@@ -29,7 +29,13 @@ Creates `.claude/`, `.claude-flow/`, registers MCP. **Review** generated files b
 npx ruflo@latest swarm init --topology hierarchical --max-agents 6 --strategy specialized
 ```
 
-Paste swarm role table from **`CLAUDE.md`** into Ruflo agent definitions; **trim** default plugins per [community security notes](https://skillsllm.com/skill/ruflo).
+Mirror subagents from **`.claude/agents/*.md`** (or the summary in **`CLAUDE.md`**) into Ruflo agent definitions; **trim** default plugins per [community security notes](https://skillsllm.com/skill/ruflo).
+
+Claude Code operators can use repo slash commands without Ruflo:
+
+- `/disk-autoresearch-cpp`
+- `/disk-pluginval-gate`
+- `/disk-export-kit`
 
 ---
 
