@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireIdentity } from "../../../cursor/identity";
 import { hasTelegramToken, tgApi } from "@/lib/telegram";
+import { webhookSecret } from "@/lib/webhook-secret";
 
 export async function POST(req: NextRequest) {
+  const identity = await requireIdentity(req);
+  if (identity instanceof Response) {
+    return identity;
+  }
+
   if (!hasTelegramToken()) {
     return NextResponse.json({
       ok: false,
@@ -27,7 +34,15 @@ export async function POST(req: NextRequest) {
         { command: "help", description: "Prefix list" },
       ],
     });
-    await tgApi("setWebhook", { url: webhookUrl, allowed_updates: ["message"] });
+    const secret = webhookSecret();
+    if (!secret) {
+      throw new Error("Could not derive webhook secret");
+    }
+    await tgApi("setWebhook", {
+      url: webhookUrl,
+      allowed_updates: ["message"],
+      secret_token: secret,
+    });
 
     return NextResponse.json({
       ok: true,

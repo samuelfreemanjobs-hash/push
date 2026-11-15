@@ -10,7 +10,10 @@ export default function Home() {
     setBusy(true);
     setLog("Connecting…");
     try {
-      const res = await fetch("/api/bootstrap", { method: "POST" });
+      const res = await fetch("/api/bootstrap", {
+        method: "POST",
+        credentials: "include",
+      });
       const data = (await res.json()) as { ok?: boolean; message?: string; bot?: string };
       setLog(data.message ?? (data.ok ? `Bot: @${data.bot}` : "Failed"));
     } catch {
