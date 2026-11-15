@@ -60,6 +60,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Impeccable (optional, UI):** `docs/dev/impeccable.md`, `PRODUCT.md`, `DESIGN.md`, `storefront/` — landing + WebView mocks; not `TrapCoreDSP`.
 
+**Luger Drum Lab (R&D, post-Lite):** `disklordz-ralph/luger-drum-lab/` — genre engine on `ThreeLayerDrum`; prompt `docs/plans/luger-drum-lab-master-prompt.md`; does not replace `starter-cpp` ship path.
+
 ## 5. Sample pack & asset pipeline
 
 - **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
