@@ -30,6 +30,7 @@ Build, validate, and optimize:
 6. **Media launch (`media-studio`, optional)** — After `export_kit.py`, run `python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py` (or `scripts/handoff-pack-to-openmontage.ps1` if re-staging without re-export). Open sibling `../marketing-studio` and execute **`assets/latest_release/AGENT_PROMPT.md`** (Templates A/B in `docs/marketing/openmontage-prompt-templates.md`); **human approves** storyboard and draft render before final MP4. See `docs/dev/openmontage.md`.
 7. **Finance & market (`cfo-openbb`, optional)** — Read-only sync: `scripts/sync-sales-ledger.ps1 -Stripe -Gumroad` → `business/data/sales_ledger.csv`; `uvicorn store_backend:app --port 5050` for OpenBB Workspace widgets. **Never** change live checkout or prices without human approval. See `docs/dev/openbb-opt-in.md`.
 8. **Security red team (`strix-guard`, optional)** — Instruction file: `skills/vst_audio_security.md`. Pre-release: `strix-pre-release.ps1 -Quick`; staging: `-Standard`/`-Deep` with `-StagingUrl`. Playbook: `docs/security/strix-vst-audit-playbook.md`. **Never** auto-merge Strix code fixes without pluginval. See `docs/dev/strix-opt-in.md`.
+9. **Product architect (`product-architect`, optional)** — **MetaGPT only** for greenfield PRDs and license-portal scaffold (`docs/plans/metagpt-license-portal-blueprint.md`). Output stays in operator `metagpt-workspace/` until Strix + human PR. **Does not** edit `starter-cpp` or autoresearch. See `docs/dev/metagpt-opt-in.md`.
 
 ### Marketing handoff rule (`kit-producer`)
 
@@ -91,6 +92,7 @@ kit-producer runs scripts/export_kit_velocities.ps1 only after qa-validator pass
 | OpenMontage | `docs/dev/openmontage.md`, `docs/marketing/openmontage-prompt-templates.md` |
 | OpenBB / ledger | `docs/dev/openbb-opt-in.md`, `business/openbb/sync_sales_ledger.py` |
 | Strix security | `skills/vst_audio_security.md`, `docs/dev/strix-opt-in.md` |
+| MetaGPT blueprints | `docs/dev/metagpt-opt-in.md`, `docs/plans/metagpt-license-portal-blueprint.md` |
 
 ---
 

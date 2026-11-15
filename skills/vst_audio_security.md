@@ -9,7 +9,7 @@ You are auditing a commercial audio software and digital sample-pack business. T
 
 1. **C++20 / JUCE VST3/AU plugin (`disklordz-ralph/vst/starter-cpp/Source/`)** — Real-time audio, APVTS preset/state (XML), future user WAV import and cloud license checks (Core+).
 2. **License activation & DRM API** — Serial keys, machine/hardware IDs, subscription tokens (Moonbase / custom backend when live).
-3. **Digital storefront & asset delivery** — Stripe / Gumroad / Lemon Squeezy webhooks; presigned URLs for kit ZIP archives (R2/S3).
+3. **Digital storefront & asset delivery** — Stripe / Gumroad / Lemon Squeezy webhooks; presigned URLs for kit ZIP archives (R2/S3). MetaGPT-generated license portals (if present under operator `metagpt-workspace/` or `business/license-portal/`) are **in scope**.
 
 ## Priority Attack Vectors & Verification Rules
 
