@@ -31,6 +31,20 @@ def test_kit_mastering_naming_contract() -> None:
     assert "BPM_" in text
 
 
+def test_storefront_demos_present() -> None:
+    demos = REPO / "storefront/producer-storefront/public/demos"
+    for name in ("808.wav", "cowbell.wav", "trap_bell.wav", "snare.wav"):
+        assert (demos / name).is_file(), f"missing demo {name}"
+
+
+def test_factory_handoff_report() -> None:
+    handoff = REPO / "docs/launch/factory-handoff-latest.json"
+    if not handoff.is_file():
+        return
+    data = json.loads(handoff.read_text(encoding="utf-8"))
+    assert data.get("pipeline") == "pass"
+
+
 def test_producer_storefront_buildable() -> None:
     pkg = REPO / "storefront/producer-storefront/package.json"
     assert pkg.is_file()
@@ -57,6 +71,8 @@ def main() -> int:
         test_neural_loop_generator_documents_rt_path,
         test_agents_md_forbids_rt_allocations,
         test_kit_mastering_naming_contract,
+        test_storefront_demos_present,
+        test_factory_handoff_report,
         test_producer_storefront_buildable,
         test_elite_frameworks_manifest_lists_fourteen,
         test_helix_seed_valid_json,

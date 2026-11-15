@@ -28,5 +28,8 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  const downloadUrl =
+    process.env.LEAD_MAGNET_DOWNLOAD_URL ?? "/free-starter-kit/manifest.json";
+
+  return NextResponse.json({ ok: true, downloadUrl });
 }

@@ -166,9 +166,17 @@ export default function StorefrontLandingPage() {
           </p>
 
           {freeKitSent ? (
-            <p className="mt-8 text-lg font-medium text-[#ffac41]">
-              Check your inbox! Your free starter kit download link is on the way.
-            </p>
+            <div className="mt-8 space-y-3">
+              <p className="text-lg font-medium text-[#ffac41]">
+                Check your inbox! Your free starter kit download link is on the way.
+              </p>
+              <a
+                href="/free-starter-kit/manifest.json"
+                className="inline-block text-sm text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
+              >
+                Or open starter pack manifest now
+              </a>
+            </div>
           ) : (
             <form onSubmit={(e) => void handleLeadMagnet(e)} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
               <input

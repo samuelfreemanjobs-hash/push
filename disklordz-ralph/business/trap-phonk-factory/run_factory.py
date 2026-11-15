@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-REPO = Path(os.environ.get("DLZ_REPO_ROOT", ROOT.parents[3]))
+_repo_guess = ROOT.parents[3]
+if not (_repo_guess / "openclaw").is_dir() and (ROOT.parents[4] / "openclaw").is_dir():
+    _repo_guess = ROOT.parents[4]
+REPO = Path(os.environ.get("DLZ_REPO_ROOT", _repo_guess))
 FACTORY = REPO / "disklordz-ralph/factory/audio-factory"
 OUT = ROOT / "outputs" / datetime.now(timezone.utc).strftime("%Y%m%d")
 

@@ -148,6 +148,7 @@ Lite customers still ship from **starter-cpp + pluginval**; factory layers accel
 | **Local / VPS cron** | `bash openclaw/elite-frameworks/automation/run_factory_pipeline.sh` |
 | **Free agent-stack** | `disklordz-agent-stack` → `vst-factory-automation.mjs` inside `npm run all` |
 | **OpenClaw** | Merge `openclaw/openclaw.disklordz.vst-factory.json5.example` — daily `vst-qa` message |
+| **All pods finish** | `bash openclaw/elite-frameworks/automation/factory_finish_ship.sh` |
 
 **Pods registry:** `openclaw/agents/vst-factory-pods.yaml`  
 **Emit OpenClaw JSON:** `node openclaw/scripts/apply-vst-factory-agents.mjs`  
