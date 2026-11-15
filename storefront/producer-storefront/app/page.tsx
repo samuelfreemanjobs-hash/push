@@ -7,10 +7,27 @@ export default function StorefrontLandingPage() {
   const [email, setEmail] = useState("");
   const [freeKitSent, setFreeKitSent] = useState(false);
 
-  const handleLeadMagnet = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
+
+  const handleLeadMagnet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setFreeKitSent(true);
+    setSubmitting(true);
+    setLeadError(null);
+    try {
+      const res = await fetch("/api/lead-magnet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) throw new Error("submit_failed");
+      setFreeKitSent(true);
+    } catch {
+      setLeadError("Could not submit — try again or email support.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -114,11 +131,11 @@ export default function StorefrontLandingPage() {
             badge="Most Popular • Save 55%"
             subtitle="The complete VST3 neural engine plus our entire Trap & Phonk catalog."
             items={[
-              "Neural Phonk & Trap VST3 / AU Plugin",
-              "450+ WAVs & 120+ Construction Stems",
-              "150 Factory Synth & 808 VST Presets",
-              "80 Trap & Drift Phonk MIDI Files",
-              "Free Monthly Expansion Drops",
+              { text: "Neural Phonk & Trap VST3 / AU Plugin", bold: true },
+              { text: "450+ WAVs & 120+ Construction Stems", bold: true },
+              { text: "150 Factory Synth & 808 VST Presets", bold: false },
+              { text: "80 Trap & Drift Phonk MIDI Files", bold: false },
+              { text: "Free Monthly Expansion Drops", bold: false },
             ]}
             cta="Get Instant Access ($69)"
             highlight
@@ -153,7 +170,7 @@ export default function StorefrontLandingPage() {
               Check your inbox! Your free starter kit download link is on the way.
             </p>
           ) : (
-            <form onSubmit={handleLeadMagnet} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
+            <form onSubmit={(e) => void handleLeadMagnet(e)} className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
               <input
                 type="email"
                 required
@@ -164,10 +181,12 @@ export default function StorefrontLandingPage() {
               />
               <button
                 type="submit"
-                className="rounded-xl bg-[#7f5af0] px-6 py-3.5 font-bold text-white transition hover:bg-[#6c4bd4]"
+                disabled={submitting}
+                className="rounded-xl bg-[#7f5af0] px-6 py-3.5 font-bold text-white transition hover:bg-[#6c4bd4] disabled:opacity-60"
               >
-                Send Free Kit
+                {submitting ? "Sending…" : "Send Free Kit"}
               </button>
+              {leadError ? <p className="text-sm text-[#ff1e56] sm:basis-full">{leadError}</p> : null}
             </form>
           )}
         </div>
@@ -223,7 +242,7 @@ function PricingTier({
   strike?: string;
   badge?: string;
   subtitle: string;
-  items: string[];
+  items: Array<string | { text: string; bold: boolean }>;
   cta: string;
   highlight: boolean;
 }) {
@@ -250,9 +269,23 @@ function PricingTier({
       </div>
       <p className={`mt-3 text-sm ${highlight ? "text-zinc-300" : "text-zinc-400"}`}>{subtitle}</p>
       <ul className={`mt-6 space-y-3 text-sm ${highlight ? "text-zinc-200" : "text-zinc-300"}`}>
-        {items.map((item) => (
-          <li key={item}>✓ {item}</li>
-        ))}
+        {items.map((item) => {
+          const label = typeof item === "string" ? item : item.text;
+          const key = label;
+          const content =
+            typeof item === "string" ? (
+              label
+            ) : item.bold ? (
+              <strong className="text-white">{label}</strong>
+            ) : (
+              label
+            );
+          return (
+            <li key={key}>
+              ✓ {content}
+            </li>
+          );
+        })}
       </ul>
       <button type="button" className={buttonClass}>
         {cta}

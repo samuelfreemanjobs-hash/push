@@ -45,7 +45,6 @@ export default function InteractiveKitPreviewer() {
   const pulseRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [bpm] = useState(145);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const drawBassPulse = useCallback(() => {
     const analyser = analyserRef.current;
@@ -120,15 +119,17 @@ export default function InteractiveKitPreviewer() {
       />
 
       <div className="relative z-10 space-y-6">
-        <header className="text-left">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#ffac41]">Live tester</p>
-          <h2 className="text-lg font-bold text-white sm:text-xl">
-            2026 Underground Phonk &amp; Trap Engine — Live Tester
-          </h2>
-          <p className="text-sm text-zinc-500">
-            BPM <span className="text-zinc-300">{bpm}</span> · keys 1–4
+        <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-800 pb-3">
+          <div className="text-left">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#ffac41]">Live tester</p>
+            <h2 className="text-base font-bold text-white sm:text-lg">
+              2026 Underground Phonk &amp; Trap Engine — Live Tester
+            </h2>
+          </div>
+          <p className="font-mono text-sm text-zinc-400">
+            BPM <span className="text-zinc-200">{bpm}</span>
           </p>
-        </header>
+        </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {KIT_PADS.map((pad) => (
@@ -147,25 +148,12 @@ export default function InteractiveKitPreviewer() {
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-zinc-800 pt-4">
-          <button
-            type="button"
-            className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
-            onClick={() => setDrawerOpen((v) => !v)}
-          >
-            {drawerOpen ? "Hide bundle offer" : "Show bundle offer"}
-          </button>
-          <span className="text-xs text-zinc-600">WebGPU shader: swap in @vercel/vgpu on deploy</span>
-        </div>
-
-        {drawerOpen ? (
-          <BuyBundleDrawer
-            headline="Like how hard those 808s hit?"
-            offerText="Get the Neural VST3 Plugin + 450 Royalty-Free WAVs & MIDIs ($69)"
-            ctaLabel="Unlock Full Producer Bundle"
-            checkoutUrl="#pricing"
-          />
-        ) : null}
+        <BuyBundleDrawer
+          headline="Like how hard those 808s hit?"
+          offerText="Get the Neural VST3 Plugin + 450 Royalty-Free WAVs & MIDIs ($69)"
+          ctaLabel="Unlock Full Producer Bundle"
+          checkoutUrl="/checkout/producer-all-access"
+        />
       </div>
     </div>
   );
