@@ -1,0 +1,45 @@
+# Hermes cron jobs — DiskLordz H picks
+jobs:
+  - id: engineering-daily
+    cron: "0 5 * * 1-5"
+    description: Scheduled engineering report → sage morning brief input
+    output: "~/.openclaw/hermes-out/engineering-report.json"
+    prompt: |
+      Read-only: GitHub API vault open PRs, Instruments last workflow, push repo last commit.
+      JSON only: { vault_prs, ci_status, blockers[], generated_at }
+
+  - id: tripwire-factory-status
+    cron: "0 7 * * *"
+    description: Drum lead tripwire G1-G6 (complements OC drum-lead)
+    output: "~/.openclaw/hermes-out/tripwire-status.md"
+    prompt: |
+      Tripwire SKU tripwire-sample-v1: steps G1-G6, gate G3 founder ears.
+      If kit-spec pending QC, say so. No packaging commands.
+
+  - id: youtube-competitor-spy
+    cron: "0 9 * * 1"
+    output: "~/.openclaw/hermes-out/research/youtube-weekly.md"
+    prompt: |
+      Research trap/drum kit YouTube competitors (configured channel list in USER.md).
+      Content gaps, title patterns, sourced URLs. No auto-post.
+
+  - id: reddit-pain-points
+    cron: "0 10 * * 3"
+    output: "~/.openclaw/hermes-out/research/reddit-pain.md"
+    prompt: |
+      Subs: r/trapproduction r/makinghiphop (configurable). Pain points for $9 sample pack.
+      Draft product ideas only.
+
+  - id: revenue-opportunities
+    cron: "0 11 * * 5"
+    output: "~/.openclaw/hermes-out/research/revenue-opportunities.md"
+    prompt: |
+      Scan competitor pricing/pack sizes for tripwire drum market.
+      Opportunities not copy. Append summary lines to biz-metrics prep.
+
+  - id: biz-metrics-friday
+    cron: "0 15 * * 5"
+    output: "~/.openclaw/hermes-out/biz-metrics.json"
+    prompt: |
+      Aggregate read-only metrics for OC biz Friday KPI: tripwire placeholder counts,
+      ci green count, vault pr count, research highlights paths.

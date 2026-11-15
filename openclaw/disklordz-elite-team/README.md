@@ -61,3 +61,7 @@ Set Command Center `VITE_AGENT_API_URL=http://127.0.0.1:3000` for in-PWA chat.
 ## Drum kit factory (Grok Architect + OpenClaw)
 
 Grok Bot **Drum Kit Architect** owns creative `kit-spec.yaml`. OpenClaw **drum-kit-factory** (5 agents) runs QC, manifest, zip, and Telegram on your VPS. See [`../drum-kit-factory/README.md`](../drum-kit-factory/README.md).
+
+## Your OC + Hermes split
+
+Operator picks and stack config: [`../disklordz-picks/README.md`](../disklordz-picks/README.md) · Hermes layer: [`../../hermes/disklordz-picks/README.md`](../../hermes/disklordz-picks/README.md).

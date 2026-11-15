@@ -1,0 +1,35 @@
+# User-selected capabilities — do not duplicate across runtimes
+openclaw:
+  - daily_morning_ops_brief
+  - kanban_read_vault_and_command_center
+  - weekly_friday_kpi_review
+  - launch_gates_plan_biz_agents
+  - backup_when_github_actions_stale_or_failed
+  - overnight_branch_draft_pr
+  - telegram_sole_messaging_front_door
+  - dev_pod
+  - marketing_pod
+  - business_pod
+  - shared_memory_vault_mirror
+  - overnight_app_and_vst_build_policy
+
+hermes:
+  - github_webhooks
+  - cron_jobs
+  - drum_lead_tripwire_status_cron
+  - codex_background_worker
+  - creative_sound_design_sessions
+  - youtube_competitor_spy
+  - reddit_pain_points
+  - revenue_opportunities_scan
+  - relay_code_output_to_openclaw
+  - shared_memory_plugins
+  - code_review_on_pr_events
+  - scheduled_engineering_reports
+  - full_orchestration_skills_mcp_subagents
+
+forbidden_duplicate:
+  - second_telegram_bot
+  - two_morning_brief_writers
+  - auto_merge_to_main
+  - auto_customer_email
