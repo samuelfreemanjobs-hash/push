@@ -15,6 +15,8 @@
 
 **Claude-Mem** — `npx claude-mem install` via `scripts/install-claude-mem.ps1`; docs `docs/dev/claude-mem.md`. Local worker + Cursor hooks; not required to ship v1. Cloud agents use repo `AGENTS.md` + Supermemory when configured.
 
+**Gemini CLI** — `npm i -g @google/gemini-cli`; root `GEMINI.md` + `docs/dev/gemini-cli.md`. Catalog audits, multimodal refs, SEO copy — **not** primary C++ IDE.
+
 ## Opt-in Agency personas (not new tools)
 
 Six `.cursor/rules/agency-*.mdc` files — summon with `@agency-*` in Agent chat only (`alwaysApply: false`). Runbook: `docs/launch/NEXUS-RUNBOOK.md`.

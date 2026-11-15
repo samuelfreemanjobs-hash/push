@@ -4,6 +4,10 @@ Copy headers from this folder into `C:\Dev\DetroitPhonkTrapVST3\Source\`.
 
 **Fast path:** use `starter-cpp/Source/` as your plugin `Source/` (CMake in `starter-cpp/CMakeLists.txt` expects this layout) and keep pad headers in `starter-cpp/`.
 
+## Status
+
+`PluginEditor.cpp` / `PadGridComponent` in this repo **already implement** external WAV + Shift+MIDI drag. Copy `starter-cpp/Source/` to Windows; no separate paste block needed.
+
 ## 1. Editor inherits drag host
 
 ```cpp

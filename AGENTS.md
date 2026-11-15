@@ -56,6 +56,8 @@ Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rules: `.cursor/rules/re
 
 **Claude-Mem (optional, local Cursor):** `docs/dev/claude-mem.md` — persistent session memory; run `scripts/install-claude-mem.ps1` on Windows after [Bun](https://bun.sh) is installed.
 
+**Gemini CLI (optional, terminal):** root `GEMINI.md` — kit audits & release copy; `docs/dev/gemini-cli.md`. Do not use for MSVC/pluginval; Cursor owns C++.
+
 ## 5. Sample pack & asset pipeline
 
 - **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
