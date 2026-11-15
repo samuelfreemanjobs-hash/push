@@ -1,0 +1,171 @@
+{
+  "project": "DiskLordz",
+  "updated": "2026-11-15",
+  "lanes": ["FLOW", "OC", "H", "DRUM", "VST", "SAAS", "BIZ"],
+  "stories": [
+    {
+      "id": "DLZ-OPS-001",
+      "lane": "FLOW",
+      "priority": "P0",
+      "title": "Command Center PWA builds in CI",
+      "touch": ["disklordz-command-center/", ".github/workflows/disklordz-ci.yml"],
+      "doc": "disklordz-command-center/README.md",
+      "verify": { "cmd": "npm ci && npm run build", "cwd": "disklordz-command-center" },
+      "passes": true
+    },
+    {
+      "id": "DLZ-OPS-002",
+      "lane": "FLOW",
+      "priority": "P0",
+      "title": "OpenClaw skills ClawHub-ready (references + verify)",
+      "touch": ["openclaw/skills/"],
+      "doc": "openclaw/skills/clawhub/PUBLISH.md",
+      "verify": { "cmd": "npm ci && npm run verify", "cwd": "openclaw/skills" },
+      "passes": true
+    },
+    {
+      "id": "DLZ-OPS-003",
+      "lane": "FLOW",
+      "priority": "P0",
+      "title": "Agent-stack hermes-out scripts run against repo snapshot",
+      "touch": ["disklordz-agent-stack/"],
+      "doc": "disklordz-agent-stack/FREE.md",
+      "verify": { "cmd": "npm ci && npm run all", "cwd": "disklordz-agent-stack", "env": { "DLZ_REPO_ROOT": ".." } },
+      "passes": true
+    },
+    {
+      "id": "DLZ-H-001",
+      "lane": "H",
+      "priority": "P0",
+      "title": "Free-tier cron bootstrap on VPS (hermes-out paths)",
+      "touch": ["disklordz-agent-stack/deploy/", "disklordz-agent-stack/crontab.free.example"],
+      "doc": "disklordz-agent-stack/FREE.md",
+      "verify": { "cmd": "test -f disklordz-agent-stack/FREE.md", "shell": true },
+      "actor": "operator",
+      "passes": false
+    },
+    {
+      "id": "DLZ-OC-001",
+      "lane": "OC",
+      "priority": "P0",
+      "title": "Install OpenClaw elite team + 17 skills on state dir",
+      "touch": ["openclaw/disklordz-elite-team/", "openclaw/skills/install-skills.sh"],
+      "doc": "openclaw/disklordz-elite-team/README.md",
+      "verify": { "cmd": "bash -n openclaw/skills/install-skills.sh", "shell": true },
+      "actor": "operator",
+      "passes": false
+    },
+    {
+      "id": "DLZ-OC-002",
+      "lane": "OC",
+      "priority": "P1",
+      "title": "Publish founder skill pack to ClawHub",
+      "touch": ["openclaw/skills/clawhub/manifest.yaml"],
+      "doc": "openclaw/skills/clawhub/PUBLISH.md",
+      "verify": { "cmd": "npm run verify", "cwd": "openclaw/skills" },
+      "actor": "operator",
+      "passes": false
+    },
+    {
+      "id": "DLZ-DRUM-001",
+      "lane": "DRUM",
+      "priority": "P0",
+      "title": "Kit-spec template validates against schema",
+      "touch": ["openclaw/drum-kit-factory/handoff/"],
+      "doc": "openclaw/drum-kit-factory/README.md",
+      "verify": { "cmd": "npm ci && npm run validate:template", "cwd": "openclaw/drum-kit-factory" },
+      "passes": true
+    },
+    {
+      "id": "DLZ-DRUM-002",
+      "lane": "DRUM",
+      "priority": "P0",
+      "title": "Starter trap pack tripwire-sample-v1 QC approved and packaged",
+      "touch": ["openclaw/drum-kit-factory/", "disklordz-command-center/public/ops-snapshot.json"],
+      "doc": "openclaw/skills/shared/tripwire_qc/SKILL.md",
+      "verify": { "cmd": "node openclaw/drum-kit-factory/scripts/validate-kit-spec.mjs openclaw/drum-kit-factory/handoff/kit-spec.template.yaml" },
+      "gate": "G3",
+      "kanban": "K-012",
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-001",
+      "lane": "VST",
+      "priority": "P0",
+      "title": "DetroitPhonkTrapMaker — CMake + JUCE 8 + Release build (US-001)",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["CMakeLists.txt", "Source/"],
+      "doc": "disklordz-ralph/windows/VST-PROMPT-SNIPPET.md",
+      "verify": {
+        "platform": "windows",
+        "cmd": "cmake -B build -G \"Visual Studio 17 2022\" -A x64 && cmake --build build --config Release --parallel"
+      },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-002",
+      "lane": "VST",
+      "priority": "P0",
+      "title": "DrumEngine + CLI WAV render + pluginval strictness 5 (US-002–US-006)",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/", "CMakeLists.txt"],
+      "doc": "disklordz-ralph/windows/VST-PROMPT-SNIPPET.md",
+      "verify": {
+        "platform": "windows",
+        "cmd": "cmake --build build --config Release --parallel && .\\build\\Release\\DrumTestCLI.exe && .\\tools\\pluginval\\pluginval.exe --strictness-level 5 --validate \".\\build\\DetroitPhonkTrapMaker_artefacts\\Release\\VST3\\Detroit Phonk Trap Maker.vst3\""
+      },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-003",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "Drag-and-drop WAV export from plugin UI (US-007)",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/PluginEditor.cpp"],
+      "verify": { "platform": "windows", "cmd": "echo manual: drag wav to DAW; re-run pluginval" },
+      "passes": false
+    },
+    {
+      "id": "DLZ-SAAS-001",
+      "lane": "SAAS",
+      "priority": "P0",
+      "title": "Merge vault revenue handoff + enable INSTRUMENTS push workflow",
+      "kanban": "K-010",
+      "doc": "disklordz-command-center/scripts/fallback-kanban.yaml",
+      "verify": { "cmd": "echo operator: merge vault PR #126", "shell": true },
+      "actor": "operator",
+      "passes": false
+    },
+    {
+      "id": "DLZ-SAAS-002",
+      "lane": "SAAS",
+      "priority": "P0",
+      "title": "Tripwire Stripe test purchase end-to-end",
+      "kanban": "K-014",
+      "verify": { "cmd": "echo operator: stripe test mode", "shell": true },
+      "actor": "operator",
+      "gate": "G3",
+      "passes": false
+    },
+    {
+      "id": "DLZ-BIZ-001",
+      "lane": "BIZ",
+      "priority": "P1",
+      "title": "Friday KPI brief reads biz-metrics + snapshot",
+      "touch": ["disklordz-agent-stack/scripts/biz-metrics.mjs", "openclaw/skills/shared/friday_kpi/"],
+      "verify": { "cmd": "node disklordz-agent-stack/scripts/biz-metrics.mjs", "shell": true },
+      "passes": false
+    },
+    {
+      "id": "DLZ-MOBILE-001",
+      "lane": "FLOW",
+      "priority": "P1",
+      "title": "Command Center crew tab wired to ai-agent-team API",
+      "touch": ["disklordz-command-center/", "ai-agent-team/"],
+      "doc": "ai-agent-team/README.md",
+      "verify": { "cmd": "npm run build", "cwd": "disklordz-command-center" },
+      "passes": false
+    }
+  ]
+}

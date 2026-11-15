@@ -1,0 +1,119 @@
+// DiskLordz: merge into ~/.openclaw/openclaw.json (4 pods + Telegram → sage)
+// Replace __REPO_ROOT__ with your clone path (e.g. C:/Dev/push or /home/you/push)
+{
+  agents: {
+    ownership: "explicit",
+    defaults: {
+      systemAgent: { agentId: "sage" },
+      authInheritance: { agentId: "sage" },
+      model: "google/gemini-2.0-flash",
+      skills: ["disk_ops_snapshot", "telegram_brief", "memory_vault", "delegate_subagent"],
+    },
+    entries: {
+      sage: {
+        name: "MAIN",
+        workspace: "~/.openclaw/workspace-sage",
+        subagents: {
+          allowAgents: ["dev", "mkt", "biz", "drum-lead", "review"],
+          delegationMode: "prefer",
+        },
+        skills: [
+          "disk_ops_snapshot",
+          "vault_kanban",
+          "launch_gates",
+          "delegate_subagent",
+          "telegram_brief",
+          "memory_vault",
+          "friday_kpi",
+        ],
+      },
+      dev: {
+        name: "DEV",
+        workspace: "~/.openclaw/workspace-dev",
+        model: "google/gemini-2.0-flash",
+        sandbox: { mode: "all", scope: "agent" },
+        skills: [
+          "overnight_branch",
+          "github_pr_review",
+          "vst_factory",
+          "flow_github_actions",
+          "security_sentinel",
+        ],
+      },
+      mkt: {
+        name: "MKT",
+        workspace: "~/.openclaw/workspace-mkt",
+        subagents: { allowAgents: [] },
+        skills: ["research_consume", "tripwire_positioning", "telegram_brief"],
+      },
+      biz: {
+        name: "BIZ",
+        workspace: "~/.openclaw/workspace-biz",
+        skills: ["launch_gates", "friday_kpi", "tripwire_positioning", "vault_kanban"],
+      },
+      "drum-lead": {
+        name: "DRUM",
+        workspace: "~/.openclaw/workspace-drum-lead",
+        skills: ["kit_spec_grok", "tripwire_qc", "tripwire_pack", "disk_ops_snapshot"],
+      },
+      review: {
+        name: "REVIEW",
+        workspace: "~/.openclaw/workspace-review",
+        skills: ["github_pr_review", "security_sentinel", "vst_factory"],
+      },
+    },
+  },
+  bindings: [
+    { agentId: "sage", match: { channel: "telegram", accountId: "default" } },
+    { agentId: "sage", match: { channel: "telegram", accountId: "*" } },
+  ],
+  talk: { agentId: "sage" },
+  channels: {
+    telegram: {
+      enabled: true,
+      dmPolicy: "pairing",
+      groups: { "*": { requireMention: true } },
+      accounts: {
+        default: {
+          // Prefer: openclaw channels add --channel telegram --token <token>
+          // Or env TELEGRAM_BOT_TOKEN for default account only
+        },
+      },
+    },
+  },
+  models: {
+    providers: {
+      google: {
+        // Set via: openclaw configure  OR  GOOGLE_GENERATIVE_AI_API_KEY env
+      },
+      ollama: { baseUrl: "http://127.0.0.1:11434" },
+    },
+  },
+  skills: {
+    load: {
+      extraDirs: ["__REPO_ROOT__/openclaw/skills/shared"],
+      watch: true,
+    },
+  },
+  memory: {
+    extraPaths: ["~/.openclaw/workspace-shared/vault-docs"],
+  },
+  automation: {
+    jobs: [
+      {
+        name: "morning-ops-brief",
+        schedule: "0 6 * * *",
+        agentId: "sage",
+        message:
+          "Morning ops brief: read DLZ_REPO_ROOT/disklordz-command-center/public/ops-snapshot.json, ~/.openclaw/hermes-out/engineering-report.json, vault P0/blockers. Use $telegram_brief. 12 lines max.",
+      },
+      {
+        name: "friday-kpi",
+        schedule: "0 16 * * 5",
+        agentId: "biz",
+        message:
+          "Friday KPI: merge hermes-out/biz-metrics.json with ops-snapshot. Narrate only numbers from files.",
+      },
+    ],
+  },
+}

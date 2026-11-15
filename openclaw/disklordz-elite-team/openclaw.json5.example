@@ -1,0 +1,60 @@
+// Merge into ~/.openclaw/openclaw.json — Gemini free tier + DiskLordz elite roster
+{
+  agents: {
+    ownership: "explicit",
+    defaults: {
+      systemAgent: { agentId: "sage" },
+      authInheritance: { agentId: "sage" },
+      model: "google/gemini-2.0-flash",
+    },
+    entries: {
+      sage: {
+        name: "SAGE",
+        workspace: "~/.openclaw/workspace-sage",
+        subagents: {
+          allowAgents: ["code", "arch", "review", "patch", "forge", "plan", "flow"],
+          delegationMode: "prefer",
+        },
+      },
+      code: {
+        name: "CODE",
+        workspace: "~/.openclaw/workspace-code",
+        model: "google/gemini-2.0-flash",
+        sandbox: { mode: "off" },
+      },
+      arch: { name: "ARCH", workspace: "~/.openclaw/workspace-arch" },
+      review: { name: "REVIEW", workspace: "~/.openclaw/workspace-review" },
+      patch: {
+        name: "PATCH",
+        workspace: "~/.openclaw/workspace-patch",
+        model: "ollama/qwen2.5-coder:7b",
+      },
+      forge: { name: "FORGE", workspace: "~/.openclaw/workspace-forge" },
+      trip: { name: "TRIP", workspace: "~/.openclaw/workspace-trip" },
+      plan: { name: "PLAN", workspace: "~/.openclaw/workspace-plan" },
+      flow: { name: "FLOW", workspace: "~/.openclaw/workspace-flow" },
+      sentinel: { name: "SENTINEL", workspace: "~/.openclaw/workspace-sentinel" },
+    },
+  },
+  bindings: [
+    { agentId: "sage", match: { channel: "telegram", accountId: "*" } },
+    { agentId: "code", match: { channel: "webchat", accountId: "code" } },
+  ],
+  talk: { agentId: "sage" },
+  channels: {
+    telegram: {
+      accounts: {
+        default: {
+          botToken: "REPLACE_WITH_BOTFATHER_TOKEN",
+          dmPolicy: "pairing",
+        },
+      },
+    },
+  },
+  models: {
+    providers: {
+      google: { apiKey: "REPLACE_GEMINI_FREE_KEY" },
+      ollama: { baseUrl: "http://127.0.0.1:11434" },
+    },
+  },
+}

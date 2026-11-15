@@ -1,0 +1,1 @@
+# Competitor SKUs for tripwire drum packs — manual seed list in USER.md.

@@ -1,0 +1,77 @@
+// Merge into ~/.openclaw/openclaw.json — 4 pods + your OC picks
+{
+  agents: {
+    ownership: "explicit",
+    defaults: {
+      systemAgent: { agentId: "sage" },
+      authInheritance: { agentId: "sage" },
+      model: "google/gemini-2.0-flash",
+    },
+    entries: {
+      sage: {
+        name: "MAIN",
+        workspace: "~/.openclaw/workspace-sage",
+        subagents: {
+          allowAgents: ["dev", "mkt", "biz", "drum-lead", "review"],
+          delegationMode: "prefer",
+        },
+      },
+      dev: {
+        name: "DEV",
+        workspace: "~/.openclaw/workspace-dev",
+        model: "google/gemini-2.0-flash",
+        // Overnight + VST: see workspaces/dev/OVERNIGHT.md in repo
+        sandbox: { mode: "all", scope: "agent" },
+      },
+      mkt: {
+        name: "MKT",
+        workspace: "~/.openclaw/workspace-mkt",
+        subagents: { allowAgents: [] },
+      },
+      biz: {
+        name: "BIZ",
+        workspace: "~/.openclaw/workspace-biz",
+      },
+      "drum-lead": {
+        name: "DRUM",
+        workspace: "~/.openclaw/workspace-drum-lead",
+      },
+      review: {
+        name: "REVIEW",
+        workspace: "~/.openclaw/workspace-review",
+      },
+    },
+  },
+  bindings: [
+    { agentId: "sage", match: { channel: "telegram", accountId: "*" } },
+  ],
+  talk: { agentId: "sage" },
+  memory: {
+    extraPaths: ["~/.openclaw/workspace-shared/vault-docs"],
+  },
+  automation: {
+    jobs: [
+      {
+        name: "morning-ops-brief",
+        schedule: "0 6 * * *",
+        agentId: "sage",
+        message:
+          "Morning ops brief: read ops-snapshot.json, hermes/out/engineering-report.json if present, vault kanban P0/blockers, launch gates G1-G6 summary. Telegram format, 12 lines max.",
+      },
+      {
+        name: "github-actions-backup",
+        schedule: "15 6,12,18 * * *",
+        agentId: "sage",
+        message:
+          "If ops-snapshot older than 8h or sync errors in snapshot, run disklordz-ops-sync.mjs (read-only token) and report result. Do not commit unless operator approved.",
+      },
+      {
+        name: "friday-kpi",
+        schedule: "0 16 * * 5",
+        agentId: "biz",
+        message:
+          "Friday KPI: merge hermes/out/biz-metrics.json with ops-snapshot. Narrate only numbers from files. Sections: Factory, Launch, Tripwire, Business (Stripe if in file).",
+      },
+    ],
+  },
+}

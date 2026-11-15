@@ -1,0 +1,12 @@
+{
+  "name": "disklordz-openclaw-skills",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node scripts/verify-skills.mjs",
+    "publish:prep": "./scripts/publish-prep.sh"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  }
+}

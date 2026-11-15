@@ -1,0 +1,117 @@
+# Bootstrap kanban when vault API token is unavailable (update via sync when PAT is set)
+version: "1.0"
+updated: "2026-11-09"
+wip_limits:
+  in_progress: 2
+cards:
+  - id: K-001
+    column: done
+    title: Vault agent OS + overnight manifest
+    lane: FLOW
+    priority: P0
+    owner: vault
+    completed: "2026-09-24"
+  - id: K-002
+    column: done
+    title: Tripwire checkout export (vault patch)
+    lane: SAAS
+    priority: P0
+    owner: vault
+  - id: K-003
+    column: done
+    title: Lane Bus M1 + integration git bundle
+    lane: VST
+    priority: P0
+    owner: vault
+  - id: K-020
+    column: done
+    title: Kanban board in vault
+    lane: PM
+    priority: P2
+    owner: cursor
+    completed: "2026-11-09"
+  - id: K-010
+    column: ready
+    title: Merge vault revenue / handoff PR (#126)
+    lane: FLOW
+    priority: P0
+    owner: operator
+    next: Merge when green → enable INSTRUMENTS_PUSH_TOKEN workflow
+  - id: K-011
+    column: ready
+    title: Push tripwire branch to Instruments
+    lane: SAAS
+    priority: P0
+    owner: operator
+  - id: K-012
+    column: in_progress
+    title: Starter Trap Pack first release (tripwire-sample-v1)
+    lane: DRUM
+    priority: P0
+    owner: drumkit-factory-agent
+    next: Founder ears → qc_status approved → package → deploy
+  - id: K-013
+    column: ready
+    title: Supabase migrate + Vercel env (tripwire)
+    lane: SAAS
+    priority: P0
+    owner: operator
+  - id: K-014
+    column: ready
+    title: Stripe test purchase (tripwire)
+    lane: SAAS
+    priority: P0
+    owner: operator
+  - id: K-030
+    column: blocked
+    title: Slack bootstrap (channels + bot invites)
+    lane: FLOW
+    priority: P0
+    owner: operator
+    blocker: SLACK_BOT_TOKEN
+  - id: K-031
+    column: blocked
+    title: Thor on disklordz.slack.com
+    lane: FLOW
+    priority: P2
+    owner: operator
+    blocker: Thor install + slack_user_id
+  - id: K-032
+    column: blocked
+    title: Artist roster confirmed (YouTube)
+    lane: AR
+    priority: P1
+    owner: operator
+    blocker: placeholders_pending_operator
+  - id: K-033
+    column: blocked
+    title: MKTLAUNCH external posts
+    lane: MKTLAUNCH
+    priority: P2
+    owner: operator
+    blocker: LAUNCH_CAMPAIGN_START + tripwire live
+  - id: K-040
+    column: backlog
+    title: Push Lane Bus integration PR bundle
+    lane: FLOW
+    priority: P1
+    owner: operator
+  - id: K-041
+    column: backlog
+    title: Lane Bus M2 DSP
+    lane: VST
+    priority: P1
+    owner: agent
+    note: After tripwire validates demand
+  - id: K-042
+    column: backlog
+    title: MPC sample path audit
+    lane: MPC
+    priority: P1
+    owner: agent
+  - id: K-043
+    column: backlog
+    title: Freeman Intelligence PM sync (Airtable)
+    lane: PM
+    priority: P2
+    owner: operator

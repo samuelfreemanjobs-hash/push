@@ -1,0 +1,23 @@
+# Full orchestration: skills + MCP + subagents (H pick)
+# Run on demand: hermes goal or kanban pipeline — not 24/7 until briefs are stable
+
+name: disklordz-research-pipeline
+max_steps: 20
+coordinator: researcher
+workers:
+  - id: researcher
+    role: youtube_competitor + reddit_pain
+    output: research/raw.md
+  - id: writer
+    role: angles + newsletter outline
+    input: research/raw.md
+    output: research/outline.md
+  - id: verifier
+    role: source URLs required per claim
+    input: research/outline.md
+    output: research/verified.md
+handoff:
+  final: "~/.openclaw/hermes-out/research/weekly-pipeline.md"
+  notify: openclaw_sage_next_brief
+approval:
+  publish: human_only

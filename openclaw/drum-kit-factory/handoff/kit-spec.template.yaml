@@ -1,0 +1,25 @@
+kit_id: tripwire-sample-v1
+version: 1
+architect:
+  system: grok-bot-drum-kit-architect
+  session_note: ""
+genre: trap
+bpm: 140
+key: ""
+sounds:
+  - id: kick-placeholder
+    role: kick
+    description: "replace after Grok architect session"
+    one_shot: true
+qc:
+  format: wav
+  bit_depth: 24
+  sample_rate: 44100
+  peak_db_max: -0.3
+  max_duration_seconds: 4
+tripwire:
+  sku: tripwire-sample-v1
+  wav_count: 5
+  price_usd: 9
+  credits_grant: 75
+founder_ears_required: true

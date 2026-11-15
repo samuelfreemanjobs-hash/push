@@ -1,0 +1,48 @@
+name: DiskLordz CI
+
+on:
+  pull_request:
+    branches:
+      - sandbox/b287b60e-ecbc-40c4-ac41--k5zj
+  push:
+    branches:
+      - cursor/disklordz-command-center-634f
+      - sandbox/b287b60e-ecbc-40c4-ac41--k5zj
+    paths-ignore:
+      - "disklordz-command-center/public/ops-snapshot.json"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: command-center
+            dir: disklordz-command-center
+            run: npm ci && npm run build
+          - name: openclaw-skills
+            dir: openclaw/skills
+            run: npm ci && npm run verify
+          - name: drum-kit-factory
+            dir: openclaw/drum-kit-factory
+            run: npm ci && npm run validate:template
+          - name: agent-stack
+            dir: disklordz-agent-stack
+            run: npm ci && npm run all
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run checks
+        working-directory: ${{ matrix.dir }}
+        env:
+          DLZ_REPO_ROOT: ${{ github.workspace }}
+        run: ${{ matrix.run }}

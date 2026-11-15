@@ -1,0 +1,36 @@
+[
+  {
+    "number": 126,
+    "title": "DRUM QC + tripwire Instruments bundle",
+    "phase": "P0 Revenue — merge first",
+    "mergeable": "dirty (conflicts)",
+    "url": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/pull/126"
+  },
+  {
+    "number": 138,
+    "title": "VST factory Slack secrets + webhook",
+    "phase": "P1 Ops",
+    "mergeable": "clean",
+    "url": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/pull/138"
+  },
+  {
+    "number": 124,
+    "title": "Vault agent lanes docs",
+    "phase": "P1 Docs",
+    "mergeable": "open",
+    "url": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/pull/124"
+  },
+  {
+    "number": 145,
+    "title": "Slack team blueprint + bootstrap",
+    "phase": "P1 Ops (draft)",
+    "mergeable": "draft",
+    "url": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/pull/145"
+  },
+  {
+    "number": 143,
+    "title": "Autonomous Drum Sample Factory MVP",
+    "phase": "P3 — defer",
+    "url": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/pull/143"
+  }
+]

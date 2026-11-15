@@ -1,0 +1,43 @@
+# OpenClaw drum kit factory — pairs with Grok Bot Drum Kit Architect
+defaults:
+  coordinator: drum-lead
+  grok_architect_name: "Drum Kit Architect"
+  grok_role: creative_authority
+  openclaw_role: factory_execution
+  sku_active: tripwire-sample-v1
+
+agents:
+  - id: drum-lead
+    prefix: DRUM
+    displayName: Drum Factory Lead
+    subagents: [grok-bridge, drum-qc, drum-pack, drum-manifest]
+    model: google/gemini-2.0-flash
+
+  - id: grok-bridge
+    prefix: GROK
+    displayName: Grok Architect Bridge
+    role: Validate kit-spec from Grok Bot; never override creative decisions — only structure and factory routing
+    model: google/gemini-2.0-flash
+
+  - id: drum-qc
+    prefix: QC
+    displayName: Drum WAV QC
+    role: Peak, length, format, silence tails; align with qc_tripwire_pack.py
+    model: google/gemini-2.0-flash
+
+  - id: drum-pack
+    prefix: PACK
+    displayName: Drum Packager
+    role: tripwire-sample-v1.zip layout, credits copy, no deploy without approval
+    model: google/gemini-2.0-flash
+
+  - id: drum-manifest
+    prefix: MANIFEST
+    displayName: Manifest & Naming
+    role: MANIFEST.yaml hashes, qc_status, DiskLordz naming rules
+    model: google/gemini-2.0-flash
+
+vault_lane:
+  id: drumkit-factory
+  slack_prefix: DRUM
+  grok_bot: Drum Kit Architect

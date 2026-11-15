@@ -1,13 +1,13 @@
 # AI Agent Team
 
-A powerful AI agent application powered by Google Gemini and Supabase.
+Free-tier **elite agent roster** for DiskLordz — mobile coding when Cursor/Grok are down.
 
 ## Features
 
-- 🤖 AI-powered responses using Google Gemini
-- 💾 Conversation history with Supabase
-- 🔄 RESTful API
-- 🚀 Production-ready
+- Prefix routing (`CODE:`, `SAGE:`, `REVIEW:`, …) — same as Slack vault
+- **CODE** default: Gemini Flash (free) or Ollama `qwen2.5-coder`
+- Optional Supabase conversation log
+- Pairs with Command Center **Mobile crew** PWA tab
 
 ## Endpoints
 
@@ -16,14 +16,20 @@ A powerful AI agent application powered by Google Gemini and Supabase.
 GET /health
 ```
 
+### List elite agents
+```bash
+GET /api/agents
+```
+
 ### Send Message to AI Agent
 ```bash
 POST /api/agent
 Content-Type: application/json
 
 {
-  "message": "Your question here",
-  "userId": "user123"
+  "message": "CODE: fix the vite PWA plugin config",
+  "userId": "user123",
+  "agentId": "code"
 }
 ```
 

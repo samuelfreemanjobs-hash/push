@@ -1,0 +1,16 @@
+# DiskLordz free stack — edit paths and user
+SHELL=/bin/bash
+DLZ_REPO_ROOT=/home/ubuntu/push
+OPENCLAW_STATE_DIR=/home/ubuntu/.openclaw
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# 05:25 engineering report (before OpenClaw 06:00 brief)
+25 5 * * 1-5 cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run all >> $HOME/.openclaw/hermes-out/cron.log 2>&1
+
+# 06:00 — OpenClaw sage morning-ops-brief (configure in openclaw.json automation)
+
+# Backup sync at 06:12 / 12:12 / 18:12
+12 6,12,18 * * * cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run backup-sync >> $HOME/.openclaw/hermes-out/cron.log 2>&1
+
+# Fri 15:45 biz metrics before OC biz 16:00
+45 15 * * 5 cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run biz-metrics >> $HOME/.openclaw/hermes-out/cron.log 2>&1

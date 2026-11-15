@@ -1,0 +1,68 @@
+// Merge agents.entries + bindings into ~/.openclaw/openclaw.json
+// Pair with disklordz-elite-team sage coordinator OR use drum-lead as Telegram default for DRUM work
+{
+  agents: {
+    entries: {
+      "drum-lead": {
+        name: "DRUM",
+        workspace: "~/.openclaw/workspace-drum-lead",
+        model: "google/gemini-2.0-flash",
+        subagents: {
+          allowAgents: ["grok-bridge", "drum-qc", "drum-pack", "drum-manifest"],
+          delegationMode: "prefer",
+        },
+        groupChat: {
+          mentionPatterns: ["@drum", "DRUM:", "drum factory"],
+        },
+      },
+      "grok-bridge": {
+        name: "GROK",
+        workspace: "~/.openclaw/workspace-grok-bridge",
+        model: "google/gemini-2.0-flash",
+        tools: {
+          allow: ["read", "write", "exec"],
+          deny: ["browser"],
+        },
+      },
+      "drum-qc": {
+        name: "QC",
+        workspace: "~/.openclaw/workspace-drum-qc",
+        model: "google/gemini-2.0-flash",
+      },
+      "drum-pack": {
+        name: "PACK",
+        workspace: "~/.openclaw/workspace-drum-pack",
+        model: "google/gemini-2.0-flash",
+        tools: {
+          deny: ["browser"],
+        },
+      },
+      "drum-manifest": {
+        name: "MANIFEST",
+        workspace: "~/.openclaw/workspace-drum-manifest",
+        model: "google/gemini-2.0-flash",
+      },
+    },
+  },
+  bindings: [
+    {
+      agentId: "drum-lead",
+      match: {
+        channel: "telegram",
+        accountId: "*",
+        peer: { kind: "direct", id: "REPLACE_YOUR_TELEGRAM_E164_OR_USE_DEFAULT" },
+      },
+    },
+  ],
+  automation: {
+    jobs: [
+      {
+        name: "drum-tripwire-morning",
+        schedule: "0 7 * * *",
+        agentId: "drum-lead",
+        message:
+          "Morning tripwire factory brief: tripwire steps G1-G6, gate G3 founder ears status, and any kit-spec awaiting QC. Read-only; link Command Center tripwire semantics.",
+      },
+    ],
+  },
+}

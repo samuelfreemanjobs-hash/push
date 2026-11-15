@@ -1,0 +1,12 @@
+{
+  "name": "disklordz-drum-kit-factory-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate:kit-spec": "node scripts/validate-kit-spec.mjs",
+    "validate:template": "node scripts/validate-kit-spec.mjs handoff/kit-spec.template.yaml"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  }
+}

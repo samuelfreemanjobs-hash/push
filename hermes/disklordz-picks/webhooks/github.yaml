@@ -1,0 +1,37 @@
+# Hermes GitHub webhooks — register in repo/org settings; point to hermes gateway URL
+# Docs: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks
+
+subscriptions:
+  - name: dlz-vault-prs
+    events: pull_request
+    repos:
+      - samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault
+    deliver: file
+    output_path: "~/.openclaw/hermes-out/pr-review/{pull_request.number}.md"
+    prompt: |
+      Vault PR #{pull_request.number}: {pull_request.title}
+      Phase/context: disklordz vault
+      Summarize risk, conflicts, tripwire relevance.
+      Draft review comment only — do not post to GitHub.
+      End with: Suggested OC handoff REVIEW: or FLOW:
+
+  - name: dlz-instruments-ci
+    events: workflow_run
+    repos:
+      - samuelfreemanjobs-hash/Instruments
+    workflow_types: completed
+    filter: "workflow_run.conclusion == 'failure'"
+    deliver: file
+    output_path: "~/.openclaw/hermes-out/events/ci-instruments-{workflow_run.id}.json"
+    prompt: |
+      Instruments CI failed: {workflow_run.name} on {workflow_run.head_branch}
+      Link: {workflow_run.html_url}
+      OC handoff: FORGE: or FLOW:
+
+  - name: dlz-audio-ci
+    events: workflow_run
+    repos:
+      - samuelfreemanjobs-hash/DiskLordz-Audio
+    filter: "workflow_run.conclusion == 'failure'"
+    prompt: |
+      DiskLordz-Audio CI failed. Summary for morning brief. FORGE: suggested fix.

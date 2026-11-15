@@ -1,0 +1,1 @@
+# Configure channel IDs and competitor store URLs in Hermes USER.md before enabling cron.

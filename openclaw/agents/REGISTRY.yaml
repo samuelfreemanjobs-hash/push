@@ -1,0 +1,99 @@
+# Elite agent registry — skills allowlists map to openclaw.json agents.entries.*.skills
+defaults:
+  shared_skills:
+    - disk_ops_snapshot
+    - telegram_brief
+    - memory_vault
+
+agents:
+  sage:
+    tier: elite
+    role: Coordinator — strategy, delegation, morning brief owner
+    workspace: workspace-sage
+    subagents: [dev, mkt, biz, drum-lead, review]
+    skills:
+      - disk_ops_snapshot
+      - vault_kanban
+      - launch_gates
+      - delegate_subagent
+      - telegram_brief
+      - memory_vault
+      - friday_kpi
+
+  dev:
+    tier: elite
+    role: Dev pod — code, VST, overnight branches
+    workspace: workspace-dev
+    subagents: []
+    skills:
+      - overnight_branch
+      - github_pr_review
+      - vst_factory
+      - flow_github_actions
+      - security_sentinel
+
+  mkt:
+    tier: elite
+    role: Marketing pod — research consumption, content angles
+    workspace: workspace-mkt
+    skills:
+      - research_consume
+      - tripwire_positioning
+      - telegram_brief
+
+  biz:
+    tier: elite
+    role: Business pod — gates, KPI, pricing narrative
+    workspace: workspace-biz
+    skills:
+      - launch_gates
+      - friday_kpi
+      - tripwire_positioning
+      - vault_kanban
+
+  drum-lead:
+    tier: elite
+    role: Drum factory conductor
+    workspace: workspace-drum-lead
+    subagents: [grok-bridge, drum-qc, drum-pack, drum-manifest]
+    skills:
+      - kit_spec_grok
+      - tripwire_qc
+      - tripwire_pack
+      - disk_ops_snapshot
+
+  grok-bridge:
+    tier: elite
+    role: Grok Architect handoff
+    workspace: workspace-grok-bridge
+    skills: [kit_spec_grok, memory_vault]
+
+  drum-qc:
+    tier: subagent
+    workspace: workspace-drum-qc
+    skills: [tripwire_qc]
+
+  drum-pack:
+    tier: subagent
+    workspace: workspace-drum-pack
+    skills: [tripwire_pack]
+
+  drum-manifest:
+    tier: subagent
+    workspace: workspace-drum-manifest
+    skills: [tripwire_qc]
+
+  review:
+    tier: elite
+    role: Pre-merge reviewer
+    workspace: workspace-review
+    skills: [github_pr_review, security_sentinel, vst_factory]
+
+  code:
+    tier: elite
+    alias_of: dev
+    skills: [overnight_branch, github_pr_review]
+
+  flow:
+    tier: elite
+    skills: [flow_github_actions, disk_ops_snapshot]

@@ -1,0 +1,11 @@
+# Reference cron messages — map to OpenClaw cron / automations in gateway config
+jobs:
+  - id: drum-morning-brief
+    cron: "0 7 * * *"
+    agent: drum-lead
+  - id: drum-qc-queue-sweep
+    cron: "0 14 * * 1-5"
+    agent: drum-qc
+  - id: drum-weekly-kpi
+    cron: "0 16 * * 5"
+    agent: drum-lead
