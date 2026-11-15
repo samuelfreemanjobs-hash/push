@@ -1,40 +1,49 @@
-# DetroitPhonkTrapMaker — Cursor / Superpowers / REA
+# AGENTS.md — Trap/Phonk C++ JUCE plugin & sample architecture
 
-Copy this file to **`C:\Dev\DetroitPhonkTrapVST3\AGENTS.md`** (alongside `CMakeLists.txt`).
+Place at **`C:\Dev\DetroitPhonkTrapVST3\AGENTS.md`** (bootstrap copies this file).
 
-## Product
+## 1. Core engineering philosophy (DRY & YAGNI)
 
-Trap / phonk / Detroit drum rompler + WAV export. Architecture: `TRAP-PHONK-ARCHITECTURE.md`. Ralph stories: `DLZ-VST-*` in `C:\Dev\push\disklordz-ralph\prd.json`.
+- **Shared core library (`Modules/TrapCoreDSP/`):** Never duplicate DSP math, sample loaders, or MIDI state machines across plugins. All reusable audio code lives here and links into `DetroitPhonkTrapMaker`.
+- **Data-driven content:** Never hardcode kit paths, pad counts, or UI colors. Drive kits and themes via JSON/XML manifests and encrypted `.blob` sample containers (see `C:\Dev\push\openclaw\drum-kit-factory\handoff\`).
+- **Audio thread real-time safety:** Zero heap allocations (`new`, `malloc`, `std::vector::push_back`), zero locks, zero file or UI calls inside `processBlock()` or `renderNextBlock()`.
 
-## Superpowers workflow
+## 2. Superpowers workflow rules
 
-1. **Plan:** `brainstorming` → save plan under `docs/plans/<feature>-spec.md` (create `docs/plans/` if missing).
-2. **Test:** Add failing Catch2 in `tests/` or extend `DrumTestCLI` **before** `Source/` changes.
-3. **Implement:** Edit `trap-core-dsp/` first, then `PluginProcessor`.
-4. **Review:** `spec-compliance` / code-review skill; run `ctest` + `pluginval` 5.
-5. **Debug:** `systematic-debugging` → REA scoped audit → fix → re-run tests.
-
-Install Superpowers in Cursor: Agent chat → `/add-plugin superpowers` or Marketplace ([obra/superpowers](https://github.com/obra/superpowers)).
-
-## REA (after RelWithDebInfo build)
-
-- Targets: `C:\Dev\push\disklordz-ralph\vst\rea-targets.json`
-- Prompts: `REA-WORKFLOW.md` §3
-- Notes: commit `rea-notes/*.md` in **push** repo only
-
-## Build
+- **Brainstorm → plan → execute:** Before production C++ for any DSP module, preset system, or packer, run Superpowers `brainstorming` + `writing-plans`; save `docs/plans/<feature>-spec.md`.
+- **Strict red-green-refactor TDD:** No production DSP without a failing **Catch2** test in `tests/` first. Tests verify glide/saturation math, zero NaN/Inf, and (where possible) envelope curves on synthetic `juce::AudioBuffer<float>` blocks.
+- **Automated verification gate:** Every task is incomplete until these pass on Windows:
 
 ```powershell
-cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release --parallel
-ctest -C Release --test-dir build
+ctest --test-dir build -C Release --output-on-failure
+.\tools\pluginval\pluginval.exe --strictness-level 5 --validate ".\build\DetroitPhonkTrapMaker_artefacts\Release\VST3\Detroit Phonk Trap Maker.vst3"
 ```
 
-## Layout
+(`COPY_PLUGIN_AFTER_BUILD` defaults OFF — validate the build-tree `.vst3`, not Program Files, unless you enabled admin copy.)
+
+## 3. REA guardrails (Windows)
+
+- **Targeted inspection only:** No full-binary decompile. Locate the inner PE in the `.vst3` bundle; filter by PDB, `GetPluginFactory`, or `Trap*` / `processBlock` symbols.
+- **Ignore JUCE boilerplate:** Exclude graphics, Direct2D, PNG, zlib unless debugging UI.
+- **Evidence format:** Observations / Inferences / Unknowns → append **`docs/rea-audit.md`** (and sync summaries to `C:\Dev\push\disklordz-ralph\vst\rea-notes\`).
+
+Full prompts: `C:\Dev\push\disklordz-ralph\vst\REA-WORKFLOW.md`.
+
+## 4. Sample pack & asset pipeline
+
+- **Single source of truth:** Master WAVs in `Assets/RawMasters/`.
+- **Automated packaging:** Kit scripts validate zero-crossing, silence trim, peak headroom; output unlocked customer WAV pack + encrypted plugin asset in one pass.
+
+## 5. Layout
 
 ```text
-trap-core-dsp/     # TrapCoreDSP static lib (DRY)
-Source/            # Processor, editor, voices wiring
-tests/             # Catch2
-docs/plans/        # Superpowers writing-plans output
+Modules/TrapCoreDSP/   # shared DSP
+Source/                # Processor, editor
+tests/                 # Catch2 + CTest
+docs/plans/            # Superpowers specs
+docs/rea-audit.md      # REA session log
+Assets/RawMasters/     # 24-bit masters
 ```
+
+Ralph stories: `C:\Dev\push\disklordz-ralph\prd.json` (`DLZ-VST-*`).

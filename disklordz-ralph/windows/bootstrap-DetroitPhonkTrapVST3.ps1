@@ -39,12 +39,13 @@ if (-not (Test-Path "CMakeLists.txt") -and (Test-Path (Join-Path $Starter "CMake
   Copy-Item "$Starter\*.h" "Source\" -Force -ErrorAction SilentlyContinue
   $VstDoc = Join-Path $PushRoot "disklordz-ralph\vst"
   Copy-Item (Join-Path $VstDoc "AGENTS.md") "AGENTS.md" -Force -ErrorAction SilentlyContinue
-  foreach ($dir in @("trap-core-dsp", "tests", "docs\plans")) {
+  foreach ($dir in @("Modules", "tests", "docs", "Assets")) {
     $src = Join-Path $VstDoc $dir
     if (Test-Path $src) {
       Copy-Item $src $dir -Recurse -Force
     }
   }
+  New-Item -ItemType Directory -Force -Path "Assets\RawMasters" | Out-Null
 }
 Write-Host "VST workspace ready at $VstRoot. Build: disklordz-ralph\vst\WINDOWS-BUILD.md" -ForegroundColor Green
 Write-Host "Business Ralph: $PushRoot\disklordz-ralph\ralph.ps1" -ForegroundColor Green

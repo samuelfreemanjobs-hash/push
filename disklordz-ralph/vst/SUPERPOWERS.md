@@ -22,7 +22,7 @@
 
 One static library for all plugins and genre skins:
 
-- `trap-core-dsp/` — `Trap808Voice`, soft clip chain, hat choke, sample decrypt loader (future)
+- `Modules/TrapCoreDSP/` — shared glide, clip, choke, sample loader (headers in `Source/`)
 - Manifest-driven kits — `kit-spec.yaml` / JSON; no duplicate voice classes per genre
 
 ## Sample pack pipeline (TDD)

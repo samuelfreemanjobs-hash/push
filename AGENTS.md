@@ -1,45 +1,65 @@
-# DiskLordz — agent instructions (Cursor / Claude Code / Ralph)
+# AGENTS.md — DiskLordz (monorepo + Trap/Phonk JUCE)
 
-## Scope
+Cursor, Superpowers, Claude Code, and Ralph read this at session start.
 
-| Path | Agent role |
-|------|------------|
-| `disklordz-ralph/` | One story per iteration; read `prd.json` + `PROMPT.md` |
-| `openclaw/` | Telegram sage, skills, drum factory — no VST binary dumps in cloud |
-| `disklordz-ralph/vst/` | JUCE / trap-phonk plugin — **Superpowers + REA + TDD** |
-| `C:\Dev\DetroitPhonkTrapVST3` | MSVC workspace (copy `vst/AGENTS.md` there) |
+## Monorepo lanes
 
-## Superpowers (Cursor)
+| Path | Agent |
+|------|--------|
+| `disklordz-ralph/` | One `prd.json` story / iteration |
+| `openclaw/` | Telegram, skills, drum-kit-factory |
+| `disklordz-ralph/vst/` | VST architecture, tests, REA notes |
+| `C:\Dev\DetroitPhonkTrapVST3` | Windows MSVC plugin workspace — copy `disklordz-ralph/vst/AGENTS.md` to project root |
 
-When the **Superpowers** plugin is installed (`/add-plugin superpowers` or Marketplace):
+---
 
-1. **Before C++ DSP:** run matching skills — `brainstorming` → `writing-plans` → `test-driven-development`.
-2. **No production DSP** without a failing test first (Catch2 or `DrumTestCLI` assertion).
-3. **Subagent tasks:** one module per worktree (glide, clip, choke, export).
-4. **DAW bugs:** `systematic-debugging` then scoped **REA** (`vst/REA-WORKFLOW.md`).
+# Trap/Phonk C++ JUCE plugin & sample architecture
 
-If no Superpowers skill matches, still follow plans in `disklordz-ralph/vst/docs/plans/` and red-green-refactor manually.
+## 1. Core engineering (DRY & YAGNI)
 
-## REA (Windows + Ghidra)
+- **Shared core (`Modules/TrapCoreDSP/`):** No duplicated DSP, sample loaders, or MIDI state across plugins. Static CMake library (or INTERFACE until `.cpp` land) linked by every VST3 target.
+- **Data-driven content:** No hardcoded kit paths, pad counts, or UI colors. Kits/themes from JSON/YAML manifests + `openclaw/drum-kit-factory/handoff/kit-spec.yaml`; encrypted `.blob` for factory audio when needed.
+- **Real-time safety:** Zero heap allocs, locks, or file/UI I/O in `processBlock()` / `renderNextBlock()`.
 
-- Audit **your** RelWithDebInfo `.vst3` only; symbol-filtered prompts in `disklordz-ralph/vst/REA-WORKFLOW.md`.
-- Cache in `disklordz-ralph/vst/rea-notes/`; never commit binaries or circumvent DRM.
-- Pair with rule: `.cursor/rules/rea-juce-superpowers.mdc`.
+## 2. Superpowers workflow
 
-## DRY business architecture
+Install: Cursor Agent → `/add-plugin superpowers` ([obra/superpowers](https://github.com/obra/superpowers)).
 
-- **TrapCoreDSP** static lib — single home for glide, clip, choke (`vst/trap-core-dsp/`).
-- **Kit manifests** — JSON/YAML from `openclaw/drum-kit-factory/handoff/`; no hardcoded WAV paths in C++.
-- **Sample QA** — tripwire factory + agent-stack; one source folder → encrypted plugin blob + customer WAV zip.
+- **Brainstorm → plan → execute:** Before new DSP/preset/packer code, run `brainstorming` + `writing-plans`; save `docs/plans/<feature>-spec.md` (VST tree) or `disklordz-ralph/vst/docs/plans/` (push repo).
+- **Red-green-refactor:** No production DSP without a **failing Catch2 test** first (synthetic buffers; assert glide math, no NaN/Inf).
+- **Subagents / worktrees:** One feature per branch (glide, clip, choke, drag-export).
+- **DAW bugs:** `systematic-debugging`, then REA — not guess patches.
 
-## Verify matrix
+Details: `disklordz-ralph/vst/SUPERPOWERS.md`.
 
-| Lane | Command |
-|------|---------|
-| Monorepo CI | `npm run build` in `disklordz-command-center`, `openclaw/skills` |
-| VST | `ctest -C Release`, `pluginval --strictness-level 5` |
-| Ralph | `node disklordz-ralph/scripts/verify-story.mjs <id>` |
+## 3. Verification gate (Windows VST)
 
-## Human gates
+Incomplete until all pass:
 
-Operator-only: Telegram pairing, Stripe, vault merge, ClawHub publish, G3 sample-pack ship.
+```powershell
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+.\tools\pluginval\pluginval.exe --strictness-level 5 --validate ".\build\DetroitPhonkTrapMaker_artefacts\Release\VST3\Detroit Phonk Trap Maker.vst3"
+```
+
+Optional RelWithDebInfo build for Ghidra/REA (`disklordz-ralph/vst/WINDOWS-BUILD.md`).
+
+Ralph: `node disklordz-ralph/scripts/verify-story.mjs DLZ-VST-*`.
+
+## 4. REA guardrails (Windows)
+
+- **Scoped only:** No full-binary decompile. Use PE inside `.vst3`, filter PDB symbols / `GetPluginFactory` / `Trap*` / `processBlock`.
+- **Ignore JUCE boilerplate:** Skip graphics, zlib, PNG unless debugging UI.
+- **Evidence cache:** Observations / Inferences / Unknowns → append `docs/rea-audit.md` (VST project) and/or commit `disklordz-ralph/vst/rea-notes/*.md` in push.
+
+Playbook: `disklordz-ralph/vst/REA-WORKFLOW.md`. Cursor rule: `.cursor/rules/rea-juce-superpowers.mdc`.
+
+## 5. Sample pack & asset pipeline
+
+- **Masters:** `Assets/RawMasters/` (24-bit / 44.1 kHz in VST workspace).
+- **Single pass:** Validate zero-cross, trim silence, headroom → customer WAV zip + encrypted plugin blob.
+- **Tripwire:** Factory scripts in `openclaw/drum-kit-factory/`; Grok `kit-spec` is source of truth.
+
+## 6. Human gates
+
+Operator only: Telegram pairing, Stripe, vault merge, ClawHub publish, G3 kit ship (`prd.json` `actor: operator`).

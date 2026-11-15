@@ -7,10 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # JUCE submodule from bootstrap: externals/JUCE
 add_subdirectory(externals/JUCE)
 
-option(DLZ_BUILD_TESTS "Catch2 TrapCoreDSP tests" ON)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Modules/TrapCoreDSP/CMakeLists.txt")
+  add_subdirectory(Modules/TrapCoreDSP)
+endif()
+
+option(DLZ_BUILD_TESTS "Catch2 + CTest for TrapCoreDSP" ON)
 if(DLZ_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
   enable_testing()
-  add_subdirectory(trap-core-dsp)
   add_subdirectory(tests)
 endif()
 

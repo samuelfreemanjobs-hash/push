@@ -24,7 +24,8 @@ alwaysApply: false
 
 ## DRY
 
-- Shared DSP lives in `trap-core-dsp/` (static lib). Plugins link `TrapCoreDSP`; do not copy-paste waveshapers across targets.
+- Shared DSP lives in `Modules/TrapCoreDSP/`. Plugins link `TrapCoreDSP`; do not copy-paste waveshapers across targets.
+- Append REA findings to `docs/rea-audit.md` (VST) and `disklordz-ralph/vst/rea-notes/` (push).
 - Genre kits = manifest data, not duplicate `SynthesiserVoice` classes.
 
 ## Real-time
