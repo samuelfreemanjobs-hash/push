@@ -40,7 +40,8 @@ claude
 |---------|--------|--------|
 | `/disk-export-kit` | `kit-producer` | `commercial-kit-export` |
 | `/disk-pluginval-gate` | `qa-validator` | `pluginval-gate` |
-| `/disk-autoresearch-cpp` | `dsp-architect` → `qa-validator` | `cpp-voice-dsp-loop` |
+| `/disk-autoresearch-cpp` | `memory-curator` → `dsp-architect` → `qa-validator` → `memory-curator` | `cpp-voice-dsp-loop`, `mem0-dsp-memory` |
+| `/disk-mem0-recall` | `memory-curator` | `mem0-dsp-memory` |
 
 See `.claude/commands/` for prompts.
 
@@ -68,8 +69,17 @@ Nested skills appear when Claude edits files under that tree.
 
 ---
 
+## Memory layers
+
+- **Mem0** — Claude Code nights + `memory-curator` (`docs/dev/mem0-opt-in.md`)
+- **Ruflo** — local swarm vector memory (`docs/dev/ruflo-opt-in.md`)
+- **Supermemory** — Cursor MCP (cloud agents)
+
+---
+
 ## Related
 
+- `docs/dev/mem0-opt-in.md`
 - `docs/dev/ruflo-opt-in.md`
 - `AGENTS.md` (Cursor)
 - `disklordz-ralph/STACK-FROZEN.md`

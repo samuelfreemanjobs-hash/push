@@ -10,7 +10,7 @@
 
 | Department | Engine | Responsibility |
 |------------|--------|----------------|
-| R&D & sound | Ruflo + Claude Code | `VoiceDSP.h`, `drum_engine.py`, pluginval, `export_kit.py` |
+| R&D & sound | Ruflo + Claude Code + Mem0 (opt-in) | `VoiceDSP.h`, `drum_engine.py`, pluginval, `export_kit.py`, `memory-curator` |
 | Knowledge | RAGFlow (MCP) | Schematics, EULAs, manuals |
 | Video & social | OpenMontage | Shorts / VST trailers from `assets/latest_release/` |
 | Finance & market | **OpenBB** | Unit economics, FX/macro context, treasury modeling |

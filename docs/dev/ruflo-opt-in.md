@@ -12,7 +12,8 @@
 |-----------|---------------------------|
 | Parallel specialized workers on **your** Windows box | PRs, repo docs, cloud turns |
 | Long local autopilot on `VoiceDSP.h` / `drum_engine.py` | `prd.json` single-story ship |
-| Vector memory across Claude Code sessions | Supermemory / `AGENTS.md` |
+| Vector memory across Claude Code sessions | **Mem0** (`docs/dev/mem0-opt-in.md`, `memory-curator`) or Ruflo `memory` CLI |
+| Cursor cloud turns | Supermemory / `AGENTS.md` |
 
 ---
 

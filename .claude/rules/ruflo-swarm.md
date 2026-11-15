@@ -18,5 +18,6 @@ Queen assigns **one hypothesis per cycle**; dsp-architect edits **one** sandbox 
 | `cfo-openbb` | `sync_sales_ledger.py` read-only |
 | `strix-guard` | `strix-pre-release.ps1` + `skills/vst_audio_security.md` |
 | `product-architect` | MetaGPT `metagpt-workspace/` only |
+| `memory-curator` | Mem0 recall (`/disk-mem0-recall`) before cycle; `record_autoresearch_win.py` after keep |
 
-Autoresearch **fail** → `git checkout --` sandbox file only. **Win** → commit sandbox + `results.tsv`.
+Autoresearch **fail** → `git checkout --` sandbox file only. **Win** → commit sandbox + `results.tsv` → **memory-curator** stores to Mem0 (optional).

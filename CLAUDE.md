@@ -24,8 +24,9 @@ Detailed role matrix: **`.claude/rules/ruflo-swarm.md`**. Subagent defs: **`.cla
 | `dsp-architect` | `VoiceDSP.h` or `drum_engine.py` only |
 | `qa-validator` | judges + pluginval (+ Strix quick before paid) |
 | `kit-producer` | `export_kit.py`, OpenMontage handoff |
+| `memory-curator` | Mem0 recall/store (`docs/dev/mem0-opt-in.md`) |
 
-Slash workflows: `/disk-autoresearch-cpp`, `/disk-pluginval-gate`, `/disk-export-kit`.
+Slash workflows: `/disk-autoresearch-cpp`, `/disk-mem0-recall`, `/disk-pluginval-gate`, `/disk-export-kit`.
 
 ---
 
@@ -49,7 +50,7 @@ Slash workflows: `/disk-autoresearch-cpp`, `/disk-pluginval-gate`, `/disk-export
 ```text
 Read CLAUDE.md + .claude/rules for current paths.
 Run /disk-autoresearch-cpp or spawn dsp-architect + qa-validator per claude-code-best-practice.
-On kit win: /disk-export-kit. Query Ruflo memory only if init locally.
+On kit win: /disk-export-kit. Recall Mem0 via memory-curator (or Ruflo memory if init locally).
 ```
 
 ---
@@ -63,6 +64,7 @@ On kit win: /disk-export-kit. Query Ruflo memory only if init locally.
 | Launch doc | `docs/dev/ruflo-launch.md` |
 | Claude layout | `docs/dev/claude-code-best-practice.md` |
 | OpenMontage | `docs/dev/openmontage.md` |
+| Mem0 agent memory | `docs/dev/mem0-opt-in.md`, `.claude/agents/memory-curator.md` |
 | Strix / MetaGPT / OpenBB | `docs/dev/*-opt-in.md` |
 
 ---
