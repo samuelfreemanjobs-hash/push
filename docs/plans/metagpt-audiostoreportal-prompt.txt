@@ -1,0 +1,23 @@
+Build a production-ready FastAPI + SQLite/PostgreSQL backend and React/Tailwind customer portal for DiskLordz — a VST3 audio plugin ("Detroit Phonk Trap Maker") and 24-bit WAV sample-pack business (synthesis-only drum kits).
+
+CORE FEATURES:
+1. Stripe Checkout & Idempotent Webhooks:
+   - Endpoint POST /api/webhooks/stripe verifying Stripe-Signature headers with raw request bodies.
+   - Store processed stripe_event_id in a database table to block replay attacks.
+   - On checkout.session.completed, generate a cryptographically random serial key (format: DLZ-XXXX-XXXX-XXXX-XXXX) for VST products or grant download entitlements for Drum Pack products.
+2. VST3 Machine Activation & Cryptographic Licensing API:
+   - Endpoint POST /api/license/activate accepting {serial_key, machine_id, plugin_version}.
+   - Enforce a strict 3-machine seat limit using atomic database row locking (SELECT FOR UPDATE / transaction isolation) to prevent race-condition seat bypasses.
+   - Return an Ed25519-signed JSON license payload containing {serial_key, machine_id, issued_at, expires_at, signature} so the C++ JUCE plugin can verify authenticity offline using only an embedded public key.
+   - Endpoint POST /api/license/deactivate to release a machine seat.
+3. Protected Sample Pack Downloads & Web Audio Audition Player:
+   - Endpoint GET /api/downloads/{order_id}/{product_slug} requiring a valid customer JWT/session token (strict ownership check to prevent IDOR) and generating a 15-minute presigned S3/R2 download URL.
+   - Public storefront page with gunmetal #121216 + amber accent, with a built-in Web Audio API waveform preview player for demo WAV loops.
+
+SECURITY & ARCHITECTURE REQUIREMENTS:
+- Zero hardcoded secrets: load STRIPE_WEBHOOK_SECRET, ED25519_PRIVATE_KEY, JWT_SECRET, and S3 credentials strictly from environment variables (.env.example provided).
+- Include Pydantic input validation, rate limiting on /api/license/activate, and a full pytest security test suite covering webhook signature rejection, seat-limit concurrency, and IDOR download blocking.
+- Include a Dockerfile and docker-compose.yml for instant local deployment.
+- Document Strix handoff: operator runs strix with instruction file skills/vst_audio_security.md against this repo before production.
+
+Output project name: AudioStorePortal under workspace/AudioStorePortal with backend/, frontend/, tests/, docs/PRD.md, docs/architecture.md.

@@ -54,6 +54,7 @@ if(MSVC)
 endif()
 
 option(DLZ_COPY_VST3_TO_PROGRAMFILES "Copy VST3 to Common Files after build" OFF)
+option(DLZ_LICENSE_ED25519 "Ed25519 offline license verify (Core+; requires libsodium)" OFF)
 
 juce_add_plugin(DetroitPhonkTrapMaker
     COMPANY_NAME "DiskLordz"

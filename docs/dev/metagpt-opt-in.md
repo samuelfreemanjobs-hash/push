@@ -34,7 +34,7 @@ Generate into a sibling folder (not inside `starter-cpp`):
 cd C:\Dev
 mkdir metagpt-workspace -Force
 cd C:\Dev\push
-.\scripts\metagpt-license-portal.ps1
+.\scripts\metagpt-audiostoreportal.ps1
 ```
 
 Default output: `C:\Dev\metagpt-workspace\` (gitignored pattern in `disklordz-ralph/business/metagpt/README.md`).
