@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "sync:ops": "node scripts/sync-ops-snapshot.mjs",
-    "prebuild": "node scripts/sync-ops-snapshot.mjs || true"
+    "sync:intelligence": "node scripts/sync-intelligence-snapshot.mjs",
+    "sync:all": "npm run sync:ops && npm run sync:intelligence",
+    "prebuild": "npm run sync:ops || true && npm run sync:intelligence || true"
   },
   "dependencies": {
     "react": "^19.0.0",

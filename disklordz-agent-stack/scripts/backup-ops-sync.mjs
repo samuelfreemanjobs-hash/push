@@ -28,6 +28,7 @@ let result = { needsRun, ageH, ran: false, exitCode: null };
 if (needsRun) {
   const syncDir = join(repoRoot(), "disklordz-command-center");
   const syncScript = join(syncDir, "scripts", "sync-ops-snapshot.mjs");
+  const intelScript = join(syncDir, "scripts", "sync-intelligence-snapshot.mjs");
   result.ran = true;
   result.exitCode = await new Promise((resolve) => {
     const child = spawn(process.execPath, [syncScript], {
@@ -35,7 +36,17 @@ if (needsRun) {
       stdio: "inherit",
       env: { ...process.env, DLZ_REPO_ROOT: repoRoot() },
     });
-    child.on("close", (code) => resolve(code ?? 1));
+    child.on("close", (code) => {
+      if (code !== 0) resolve(code ?? 1);
+      else {
+        const intel = spawn(process.execPath, [intelScript], {
+          cwd: syncDir,
+          stdio: "inherit",
+          env: { ...process.env, DLZ_REPO_ROOT: repoRoot() },
+        });
+        intel.on("close", (c) => resolve(c ?? 1));
+      }
+    });
   });
 }
 

@@ -9,6 +9,7 @@ export const OPENCLAW_SKILL_HINTS = {
   plan: ["launch_gates", "vault_kanban"],
   forge: ["vst_factory"],
   sentinel: ["security_sentinel"],
+  radar: ["tech_radar_signals", "memory_vault"],
 };
 
 export function skillLineForAgent(agentId) {
