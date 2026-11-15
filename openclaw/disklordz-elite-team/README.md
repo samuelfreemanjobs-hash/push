@@ -57,3 +57,7 @@ npm run dev
 `POST /api/agent` body: `{ "message": "CODE: explain this diff", "userId": "mobile" }`
 
 Set Command Center `VITE_AGENT_API_URL=http://127.0.0.1:3000` for in-PWA chat.
+
+## Drum kit factory (Grok Architect + OpenClaw)
+
+Grok Bot **Drum Kit Architect** owns creative `kit-spec.yaml`. OpenClaw **drum-kit-factory** (5 agents) runs QC, manifest, zip, and Telegram on your VPS. See [`../drum-kit-factory/README.md`](../drum-kit-factory/README.md).

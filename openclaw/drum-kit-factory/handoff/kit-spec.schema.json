@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DiskLordz KitSpec",
+  "description": "Handoff from Grok Drum Kit Architect to OpenClaw drum-kit-factory",
+  "type": "object",
+  "required": [
+    "kit_id",
+    "version",
+    "architect",
+    "genre",
+    "bpm",
+    "sounds",
+    "qc",
+    "tripwire",
+    "founder_ears_required"
+  ],
+  "properties": {
+    "kit_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "architect": {
+      "type": "object",
+      "required": ["system"],
+      "properties": {
+        "system": { "const": "grok-bot-drum-kit-architect" },
+        "session_note": { "type": "string" }
+      }
+    },
+    "genre": { "type": "string" },
+    "bpm": { "type": "number", "minimum": 40, "maximum": 220 },
+    "key": { "type": "string" },
+    "sounds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "description"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string" },
+          "description": { "type": "string" },
+          "one_shot": { "type": "boolean" }
+        }
+      }
+    },
+    "qc": {
+      "type": "object",
+      "required": ["format", "bit_depth", "sample_rate", "peak_db_max"],
+      "properties": {
+        "format": { "enum": ["wav"] },
+        "bit_depth": { "enum": [16, 24, 32] },
+        "sample_rate": { "enum": [44100, 48000] },
+        "peak_db_max": { "type": "number", "maximum": 0 },
+        "max_duration_seconds": { "type": "number", "minimum": 0.1 }
+      }
+    },
+    "tripwire": {
+      "type": "object",
+      "required": ["sku", "wav_count", "price_usd", "credits_grant"],
+      "properties": {
+        "sku": { "type": "string" },
+        "wav_count": { "type": "integer", "minimum": 1 },
+        "price_usd": { "type": "number" },
+        "credits_grant": { "type": "integer" }
+      }
+    },
+    "founder_ears_required": { "type": "boolean" }
+  }
+}

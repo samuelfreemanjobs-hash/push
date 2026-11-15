@@ -29,7 +29,8 @@ export function TripwirePanel() {
           <h2 className="panel__title">Tripwire — Starter Trap Pack</h2>
           <p className="panel__desc">
             SKU <code>tripwire-sample-v1</code> · $9 · +75 credits · 5 WAVs. Not
-            a VST — WAV pack only.
+            a VST — WAV pack only. Grok Drum Kit Architect → kit-spec; OpenClaw
+            factory team → <code>openclaw/drum-kit-factory/</code>.
           </p>
         </div>
       </header>
