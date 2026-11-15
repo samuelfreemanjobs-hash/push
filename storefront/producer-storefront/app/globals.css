@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes bass-bloom {
+  0%,
+  100% {
+    filter: blur(40px);
+  }
+  50% {
+    filter: blur(48px);
+  }
+}
+
+.bass-pulse-glow {
+  animation: bass-bloom 4s ease-in-out infinite;
+  background: radial-gradient(circle at 50% 60%, #ff1e56 0%, #7f5af0 45%, transparent 70%);
+  will-change: transform, opacity;
+}
+
+.pad-btn {
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.pad-btn:active {
+  transform: translateY(2px);
+}
+
+.pad-btn:focus-visible {
+  outline: 2px solid #ffac41;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bass-pulse-glow {
+    animation: none;
+  }
+  .pad-btn {
+    transition: none;
+  }
+}

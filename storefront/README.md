@@ -2,12 +2,22 @@
 
 | Path | Purpose |
 |------|---------|
+| **`producer-storefront/`** | Next.js high-converting landing — hero beat pad, 3-tier pricing, free kit lead magnet |
 | **`index.html`** | Primary Tailwind landing — Web Audio audition, tiers, checkout placeholders |
 | **`interactive-lab/`** | GPU-style bass-reactive pad grid — keys 1–4, CTA to tiers |
 | `disklordz-lite/` | Token-based CSS variant (same funnel, smaller surface) |
 | `plugin-faceplate/` | WebView mock — `/impeccable distill` before optional `WebBrowserComponent` |
 
 Preview:
+
+```powershell
+cd storefront/producer-storefront
+npm install
+npm run dev
+# open http://127.0.0.1:3000
+```
+
+Static legacy pages:
 
 ```powershell
 cd storefront
