@@ -55,11 +55,21 @@ std::optional<juce::WebBrowserComponent::Resource> DrumKitAudioProcessorEditor::
     juce::ignoreUnused(url);
     return std::nullopt;
 #else
-    if (url == "/" || url == "/index.html")
+    const juce::String path = url.endsWith("/") ? "index.html" : url.fromLastOccurrenceOf("/", false, false);
+
+    if (path.equalsIgnoreCase("index.html") || path == "/")
     {
         return juce::WebBrowserComponent::Resource{
             toByteVector(WebUIAssets::index_html, WebUIAssets::index_htmlSize),
             "text/html",
+        };
+    }
+
+    if (path.equalsIgnoreCase("app.js"))
+    {
+        return juce::WebBrowserComponent::Resource{
+            toByteVector(WebUIAssets::app_js, WebUIAssets::app_jsSize),
+            "text/javascript",
         };
     }
 
