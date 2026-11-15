@@ -73,10 +73,9 @@ jobs:
       - name: Build installer (Inno Setup)
         run: |
           $ver = (Select-String -Path CMakeLists.txt -Pattern 'project\(MemphisDust VERSION ([0-9.]+)').Matches[0].Groups[1].Value
-          "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
-          & $iscc /DAppVersion=$env:APP_VERSION packaging/MemphisDust.iss
+          & $iscc "/DAppVersion=$ver" packaging/MemphisDust.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
