@@ -27,12 +27,13 @@ let result = { needsRun, ageH, ran: false, exitCode: null };
 
 if (needsRun) {
   const syncDir = join(repoRoot(), "disklordz-command-center");
+  const syncScript = join(syncDir, "scripts", "sync-ops-snapshot.mjs");
   result.ran = true;
   result.exitCode = await new Promise((resolve) => {
-    const child = spawn("npm", ["run", "sync:ops"], {
+    const child = spawn(process.execPath, [syncScript], {
       cwd: syncDir,
       stdio: "inherit",
-      shell: false,
+      env: { ...process.env, DLZ_REPO_ROOT: repoRoot() },
     });
     child.on("close", (code) => resolve(code ?? 1));
   });

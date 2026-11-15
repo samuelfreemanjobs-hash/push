@@ -52,7 +52,13 @@ bash ~/push/openclaw/drum-kit-factory/scripts/install-drum-workspaces.sh
 #    models.providers.google.apiKey = Gemini
 
 openclaw gateway install && openclaw gateway start
+
+# 7) Elite skills (OpenClaw SKILL.md library)
+bash ~/push/openclaw/skills/install-skills.sh
+# Merge openclaw/skills/openclaw.skills.json5.example into openclaw.json
 ```
+
+`DLZ_REPO_ROOT` defaults to the git repo that contains `disklordz-agent-stack/` (set explicitly if your clone path differs).
 
 ## Cron (free, no Hermes)
 

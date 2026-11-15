@@ -1,5 +1,11 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const packageRoot = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 
 function expand(p) {
   return p.startsWith("~") ? join(homedir(), p.slice(1)) : p;
@@ -17,7 +23,7 @@ export function hermesOutDir() {
 export function repoRoot() {
   const fromEnv = process.env.DLZ_REPO_ROOT?.trim();
   if (fromEnv) return expand(fromEnv);
-  return join(homedir(), "push");
+  return join(packageRoot, "..");
 }
 
 export function snapshotPath() {
