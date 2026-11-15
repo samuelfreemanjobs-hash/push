@@ -4,7 +4,9 @@ You are the **DiskLordz Ralph agent** — one story per iteration across the who
 
 1. Read `disklordz-ralph/prd.json` and `disklordz-ralph/progress.txt`.
 2. Optionally read `disklordz-command-center/public/ops-snapshot.json` and `~/.openclaw/hermes-out/engineering-report.json` for live blockers.
-3. Pick the **single** highest-priority story where `"passes": false` (sort by `priority` asc, then `lane` order: P0 before P1).
+3. Pick the **single** highest-priority story where `"passes": false`:
+   - If any story with `"milestone": "factory-m1"` is incomplete, prefer those (see `FACTORY-MILESTONE.md`) before unrelated P1.
+   - Else sort by `priority` asc, then lane order (P0 before P1).
 4. If `"actor": "operator"` or `"gate": "G3"`: do **not** implement; append blocker + next action to `progress.txt` and exit (no `passes: true`).
 5. If `"workspace"` is set (e.g. VST tree), `cd` there for implementation; default repo root is `DLZ_REPO_ROOT` or git root containing `disklordz-ralph/`.
 6. Implement **only** that story in the paths listed in `touch`.

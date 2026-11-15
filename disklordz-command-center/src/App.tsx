@@ -10,6 +10,8 @@ import type { SectionId } from "./components/Sidebar.types";
 import { TripwirePanel } from "./components/TripwirePanel";
 import { VaultPanel } from "./components/VaultPanel";
 import { VstPanel } from "./components/VstPanel";
+import { IntelligencePanel } from "./components/IntelligencePanel";
+import { IntelligenceProvider } from "./context/IntelligenceContext";
 import { OpsDataProvider } from "./context/OpsDataContext";
 import { useKanbanStorage } from "./hooks/useKanbanStorage";
 
@@ -37,6 +39,7 @@ function CommandCenterMain() {
         {section === "vst" ? <VstPanel /> : null}
         {section === "agents" ? <AgentsPanel /> : null}
         {section === "mobile" ? <MobileCrewPanel /> : null}
+        {section === "intelligence" ? <IntelligencePanel /> : null}
       </main>
     </div>
   );
@@ -45,7 +48,9 @@ function CommandCenterMain() {
 export default function App() {
   return (
     <OpsDataProvider>
-      <CommandCenterMain />
+      <IntelligenceProvider>
+        <CommandCenterMain />
+      </IntelligenceProvider>
     </OpsDataProvider>
   );
 }

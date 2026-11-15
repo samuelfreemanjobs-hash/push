@@ -7,6 +7,12 @@ PATH=/usr/local/bin:/usr/bin:/bin
 # 05:25 engineering report (before OpenClaw 06:00 brief)
 25 5 * * 1-5 cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run all >> $HOME/.openclaw/hermes-out/cron.log 2>&1
 
+# 14:35 tech radar intake (AI Dev Signals — pair with RADAR: OpenClaw review)
+35 14 * * 1-5 cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run tech-radar >> $HOME/.openclaw/hermes-out/cron.log 2>&1
+
+# Mon 10:00 beatmaker content brief intake (then MKT: in OpenClaw)
+0 10 * * 1 cd $DLZ_REPO_ROOT/disklordz-agent-stack && /usr/bin/npm run beatmaker-brief >> $HOME/.openclaw/hermes-out/cron.log 2>&1
+
 # 06:00 — OpenClaw sage morning-ops-brief (configure in openclaw.json automation)
 
 # Backup sync at 06:12 / 12:12 / 18:12

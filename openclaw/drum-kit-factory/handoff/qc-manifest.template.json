@@ -1,0 +1,16 @@
+{
+  "kit_id": "starter-trap-pack",
+  "version": 1,
+  "sku": "tripwire-sample-v1",
+  "qc_status": "pending",
+  "format": "wav",
+  "founder_ears_at": null,
+  "samples": [
+    {
+      "id": "kick-main",
+      "path": "exports/kick-main.wav",
+      "peak_db": -3.0,
+      "duration_ms": 420
+    }
+  ]
+}

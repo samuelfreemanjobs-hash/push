@@ -16,6 +16,25 @@ jobs:
       Tripwire SKU tripwire-sample-v1: steps G1-G6, gate G3 founder ears.
       If kit-spec pending QC, say so. No packaging commands.
 
+  - id: tech-radar-aidevsignals
+    cron: "35 14 * * 1-5"
+    description: AI Dev Signals intake → RADAR screening report
+    output: "~/.openclaw/hermes-out/research/tech-radar/report-*.md"
+    prompt: |
+      Run disklordz-agent-stack tech-radar script, then screen the latest issue.
+      Categories: Audio AI, Coding AI, DSP research, Local models, Agent frameworks, Commercial opportunity.
+      Per kept item: licensing, integration 1-5, cost, DiskLordz product fit, adopt|watch|skip.
+      No article archive; max 6 items.
+
+  - id: beatmaker-weekly-brief
+    cron: "0 10 * * 1"
+    description: Monday beatmaker short-form content brief → Telegram/Slack
+    output: "~/.openclaw/hermes-out/research/beatmaker-brief/COMPLETE-*.md"
+    prompt: |
+      Run beatmaker-brief script, load product-catalog.yaml, research YouTube/TikTok/Reddit (7d).
+      Three concepts: trend-jack, problem/solution, cookup — match catalog only.
+      Shot scripts with screen cues + audio hooks + captions. Deliver subject Monday Beatmaker Content Brief – [Date].
+
   - id: youtube-competitor-spy
     cron: "0 9 * * 1"
     output: "~/.openclaw/hermes-out/research/youtube-weekly.md"

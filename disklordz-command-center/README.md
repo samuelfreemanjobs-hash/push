@@ -22,6 +22,13 @@ Open http://127.0.0.1:5173
 
 Fallback seed in `src/data/seed.ts` when snapshot fetch fails offline.
 
+## Technology Intelligence (RADAR)
+
+- Sidebar **Intelligence** → RADAR agent, 12-opportunity stack, factory M1 status, AI Dev Signals feed
+- Snapshot: `public/intelligence-snapshot.json` via `npm run sync:intelligence` (merges `disklordz-ralph/prd.json` + optional `~/.openclaw/hermes-out/research/tech-radar/`)
+- Pair with VPS: `disklordz-agent-stack → npm run tech-radar`
+- Mobile chat uses `ai-agent-team` agent id `radar` when `VITE_AGENT_API_URL` is set
+
 ## Mobile crew (free coding agent)
 
 - Sidebar **Mobile crew** → chat UI for elite agents (`CODE`, `PATCH`, `REVIEW`, …)

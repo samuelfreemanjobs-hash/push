@@ -17,6 +17,12 @@ const PIPELINE = [
     detail: "Derives P0 actions from gates, WIP, tripwire card K-012, PR #126, nightly QA",
   },
   {
+    name: "Beatmaker content brief",
+    schedule: "Monday 10:00 (America/Detroit)",
+    detail:
+      "beatmaker-brief → catalog-matched TikTok/Reels/YouTube scripts in hermes-out; MKT: completes + Telegram",
+  },
+  {
     name: "Republish",
     schedule: "After merge to default branch",
     detail: "Confirm publish in Cursor so https://disklordz-command-center.apps.grok.bot picks up new snapshot",

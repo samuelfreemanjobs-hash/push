@@ -7,4 +7,5 @@ export type SectionId =
   | "vault"
   | "vst"
   | "agents"
-  | "mobile";
+  | "mobile"
+  | "intelligence";

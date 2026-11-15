@@ -1,0 +1,22 @@
+# Technology Intelligence — AI Dev Signals → screened report (H pick)
+name: disklordz-tech-radar
+max_steps: 12
+coordinator: radar
+workers:
+  - id: radar
+    role: tech_radar_signals — six-category screening
+    input: "~/.openclaw/hermes-out/research/tech-radar/intake.json"
+    output: "~/.openclaw/hermes-out/research/tech-radar/report-draft.md"
+  - id: arch
+    role: verify integration_difficulty and product_fit
+    input: report-draft.md
+    output: "~/.openclaw/hermes-out/research/tech-radar/report-verified.md"
+  - id: sage
+    role: morning brief bullets for verdict adopt only
+    input: report-verified.md
+    output: sage-tech-radar-brief.md
+handoff:
+  final: "~/.openclaw/hermes-out/research/tech-radar/report-*.md"
+  notify: openclaw_sage_next_brief
+approval:
+  adopt_actions: human_only

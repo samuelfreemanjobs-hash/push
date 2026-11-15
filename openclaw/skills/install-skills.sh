@@ -25,11 +25,11 @@ install_agent_skills() {
   done
 }
 
-for id in sage dev mkt biz drum-lead grok-bridge drum-qc drum-pack drum-manifest review; do
+for id in sage dev arch mkt biz radar drum-lead grok-bridge drum-qc drum-pack drum-manifest review; do
   install_agent_skills "$id"
 done
 
-for id in sage dev mkt biz drum-lead review; do
+for id in sage dev arch mkt biz radar drum-lead review; do
   mkdir -p "$STATE/workspace-$id/skills"
   for d in "$ROOT/shared"/*; do
     [[ -d "$d" ]] || continue

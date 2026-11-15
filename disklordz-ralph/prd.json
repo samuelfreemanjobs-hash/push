@@ -2,6 +2,27 @@
   "project": "DiskLordz",
   "updated": "2026-11-15",
   "lanes": ["FLOW", "OC", "H", "DRUM", "VST", "SAAS", "BIZ"],
+  "milestones": [
+    {
+      "id": "factory-m1",
+      "title": "Factory milestone M1 — opportunities 1–3",
+      "opportunity_ids": [
+        "drum_sample_factory",
+        "juce_vst_factory",
+        "audio_qc_pipeline"
+      ],
+      "doc": "disklordz-ralph/FACTORY-MILESTONE.md",
+      "capstone_story": "DLZ-FACTORY-M1",
+      "story_ids": [
+        "DLZ-FACTORY-M1-1",
+        "DLZ-FACTORY-M1-2",
+        "DLZ-FACTORY-M1-3",
+        "DLZ-FACTORY-M1",
+        "DLZ-DRUM-002",
+        "DLZ-VST-002"
+      ]
+    }
+  ],
   "stories": [
     {
       "id": "DLZ-OPS-001",
@@ -77,9 +98,72 @@
       "passes": true
     },
     {
+      "id": "DLZ-FACTORY-M1-1",
+      "lane": "DRUM",
+      "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": ["drum_sample_factory"],
+      "title": "M1·1 — kit-spec → factory work order automation",
+      "touch": ["openclaw/drum-kit-factory/scripts/emit-factory-work-order.mjs"],
+      "doc": "disklordz-ralph/FACTORY-MILESTONE.md",
+      "verify": {
+        "cmd": "node openclaw/drum-kit-factory/scripts/emit-factory-work-order.mjs openclaw/drum-kit-factory/handoff/kit-spec.template.yaml"
+      },
+      "passes": true
+    },
+    {
+      "id": "DLZ-FACTORY-M1-2",
+      "lane": "VST",
+      "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": ["juce_vst_factory"],
+      "title": "M1·2 — vst_factory skill gate wired for milestone",
+      "touch": ["openclaw/skills/shared/vst_factory/"],
+      "doc": "disklordz-ralph/FACTORY-MILESTONE.md",
+      "verify": {
+        "cmd": "test -f openclaw/skills/shared/vst_factory/SKILL.md && test -f openclaw/skills/shared/vst_factory/references/workflow.md",
+        "shell": true
+      },
+      "passes": true
+    },
+    {
+      "id": "DLZ-FACTORY-M1-3",
+      "lane": "DRUM",
+      "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": ["audio_qc_pipeline"],
+      "title": "M1·3 — QC manifest schema + validator",
+      "touch": ["openclaw/drum-kit-factory/handoff/qc-manifest.schema.json", "openclaw/drum-kit-factory/scripts/validate-qc-manifest.mjs"],
+      "doc": "disklordz-ralph/FACTORY-MILESTONE.md",
+      "verify": {
+        "cmd": "node openclaw/drum-kit-factory/scripts/validate-qc-manifest.mjs openclaw/drum-kit-factory/handoff/qc-manifest.template.json"
+      },
+      "passes": true
+    },
+    {
+      "id": "DLZ-FACTORY-M1",
+      "lane": "DRUM",
+      "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": [
+        "drum_sample_factory",
+        "juce_vst_factory",
+        "audio_qc_pipeline"
+      ],
+      "title": "Factory milestone M1 capstone — automation spine verify",
+      "touch": ["openclaw/drum-kit-factory/scripts/verify-factory-milestone.mjs"],
+      "doc": "disklordz-ralph/FACTORY-MILESTONE.md",
+      "verify": {
+        "cmd": "node openclaw/drum-kit-factory/scripts/verify-factory-milestone.mjs"
+      },
+      "passes": true
+    },
+    {
       "id": "DLZ-DRUM-002",
       "lane": "DRUM",
       "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": ["drum_sample_factory", "audio_qc_pipeline"],
       "title": "Starter trap pack tripwire-sample-v1 QC approved and packaged",
       "touch": ["openclaw/drum-kit-factory/", "disklordz-command-center/public/ops-snapshot.json"],
       "doc": "openclaw/skills/shared/tripwire_qc/SKILL.md",
@@ -106,6 +190,8 @@
       "id": "DLZ-VST-002",
       "lane": "VST",
       "priority": "P0",
+      "milestone": "factory-m1",
+      "opportunity_ids": ["juce_vst_factory"],
       "title": "DrumEngine + CLI WAV render + pluginval strictness 5 (US-002–US-006)",
       "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
       "touch": ["Source/", "CMakeLists.txt"],

@@ -1,0 +1,145 @@
+# DiskLordz Product Catalog — source of truth for content agents (edit here only).
+# Agents must not invent SKUs, preset names, or features not listed below.
+
+version: "1.0"
+updated: "2026-11-15"
+
+delivery:
+  task_name: "Weekly Beatmaker Short-Form Content Brief"
+  schedule_cron: "0 10 * * 1"
+  timezone: "America/Detroit"
+  subject_template: "Monday Beatmaker Content Brief – {date}"
+  channels:
+    telegram:
+      enabled: true
+      prompt_prefix: "MKT:"
+    slack:
+      enabled: false
+      channel: "#disklordz-content"
+    email:
+      enabled: false
+      to: ""
+
+offers:
+  free_entry:
+    id: tripwire-sample-v1
+    label: "$9 Starter Trap Pack (5 WAVs + 75 credits)"
+    url_placeholder: "https://YOUR-TRIPWIRE-CHECKOUT-URL"
+    cta_lines:
+      - "Grab the $9 starter pack — link in bio"
+      - "5 trap one-shots + credits to try the full factory"
+
+research:
+  lookback_days: 7
+  youtube_queries:
+    - "trap beat tutorial 2026"
+    - "phonk mix tutorial"
+    - "808 mixing fl studio"
+    - "detroit type beat cookup"
+  tiktok_hashtags:
+    - beatmaker
+    - trapbeats
+    - phonk
+    - flstudio
+    - producerlife
+    - 808bass
+  reddit_subs:
+    - trapproduction
+    - makinghiphop
+    - WeAreTheMusicMakers
+
+products:
+  - id: tripwire-sample-v1
+    type: drum_kit
+    name: "Starter Trap Pack"
+    genres: [trap, detroit-phonk, phonk]
+    solves:
+      - thin drum loops
+      - need royalty-free trap one-shots fast
+      - starter sounds before buying VST fleet
+    daw_demo: "Drag WAVs into FL / Ableton drum rack — before dry, after with kit layered"
+    presets_sounds:
+      - id: kick-main
+        label: "kick-main.wav"
+      - id: snare-trap
+        label: "snare-trap.wav"
+      - id: hat-roll
+        label: "hat-roll.wav"
+      - id: 808-sub
+        label: "808-sub.wav"
+      - id: perc-glass
+        label: "perc-glass.wav"
+
+  - id: detroit-phonk-trap-maker
+    type: vst
+    name: "Detroit Phonk Trap Maker"
+    status: in_development
+    genres: [detroit-phonk, trap]
+    solves:
+      - programming bouncy phonk drums fast
+      - weak 808/trap bounce
+      - need playable trap drum instrument in DAW
+    daw_demo: "Open VST → play MIDI C1–E1 drum map → toggle preset — bypass vs active"
+    presets_sounds:
+      - id: phonk-trap-bounce
+        label: "Preset: Phonk Trap Bounce"
+      - id: detroit-night-drive
+        label: "Preset: Detroit Night Drive"
+
+  - id: drum-crush
+    type: vst
+    name: "DrumCrush"
+    status: shipping
+    genres: [trap, hip-hop, phonk]
+    solves:
+      - drums lack punch
+      - weak transients on kicks/snares
+      - need aggressive drum bus glue
+    daw_demo: "Insert on drum bus — play loop — bypass plugin vs engaged"
+    presets_sounds:
+      - id: crush-heavy
+        label: "Preset: Crush Heavy"
+      - id: punch-tight
+        label: "Preset: Punch Tight"
+
+  - id: stem-shield
+    type: vst
+    name: "StemShield"
+    status: shipping
+    genres: [trap, edm, hip-hop]
+    solves:
+      - muddy low end when layering 808 and bass
+      - masking between kick and 808
+      - harsh highs on open hats
+    daw_demo: "Solo kick+808 stem — show spectrum — toggle StemShield"
+    presets_sounds:
+      - id: low-clear
+        label: "Preset: Low Clear"
+      - id: hat-tame
+        label: "Preset: Hat Tame"
+
+  - id: phonk-tape
+    type: vst
+    name: "PhonkTape"
+    status: shipping
+    genres: [phonk, trap, lo-fi]
+    solves:
+      - beats sound too digital
+      - need tape/warble vibe on melodies or drums
+      - lifeless mix bus
+    daw_demo: "Melody bus — dry vs PhonkTape wow/flutter"
+    presets_sounds:
+      - id: tape-drift
+        label: "Preset: Tape Drift"
+      - id: cassette-trap
+        label: "Preset: Cassette Trap"
+
+matching_rules:
+  trend_jacking:
+    prefer_types: [vst, drum_kit]
+    genre_weight: high
+  problem_solution:
+    prefer: solves field on product
+  sound_design_cookup:
+    prefer_types: [vst]
+    prefer_minimal: true

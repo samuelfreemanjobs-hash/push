@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T15:23:47.191Z",
+  "generatedAt": "2026-11-15T18:37:50.641Z",
   "sources": {
     "kanban": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/blob/main/agents/disklordz/kanban.yaml",
     "businessOs": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/blob/main/agents/disklordz/business-os.yaml",
@@ -82,6 +82,15 @@
         "priority": "P0",
         "owner": "drumkit-factory-agent",
         "next": "Founder ears → qc_status approved → package → deploy"
+      },
+      {
+        "id": "K-FACTORY-M1",
+        "column": "in_progress",
+        "title": "Factory milestone M1 — drum + VST automation + QC spine",
+        "lane": "DRUM",
+        "priority": "P0",
+        "owner": "drumkit-factory-agent",
+        "next": "DLZ-DRUM-002 ship; DLZ-VST-002 pluginval on Windows"
       },
       {
         "id": "K-013",
@@ -343,7 +352,7 @@
       "path": "repo-wide",
       "workflow": "nightly-qa.yml",
       "ciStatus": "failure",
-      "ciDate": "2026-11-14"
+      "ciDate": "2026-11-15"
     },
     {
       "name": "Lane Bus",

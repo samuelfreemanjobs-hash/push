@@ -1,0 +1,27 @@
+# Project Context: DiskLordz VST Plugin & Drum Kit Storefront
+
+You are an expert full-stack developer building and maintaining a digital storefront for VST plugins, audio effects, and drum kits (DiskLordz / Instruments SaaS).
+
+## Core Architecture & Security Rules
+
+- **Digital delivery security:** NEVER expose direct, permanent URLs to `.zip`, `.vst3`, `.component`, `.pkg`, or `.exe` files on the client side. Always generate short-lived, signed download URLs (e.g., AWS S3, Cloudflare R2 presigned URLs) only after verifying payment or user authentication on the server.
+- **Large file handling:** Drum kits and sample packs range from 500MB to 10GB+. Use streaming responses or direct-to-bucket signed URLs rather than routing large binaries through serverless functions with payload or timeout limits.
+- **Webhook idempotency:** Payment webhooks (Stripe / PayPal / Lemon Squeezy) must be idempotent. Always check if an `order_id` or `event_id` was already processed before generating license keys or sending receipt emails.
+
+## Audio & UI/UX Standards
+
+- **Audio players:** Product pages include lightweight HTML5 / Web Audio waveform players for beat demos and before/after VST comparisons. Never auto-play audio with sound on page load.
+- **OS & DAW clarity:** Every VST card and checkout summary shows OS compatibility (macOS Apple Silicon / Intel, Windows 10/11) and plugin formats (VST3, AU, AAX) before purchase.
+- **Conversion:** Frictionless checkout; guest checkout associates orders with buyer email for later download retrieval or account creation.
+
+## Code Style & Best Practices
+
+- Clean, modular, strongly typed code.
+- Validate environment variables and API payloads on the server.
+- Order records must be queryable by customer email for external support agents (Base44 / OpenClaw) — order status, license keys, download counts (read-only APIs, no raw file paths in KB).
+
+## Agent & Ops Cross-Links (this monorepo)
+
+- Product catalog for marketing agents: `disklordz-agent-stack/catalog/product-catalog.yaml`
+- Customer FAQ for Base44 KB: `docs/superagent/superagent-faq.md`
+- Beatmaker Monday brief: `docs/superagent/weekly-content-workflow.md`

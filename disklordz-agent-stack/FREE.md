@@ -69,6 +69,8 @@ crontab -e
 
 Morning: agent-stack → OpenClaw sage cron reads `hermes-out/`.
 
+Technology radar: `npm run tech-radar` ingests [AI Dev Signals](https://www.aidevsignals.com/); `RADAR:` agent writes screened reports — see `TECH-RADAR.md` and opportunity stack `OPPORTUNITIES.md`.
+
 ## Telegram prompts
 
 ```text
@@ -77,6 +79,8 @@ DEV: overnight goal on disklordz-command-center — branch only
 DRUM: ingest kit-spec (after Grok)
 BIZ: Friday KPI
 MKT: summarize hermes-out/research/
+RADAR: review latest AI Dev Signals issue
+MKT: complete Monday beatmaker brief from hermes-out
 ```
 
 ## Ralph loop (whole business)

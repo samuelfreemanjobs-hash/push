@@ -10,7 +10,7 @@ agents:
     tier: elite
     role: Coordinator — strategy, delegation, morning brief owner
     workspace: workspace-sage
-    subagents: [dev, mkt, biz, drum-lead, review]
+    subagents: [dev, mkt, biz, drum-lead, review, radar]
     skills:
       - disk_ops_snapshot
       - vault_kanban
@@ -32,13 +32,32 @@ agents:
       - flow_github_actions
       - security_sentinel
 
+  arch:
+    tier: elite
+    role: Architecture pod — ADRs, topology, tech adoption
+    workspace: workspace-arch
+    skills:
+      - tech_radar_signals
+      - memory_vault
+
   mkt:
     tier: elite
     role: Marketing pod — research consumption, content angles
     workspace: workspace-mkt
     skills:
       - research_consume
+      - beatmaker_content_brief
+      - tech_radar_signals
       - tripwire_positioning
+      - telegram_brief
+
+  radar:
+    tier: elite
+    role: Technology Intelligence — AI Dev Signals screening, no article archive
+    workspace: workspace-radar
+    skills:
+      - tech_radar_signals
+      - memory_vault
       - telegram_brief
 
   biz:
