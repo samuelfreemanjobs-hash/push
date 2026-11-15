@@ -33,6 +33,9 @@ jobs:
           - name: agent-stack
             dir: disklordz-agent-stack
             run: npm ci && npm run all
+          - name: vst-factory-pipeline
+            dir: .
+            run: bash openclaw/elite-frameworks/automation/run_factory_pipeline.sh
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4

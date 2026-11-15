@@ -44,7 +44,7 @@
         name: "MKT",
         workspace: "~/.openclaw/workspace-mkt",
         subagents: { allowAgents: [] },
-        skills: ["research_consume", "tripwire_positioning", "telegram_brief"],
+        skills: ["research_consume", "vst_market_intel", "tripwire_positioning", "telegram_brief"],
       },
       biz: {
         name: "BIZ",
@@ -113,6 +113,20 @@
         agentId: "biz",
         message:
           "Friday KPI: merge hermes-out/biz-metrics.json with ops-snapshot. Narrate only numbers from files.",
+      },
+      {
+        name: "vst-market-intel",
+        schedule: "0 9 * * 1,4",
+        agentId: "mkt",
+        message:
+          "MKT: Run vst_market_intel — execute track_competitors.py from DLZ_REPO_ROOT openclaw/skills/shared/vst_market_intel (or ~/.openclaw/skills/vst_market_intel). Read latest_snapshot.json and hermes-out/research/vst-market-latest.json. If alerts non-empty, brief sage for Telegram using telegram_brief (12 lines max). If empty, no user message.",
+      },
+      {
+        name: "producer-lead-harvest",
+        schedule: "0 10 * * 3",
+        agentId: "mkt",
+        message:
+          "MKT: Run find_producer_leads.py (vst_market_intel). Draft pending_review rows per producer-outreach-prompt.md. Telegram brief draft paths only — never send email.",
       },
     ],
   },

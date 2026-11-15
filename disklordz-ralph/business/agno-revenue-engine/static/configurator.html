@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DiskLordz Custom Sonic Kit Lab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #121216; color: #f4f4f6; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    textarea { width: 100%; min-height: 100px; background: #1c1c22; color: inherit; border: 1px solid #333; padding: 0.75rem; }
+    button { background: #c9a227; color: #121216; border: 0; padding: 0.6rem 1.2rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+    pre { background: #1c1c22; padding: 1rem; overflow: auto; font-size: 0.85rem; }
+    audio { width: 100%; margin-top: 1rem; }
+    .hint { color: #8e8e93; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Custom Sonic Kit</h1>
+  <p class="hint">Synthesis-only · original DiskLordz DNA · Agno AgentOS backend</p>
+  <label for="prompt">Describe your kit (groove, era, e-kit, vibe):</label>
+  <textarea id="prompt" placeholder="Punchy dry funk kit for Roland TD-27, warm 808, tight snare…"></textarea>
+  <button type="button" id="go">Design kit</button>
+  <pre id="out">Response will appear here.</pre>
+  <audio id="player" controls hidden></audio>
+  <script>
+    const BASE = window.AGNO_API_BASE || "http://127.0.0.1:7777";
+    document.getElementById("go").onclick = async () => {
+      const message = document.getElementById("prompt").value.trim();
+      const out = document.getElementById("out");
+      const player = document.getElementById("player");
+      out.textContent = "Running custom-kit-architect…";
+      try {
+        const res = await fetch(`${BASE}/agents/custom-kit-architect/runs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+        const url = data?.preview_audio_url || data?.content?.preview_audio_url;
+        if (url) {
+          player.src = url.startsWith("http") ? url : `${BASE}${url}`;
+          player.hidden = false;
+        }
+      } catch (e) {
+        out.textContent = "Error: " + e + " (is agno_revenue_engine.py running?)";
+      }
+    };
+  </script>
+</body>
+</html>

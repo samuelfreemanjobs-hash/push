@@ -18,6 +18,10 @@
 | Planner–worker–verifier | Hermes research pipeline (optional) |
 | File-based contracts | `kit-spec.yaml`, JSON reports |
 
+## Optional Python orchestration
+
+- **AutoGen 0.4 / Microsoft Agent Framework** — customer concierge + VST R&D + Context7 MCP (`docs/dev/ms-agent-framework-opt-in.md`). Does not compile MSVC or bypass `pluginval`.
+
 ## Not in repo (optional later)
 
 - LangGraph / Temporal — use when you need durable multi-day workflows
@@ -30,3 +34,9 @@ Gemini Flash + skills + `disklordz-agent-stack` = no Hermes required. See `diskl
 ## Registry
 
 `agents/REGISTRY.yaml` lists every elite/subagent and skill allowlist.
+
+## Fourteen-framework composition (EGM, MCode, Waza, …)
+
+Implemented under **`openclaw/elite-frameworks/`** — manifest, runnable EGM duel, Waza pytest evals, TokenEconomizer pruner, Helix seed graph, OpenDuet gates.
+
+Operator doc: `docs/dev/elite-frameworks-implementation.md`

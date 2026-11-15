@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- Impeccable target: future JUCE 8 WebBrowserComponent faceplate. Native ship: starter-cpp/PluginEditor.cpp -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trap Drum Engine — faceplate mock</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="plugin-chrome">
+    <header class="brand">DETROIT PHONK TRAP</header>
+    <div class="pads" id="pads"></div>
+    <div class="macros">
+      <div class="macro"><span>Punch</span><div class="bar"><i style="width:70%"></i></div></div>
+      <div class="macro"><span>Glide</span><div class="bar"><i style="width:40%"></i></div></div>
+      <div class="macro"><span>Clip</span><div class="bar led"><i style="width:55%"></i></div></div>
+      <div class="macro"><span>Swing</span><div class="bar"><i style="width:30%"></i></div></div>
+    </div>
+    <p class="export-chips">
+      <span class="chip">Drag WAV</span>
+      <span class="chip">Shift + MIDI</span>
+    </p>
+  </div>
+  <script>
+    const pads = document.getElementById('pads');
+    ['808','KICK','SN','CH','OH'].forEach((l,i) => {
+      const b = document.createElement('button');
+      b.className = 'pad';
+      b.type = 'button';
+      b.textContent = l;
+      pads.appendChild(b);
+    });
+  </script>
+</body>
+</html>

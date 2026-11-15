@@ -1,0 +1,19 @@
+harness: deepseek-harness
+license_mode: MIT
+strict_commercial_check: true
+workspace: disklordz-ralph/business/trap-phonk-factory
+
+plugins:
+  - id: pedalboard_dsp
+    module: kit_mastering
+    entry: master_one_shot
+  - id: librosa_pitch_tagger
+    module: kit_mastering
+    entry: estimate_root_note
+  - id: zip_packager
+    module: kit_mastering
+    entry: package_lead_magnet
+
+roster: hermes_roster.yaml
+schedule: "0 2 * * *"
+fallback: run_factory.py

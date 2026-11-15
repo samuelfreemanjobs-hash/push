@@ -16,11 +16,42 @@
 
 ### Windows (PowerShell)
 
+### One-paste full automation (recommended)
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Dev\push
+git pull
+$env:DLZ_REPO_ROOT = (Get-Location).Path
+.\Install-DiskLordz-Windows.ps1 -InstallNode -PromptSecrets
+```
+
+This installs Node (winget if `-InstallNode`), OpenClaw, workspaces, skills, merges `openclaw.json`, adds Telegram + Gemini when you enter keys, and starts the gateway.
+
+**Non-interactive:** copy `openclaw/scripts/disklordz.local.ps1.example` → `%USERPROFILE%\.openclaw\disklordz.local.ps1`, fill tokens, then:
+
+```powershell
+.\Install-DiskLordz-Windows.ps1
+```
+
+### Manual / partial
+
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 cd C:\Dev\push
 $env:DLZ_REPO_ROOT = (Get-Location).Path
 .\openclaw\scripts\setup-disklordz-telegram.ps1
+```
+
+If the repo lives elsewhere, change `C:\Dev\push`. Requires **Node 24+ or 26+** before `openclaw` install (script still copies workspaces if Node is older).
+
+### VST factory pods (after Telegram base)
+
+```bash
+cd /path/to/push
+export DLZ_REPO_ROOT="$(pwd)"
+bash openclaw/scripts/setup-vst-factory-vps.sh
+# Then merge ~/.openclaw/disklordz.vst-factory.merged.json5 — see SETUP-VST-FACTORY.md
 ```
 
 ### Linux / VPS / WSL

@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "topic": "Roland TD-27",
+      "midi": "GM-compatible; map Kick=36, Snare=38, Closed Hat=42, 808=35 or 36 layer",
+      "note": "DiskLordz VST uses synthesis — export MIDI map from dist_presets/velocity_layers.json"
+    },
+    {
+      "topic": "walnut funk dry 70s",
+      "sonic": "DNA: Good Money or Bay Area Funk; saturation_drive 0.72–0.82; Player Bounce mode",
+      "vst_preset": "Memphis_94_Crunch.xml or Custom outputGain 1.1"
+    },
+    {
+      "topic": "Larry June style luxury soul",
+      "sonic": "DNA: Luxury Soul or Great Escape; saturation_drive 0.35–0.55; minimal hat velocity",
+      "vst_preset": "Clean_Studio_Punch.xml"
+    },
+    {
+      "topic": "internal triggers impedance",
+      "note": "E-kit triggering is customer hardware — VST is software instrument; no shell BOM"
+    }
+  ]
+}

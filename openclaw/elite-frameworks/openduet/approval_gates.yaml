@@ -1,0 +1,25 @@
+# OpenDuet-style human approval gates
+gates:
+  - id: storefront_checkout_live
+    requires: human
+    evidence:
+      - vercel-security-review/checklist-storefront.md
+      - strix_vst_audit skill run log
+
+  - id: paid_vst_release
+    requires: human
+    evidence:
+      - pluginval pass artifact
+      - mcode/CHECKLIST-vst-dsp.md
+
+  - id: issue_to_pr
+    requires: human
+    on: pr_merge
+    auto_allowed:
+      - waza eval green
+      - egm spec pass for architecture changes
+
+  - id: factory_nightly_upload
+    requires: human
+    on: store_upload
+    agents: [drum-lead, biz]

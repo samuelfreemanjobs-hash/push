@@ -1,0 +1,14 @@
+// Merge into openclaw.json automation.jobs — Mon/Thu 9:00 local (set TZ on gateway host)
+{
+  automation: {
+    jobs: [
+      {
+        name: "vst-market-intel",
+        schedule: "0 9 * * 1,4",
+        agentId: "mkt",
+        message:
+          "MKT: Run vst_market_intel — execute track_competitors.py from DLZ_REPO_ROOT openclaw/skills/shared/vst_market_intel (or ~/.openclaw/skills/vst_market_intel). Read latest_snapshot.json and hermes-out/research/vst-market-latest.json. If alerts non-empty, brief sage for Telegram using telegram_brief (12 lines max). If empty, no user message.",
+      },
+    ],
+  },
+}

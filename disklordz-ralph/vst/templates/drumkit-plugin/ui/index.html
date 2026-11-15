@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DrumKit Pro</title>
+  <style>
+    :root {
+      --bg: #141416;
+      --surface: #1e1e22;
+      --border: #2d2d38;
+      --accent: #ff1e56;
+      --muted: #8e8e93;
+      --text: #f4f4f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    h1 { letter-spacing: 0.08em; font-size: 1.25rem; margin: 0; }
+    p.sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+    }
+  .panel h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin: 0 0 0.5rem; }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: #c7c7cc;
+    }
+    input[type="range"] { width: 100%; max-width: 220px; }
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.85rem;
+    }
+    textarea { min-height: 2.4rem; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary:active { transform: translateY(1px); }
+    .status { font-size: 0.75rem; color: var(--muted); margin-top: 0.35rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DRUMKIT PRO ENGINE</h1>
+    <p class="sub">JUCE 8 + WebView2 · RT-safe output gain</p>
+  </header>
+
+  <section class="panel" aria-labelledby="gain-heading">
+    <h2 id="gain-heading">Mix</h2>
+    <label>
+      Output Gain
+      <input type="range" id="outputGain" min="0" max="2" step="0.01" value="1" />
+    </label>
+  </section>
+
+  <section class="panel" aria-labelledby="neural-heading">
+    <h2 id="neural-heading">Neural loop (GPU lab)</h2>
+    <textarea id="neuralPrompt" rows="2" maxlength="200">dark drift phonk cowbell loop</textarea>
+    <div class="row">
+      <label>
+        BPM
+        <input type="range" id="neuralBpm" min="80" max="180" step="1" value="145" />
+        <span id="neuralBpmLabel">145</span>
+      </label>
+      <button type="button" class="primary" id="neuralGenerate">Generate loop (GPU)</button>
+    </div>
+    <p class="status" id="neuralStatus">CPU fallback if no .trt engine — worker thread only (not RT).</p>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

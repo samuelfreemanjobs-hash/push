@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pandas>=2.0
+stripe>=8.0
+# Optional OpenBB Platform (operator): pip install "openbb[all]" per https://docs.openbb.co

@@ -95,7 +95,7 @@
       "title": "DetroitPhonkTrapMaker — CMake + JUCE 8 + Release build (US-001)",
       "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
       "touch": ["CMakeLists.txt", "Source/"],
-      "doc": "disklordz-ralph/windows/VST-PROMPT-SNIPPET.md",
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
       "verify": {
         "platform": "windows",
         "cmd": "cmake -B build -G \"Visual Studio 17 2022\" -A x64 && cmake --build build --config Release --parallel"
@@ -106,10 +106,10 @@
       "id": "DLZ-VST-002",
       "lane": "VST",
       "priority": "P0",
-      "title": "DrumEngine + CLI WAV render + pluginval strictness 5 (US-002–US-006)",
+      "title": "DrumEngine core + 5 voices + CLI 24-bit WAV render",
       "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
-      "touch": ["Source/", "CMakeLists.txt"],
-      "doc": "disklordz-ralph/windows/VST-PROMPT-SNIPPET.md",
+      "touch": ["Source/DrumEngine.h", "Source/voices/", "Source/cli/"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
       "verify": {
         "platform": "windows",
         "cmd": "cmake --build build --config Release --parallel && .\\build\\Release\\DrumTestCLI.exe && .\\tools\\pluginval\\pluginval.exe --strictness-level 5 --validate \".\\build\\DetroitPhonkTrapMaker_artefacts\\Release\\VST3\\Detroit Phonk Trap Maker.vst3\""
@@ -119,11 +119,83 @@
     {
       "id": "DLZ-VST-003",
       "lane": "VST",
-      "priority": "P1",
-      "title": "Drag-and-drop WAV export from plugin UI (US-007)",
+      "priority": "P0",
+      "title": "APVTS + MIDI pads + PluginEditor + pluginval strictness 5",
       "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
-      "touch": ["Source/PluginEditor.cpp"],
-      "verify": { "platform": "windows", "cmd": "echo manual: drag wav to DAW; re-run pluginval" },
+      "touch": ["Source/PluginProcessor.cpp", "Source/PluginEditor.cpp"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
+      "verify": {
+        "platform": "windows",
+        "cmd": ".\\tools\\pluginval\\pluginval.exe --strictness-level 5 --validate \".\\build\\DetroitPhonkTrapMaker_artefacts\\Release\\VST3\\Detroit Phonk Trap Maker.vst3\""
+      },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-004",
+      "lane": "VST",
+      "priority": "P0",
+      "title": "Soft clipper + saturation on kick/808 bus",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/dsp/SoftClipper.h"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
+      "verify": { "platform": "windows", "cmd": ".\\build\\Release\\DrumTestCLI.exe" },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-005",
+      "lane": "VST",
+      "priority": "P0",
+      "title": "808 monophonic glide + pitch envelope",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/dsp/Glide808.h", "Source/voices/Kick808Voice.h"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
+      "verify": { "platform": "windows", "cmd": ".\\build\\Release\\DrumTestCLI.exe" },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-006",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "Hi-hat choke groups + roll engine",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/dsp/HatChokeGroups.h", "Source/dsp/RollEngine.h"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
+      "verify": { "platform": "windows", "cmd": ".\\build\\Release\\DrumTestCLI.exe" },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-007",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "User WAV drag-and-drop onto pads + kit export",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/PluginEditor.cpp", "Source/export/KitExporter.h"],
+      "verify": { "platform": "windows", "cmd": "echo manual: drag wav to FL playlist; re-run pluginval" },
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-008",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "FL Studio QA checklist (pitch bend, note-off, PDC)",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["docs/FL-STUDIO-QA.md"],
+      "doc": "disklordz-ralph/vst/TRAP-PHONK-ARCHITECTURE.md",
+      "actor": "operator",
+      "passes": false
+    },
+    {
+      "id": "DLZ-VST-009",
+      "lane": "VST",
+      "priority": "P1",
+      "title": "Multi-output bus routing (kick, 808, hats) for Suite tier",
+      "workspace": "C:\\Dev\\DetroitPhonkTrapVST3",
+      "touch": ["Source/PluginProcessor.cpp", "CMakeLists.txt"],
+      "doc": "disklordz-ralph/vst/LICENSING.md",
+      "verify": {
+        "platform": "windows",
+        "cmd": ".\\tools\\pluginval\\pluginval.exe --strictness-level 5 --validate \".\\build\\DetroitPhonkTrapMaker_artefacts\\Release\\VST3\\Detroit Phonk Trap Maker.vst3\""
+      },
       "passes": false
     },
     {

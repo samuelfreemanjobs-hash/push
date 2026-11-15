@@ -1,0 +1,1 @@
+Place `kick.wav` here (or reuse `factory/autoresearch/targets/kick.wav` — judge checks both).

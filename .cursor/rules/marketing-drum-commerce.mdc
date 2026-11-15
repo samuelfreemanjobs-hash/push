@@ -1,0 +1,47 @@
+---
+description: Marketing drafts for drum kits & VST — synthesis-only, human publish gate.
+globs:
+  - storefront/**
+  - docs/launch/**
+  - docs/marketing/**
+  - docs/outreach/**
+  - disklordz-ralph/factory/**/manifest.json
+alwaysApply: false
+---
+
+# Marketing drum commerce (Cursor)
+
+## Mission
+
+Turn **manifests and release briefs** into sellable copy — not into unverified product claims.
+
+## Read before writing
+
+- `LICENSING.md`, `disklordz-ralph/STACK-FROZEN.md`
+- `docs/dev/marketing-agents-claude-cursor.md`
+- Latest `manifest.json` or `dist_sample_pack/manifest.json`
+
+## Outputs
+
+| Destination | Allowed without explicit approval |
+|-------------|-----------------------------------|
+| `docs/launch/*.md` | Yes (drafts) |
+| `docs/outreach/drafts/*.md` | Yes |
+| `storefront/*.html` | **No** — operator must say storefront is approved |
+
+## Copy rules
+
+- **Synthesis-only** drums unless manifest proves recorded WAV one-shots
+- No copyrighted artist samples, no “AI-generated” vagueness, no iLok unless shipped
+- Tiers: Lite ($0 lead magnet) → Core (VST + pack) → Suite — per `@agency-launch-strategist`
+- BeatStars / Splice tone: technical, royalty-free, BPM/key if in manifest
+
+## Handoffs
+
+- Video: `@agency-short-video` → scripts in `docs/launch/shorts-*.md`
+- OpenMontage: `docs/marketing/openmontage-prompt-templates.md` Template A/B
+- Intel: read-only `openclaw/skills/shared/vst_market_intel/` — drafts only
+
+## AutoGen
+
+`factory_swarm.py` masters audio and presets; **marketing agent** writes listings from outputs — do not merge storefront API into factory swarm.

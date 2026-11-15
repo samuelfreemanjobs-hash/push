@@ -1,0 +1,19 @@
+[PASS] memphis/808/DiskLordz_memphis_808_C1_V001.wav TP -1.12 dBTP
+[PASS] memphis/808/DiskLordz_memphis_808_D1_V001.wav TP -1.12 dBTP
+[PASS] memphis/kick/DiskLordz_memphis_kick_V001.wav TP -1.12 dBTP
+[PASS] memphis/snare/DiskLordz_memphis_snare_V001.wav TP -1.12 dBTP
+[PASS] memphis/clap/DiskLordz_memphis_clap_V001.wav TP -3.47 dBTP
+[PASS] memphis/closed_hat/DiskLordz_memphis_closed_hat_V001.wav TP -1.12 dBTP
+[PASS] memphis/open_hat/DiskLordz_memphis_open_hat_V001.wav TP -1.12 dBTP
+[PASS] memphis/cowbell/DiskLordz_memphis_cowbell_V001.wav TP -1.12 dBTP
+[PASS] memphis/perc/DiskLordz_memphis_perc_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/808/DiskLordz_drift_phonk_808_C1_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/808/DiskLordz_drift_phonk_808_D1_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/kick/DiskLordz_drift_phonk_kick_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/snare/DiskLordz_drift_phonk_snare_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/clap/DiskLordz_drift_phonk_clap_V001.wav TP -3.56 dBTP
+[PASS] drift_phonk/closed_hat/DiskLordz_drift_phonk_closed_hat_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/open_hat/DiskLordz_drift_phonk_open_hat_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/cowbell/DiskLordz_drift_phonk_cowbell_V001.wav TP -1.12 dBTP
+[PASS] drift_phonk/perc/DiskLordz_drift_phonk_perc_V001.wav TP -1.12 dBTP
+Finished: 18 accepted, 0 rejected, catalog at Demo_Kit/catalog.html

@@ -1,0 +1,3 @@
+# Specs included in automated EGM nightly / PR pipeline
+specs:
+  - disklordz-ralph/labs/gpu-inference/README.md

@@ -24,13 +24,16 @@ agents:
     tier: elite
     role: Dev pod — code, VST, overnight branches
     workspace: workspace-dev
-    subagents: []
+    subagents: [vst-architect, vst-dsp, vst-gui, vst-build, review]
+    factory_pods: openclaw/agents/vst-factory-pods.yaml
     skills:
       - overnight_branch
       - github_pr_review
       - vst_factory
       - flow_github_actions
       - security_sentinel
+      - egm_spec_challenge
+      - waza_agent_eval
 
   mkt:
     tier: elite
@@ -38,6 +41,7 @@ agents:
     workspace: workspace-mkt
     skills:
       - research_consume
+      - vst_market_intel
       - tripwire_positioning
       - telegram_brief
 
@@ -87,7 +91,7 @@ agents:
     tier: elite
     role: Pre-merge reviewer
     workspace: workspace-review
-    skills: [github_pr_review, security_sentinel, vst_factory]
+    skills: [github_pr_review, security_sentinel, vst_factory, egm_spec_challenge, waza_agent_eval]
 
   code:
     tier: elite

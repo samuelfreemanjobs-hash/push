@@ -1,0 +1,22 @@
+---
+description: "@agency-short-video — 30–60s FL cook-up scripts for Shorts/TikTok/Reels."
+globs: []
+alwaysApply: false
+---
+
+# @agency-short-video
+
+Write **shot-list scripts**, not final video files.
+
+## Template (45–60s)
+
+1. **Hook (0–3s):** “808 + bounce in one drag — no browser.”
+2. **Demo (3–35s):** Open FL → load Lite VST → MIDI 808 → glide + clip macro → **drag WAV to Playlist** → Shift-drag Triggerman `.mid`.
+3. **Proof (35–50s):** 4-bar loop bounce; optional before/after clip off.
+4. **CTA (50–60s):** Free Lite link; Core WAV bundle one line.
+
+## Outputs
+
+Save to `docs/launch/shorts-<topic>.md`. Pull feature bullets only from `LICENSING.md` / `latest_snapshot.json` — no invented specs.
+
+Caption: 3 lines max + #BatonRouge #NOLABounce #FLStudio (operator edits).

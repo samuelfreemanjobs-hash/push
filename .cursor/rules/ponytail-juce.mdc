@@ -1,0 +1,66 @@
+---
+description: Ponytail + JUCE VST — smallest complete change; native juce::dsp first; never cut RT safety or Catch2
+globs:
+  - disklordz-ralph/vst/**
+  - disklordz-ralph/vst/starter-cpp/**
+  - openclaw/skills/shared/vst_market_intel/**
+  - "**/DetroitPhonkTrapVST3/**"
+  - "**/TrapCoreDSP/**"
+alwaysApply: false
+---
+
+# Ponytail × JUCE (DiskLordz)
+
+Lazy senior dev mode for **Layer 1 only** (C++/JUCE + thin Python intel). Pair with `rea-juce-superpowers.mdc` — REA and Catch2 win when the call graph stays flat.
+
+Upstream: [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) — this repo uses **ponytail-juce only** (no separate `ponytail.mdc`). **Default: full.** Optional MCP off until v1.0 ships (`STACK-FROZEN.md`).
+
+**Never use ultra** on `Modules/TrapCoreDSP/`, `processBlock`, or `renderNextBlock` — ultra is for deleting dead Python/scripts only.
+
+## Decision ladder (JUCE rungs before new C++)
+
+After reading callers and `processBlock` paths, stop at the first rung that works:
+
+1. **Skip** — feature not in story / `prd.json` / operator ask.
+2. **This repo** — `Modules/TrapCoreDSP/`, `starter-cpp/`, existing voice, not a second waveshaper.
+3. **JUCE** — `juce::dsp::*`, `Synthesiser` / `SamplerSound`, `APVTS`, `AudioFormatReader`, `DragAndDropContainer`, `MidiFile`, not custom ring buffers or UI factories.
+4. **C++20 STL** — `std::span`, `std::array`, `std::optional`; not bespoke cache managers.
+5. **Installed dep** — only if already in CMake; never add a lib for &lt;10 lines.
+6. **One line** — if a reader grasps it immediately.
+7. **Minimum new code** — one class/file, no "framework for later."
+
+## Never cut (even in ultra)
+
+- No heap, locks, or file I/O on the audio thread (`processBlock` / `renderNextBlock`).
+- Catch2 (or `DrumTestCLI`) for new non-trivial DSP math before production code.
+- Trust-boundary validation (path traversal on WAV import, manifest JSON).
+- `shortcut:` ledger for deliberate audio tradeoffs (see below).
+
+## Audio `shortcut:` format
+
+```cpp
+// shortcut: linear interp only, upgrade to Lagrange if aliasing on 808 scrape
+```
+
+Harvest before v1.0: audit for `shortcut:` in `Modules/`, `Source/`, `starter-cpp/`.
+
+## Python / OpenClaw (Layers 3–4)
+
+- `pathlib`, `json`, `csv`, stdlib `wave` where sufficient; no extra deps beyond `firecrawl-py` + `pydantic` in `vst_market_intel`.
+- Scripts read `DLZ_REPO_ROOT`; no duplicate snapshot writers.
+
+## Stack pairing
+
+| Tool | Ponytail helps by… |
+|------|---------------------|
+| Superpowers | Shrinking the implementation after the failing test exists |
+| REA | Fewer custom indirections → faster `processBlock` traces in PDB |
+| OpenClaw / AutoGPT | No new abstractions in cron/skills; compose existing scripts |
+
+## Agent prompts (Ctrl+I)
+
+- *"Ponytail audit `Modules/TrapCoreDSP/` — replace custom DSP with JUCE/STL or delete."*
+- *"Ponytail review uncommitted `PluginProcessor.cpp` — RT path + missing Catch2 + cut wrappers."*
+- *"Ponytail-debt: list all `shortcut:` by ship risk for v1.0."*
+
+End replies with one line: what you skipped and any RT or test gap the operator must close.

@@ -1,0 +1,14 @@
+// Merge into openclaw.json automation.jobs — weekly Wed 10:00 local (after market intel Mon)
+{
+  automation: {
+    jobs: [
+      {
+        name: "producer-lead-harvest",
+        schedule: "0 10 * * 3",
+        agentId: "mkt",
+        message:
+          "MKT: Run vst_market_intel producer harvest — execute find_producer_leads.py from DLZ_REPO_ROOT openclaw/skills/shared/vst_market_intel. Read latest_harvest.json and CSV pending_review rows. Draft emails per references/producer-outreach-prompt.md into docs/outreach/drafts/. Telegram brief draft list only (≤12 lines). Never send SMTP.",
+      },
+    ],
+  },
+}

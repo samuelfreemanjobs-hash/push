@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-11-15T21:57Z",
+  "demos": "storefront/producer-storefront/public/demos",
+  "pipeline": "pass",
+  "factory_nightly_rc": 0,
+  "pods_complete": [
+    "vst-architect",
+    "vst-dsp",
+    "vst-gui",
+    "vst-build",
+    "vst-preset",
+    "vst-qa",
+    "vst-release"
+  ],
+  "human_gates_remaining": ["storefront_checkout_live", "paid_vst_release"]
+}

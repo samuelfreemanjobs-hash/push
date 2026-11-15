@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DiskLordzKitManifest",
+  "type": "object",
+  "required": ["kit_id", "title", "bpm_list", "sample_count", "generated_at"],
+  "properties": {
+    "kit_id": { "type": "string", "description": "Slug e.g. baton-rouge-808-v3" },
+    "title": { "type": "string" },
+    "genre_tags": { "type": "array", "items": { "type": "string" } },
+    "bpm_list": { "type": "array", "items": { "type": "integer" } },
+    "key_hints": { "type": "array", "items": { "type": "string" } },
+    "sample_count": { "type": "integer" },
+    "wav_bit_depth": { "type": "integer", "const": 24 },
+    "zip_relpath": { "type": "string", "description": "Relative to Assets/Releases" },
+    "vst_blob_relpath": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "generator": { "type": "string", "const": "LouisianaKitGenerator.exe" }
+  }
+}

@@ -1,0 +1,13 @@
+# OpenBot-style isolated workspaces — merge into openclaw.json agents.entries.*
+workspaces:
+  - name: workspace-dev
+    agent: dev
+    skills_allowlist_from: agents/REGISTRY.yaml#dev
+    secrets: none_on_disk
+  - name: workspace-review
+    agent: review
+    read_only_repo: false
+    merge_requires: [waza_pass, human_approve]
+  - name: workspace-drum-lead
+    agent: drum-lead
+    subagents: [grok-bridge, drum-qc, drum-pack, drum-manifest]

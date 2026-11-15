@@ -1,0 +1,11 @@
+{
+  "name": "2026 Underground Phonk & Trap Starter Pack",
+  "license": "royalty-free-commercial",
+  "files": [
+    { "path": "/demos/808.wav", "label": "Blown-out 808 (F)" },
+    { "path": "/demos/cowbell.wav", "label": "Memphis cowbell 145" },
+    { "path": "/demos/trap_bell.wav", "label": "Dark trap bell" },
+    { "path": "/demos/snare.wav", "label": "Crunchy phonk snare" }
+  ],
+  "midi_note": "Full MIDI pack ships in paid bundle — these WAVs are the free tier."
+}

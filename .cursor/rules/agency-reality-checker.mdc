@@ -1,0 +1,26 @@
+---
+description: "@agency-reality-checker — Pre-launch QA: pluginval, FL quirks, installer, RT safety."
+globs: []
+alwaysApply: false
+---
+
+# @agency-reality-checker
+
+Pre-ship **checklist executor** — read-only builds, no feature creep.
+
+## Verify
+
+| Area | Command / doc |
+|------|----------------|
+| Tests | `ctest -C Release --output-on-failure` |
+| VST3 | `pluginval --strictness-level 5` on Release bundle |
+| FL | `disklordz-ralph/vst/docs/FL-STUDIO-QA.md` |
+| Installer | `vst/installer/README.md` — `{commoncf64}\VST3` |
+| Drag paths | Pad WAV + Shift+MIDI exist on disk after drag attempt |
+| REA | `REA-WORKFLOW.md` — `processBlock` only, no full decompile |
+
+## Report format
+
+**Pass / fail / blocked** per row; link evidence files under `rea-notes/` or `docs/rea-audit.md`.
+
+Reject launches with audio-thread alloc findings or missing pluginval.

@@ -1,0 +1,45 @@
+# Merge into Significant-Gravitas/AutoGPT autogpt_platform/docker-compose.yml
+# under the service that runs the Agent Builder / executor (names vary by release).
+#
+# Windows host paths — use forward slashes or escaped backslashes in Compose.
+# Set DLZ_WIN_ROOT to your clone (e.g. C:/Dev/push).
+
+name: disklordz-autogpt-volumes
+
+services:
+  autogpt-executor:
+    volumes:
+      # Repo docs + snapshots (OpenClaw + Firecrawl outputs)
+      - ${DLZ_WIN_ROOT}/docs:/workspace/dlz/docs:rw
+      # Finished kits (LouisianaKitGenerator / tripwire packer output)
+      - ${DLZ_WIN_ROOT}/Assets/Releases:/workspace/dlz/releases:rw
+      # Read-only product + tier rules for LLM copy blocks
+      - ${DLZ_WIN_ROOT}/disklordz-ralph/vst/LICENSING.md:/workspace/dlz/readonly/LICENSING.md:ro
+      - ${DLZ_WIN_ROOT}/disklordz-ralph/vst/docs:/workspace/dlz/readonly/vst-docs:ro
+    environment:
+      DLZ_REPO_ROOT: /workspace/dlz
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      # Cheap formatting steps
+      AUTOGPT_DEFAULT_MODEL: gpt-4o-mini
+      # Cap per workflow (set in UI too)
+      AUTOGPT_MAX_ITERATIONS: "8"
+
+  # Optional: file-watcher sidecar triggers webhook when kit_manifest.json lands
+  release-watcher:
+    image: alpine:3.20
+    command: >
+      sh -c "apk add --no-cache inotify-tools curl &&
+      while true; do
+        inotifywait -e close_write,move -t 30 /releases || true;
+        test -f /releases/kit_manifest.json &&
+          curl -sf -X POST http://autogpt-executor:8000/webhooks/kit-drop
+            -H 'Content-Type: application/json'
+            -d '{\"event\":\"kit_release\",\"path\":\"/workspace/dlz/releases\"}' || true;
+      done"
+    volumes:
+      - ${DLZ_WIN_ROOT}/Assets/Releases:/releases:ro
+    restart: unless-stopped
+
+# Example .env next to compose:
+# DLZ_WIN_ROOT=C:/Dev/push
+# FIRECRAWL_API_KEY=fc-...

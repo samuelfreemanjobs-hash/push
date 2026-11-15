@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+target.wav
+best_attempt.wav
+.autoresearch_best.json
+targets/*.wav
+outputs/best_kit.wav
+outputs/.best_loss
+outputs/packs/
+outputs/ragflow_wins/
+renders/

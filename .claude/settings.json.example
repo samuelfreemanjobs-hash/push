@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake *)",
+      "Bash(python disklordz-ralph/vst/autoresearch-cpp/evaluate_vst.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/evaluate.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/export_kit.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/export_kit.py *)",
+      "Bash(python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/publish_to_openmontage.py *)",
+      "Bash(python disklordz-ralph/business/mem0/record_autoresearch_win.py)",
+      "Bash(python disklordz-ralph/business/mem0/record_autoresearch_win.py *)",
+      "Bash(python disklordz-ralph/business/mem0/search_dsp_memory.py)",
+      "Bash(python disklordz-ralph/business/mem0/search_dsp_memory.py *)",
+      "Bash(powershell *mem0-record-win.ps1*)",
+      "Bash(powershell *mem0-seed-memory.ps1*)",
+      "Bash(python disklordz-ralph/factory/autoresearch/handoff_openmontage.py)",
+      "Bash(python disklordz-ralph/factory/autoresearch/handoff_openmontage.py *)",
+      "Bash(powershell *handoff-pack-to-openmontage.ps1*)",
+      "Bash(powershell *export_kit_velocities.ps1*)",
+      "Bash(powershell *vst-build-pluginval-gate.ps1*)",
+      "Bash(powershell *vst-build-drumsynth-autoresearch.ps1*)",
+      "Bash(powershell *vst-diagnose-windows-build.ps1*)",
+      "Bash(pluginval *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git add disklordz-ralph/vst/autoresearch-cpp/Source/VoiceDSP.h)",
+      "Bash(git add disklordz-ralph/vst/autoresearch-cpp/results.tsv)",
+      "Bash(git add disklordz-ralph/factory/autoresearch/drum_engine.py)",
+      "Bash(git add disklordz-ralph/factory/autoresearch/results.tsv)",
+      "Bash(git commit *)",
+      "Bash(git checkout -- disklordz-ralph/vst/autoresearch-cpp/Source/VoiceDSP.h)",
+      "Bash(git checkout -- disklordz-ralph/factory/autoresearch/drum_engine.py)",
+      "Read(disklordz-ralph/vst/**)",
+      "Read(disklordz-ralph/factory/autoresearch/**)",
+      "Edit(disklordz-ralph/vst/autoresearch-cpp/Source/VoiceDSP.h)",
+      "Edit(disklordz-ralph/factory/autoresearch/drum_engine.py)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(curl *)",
+      "Bash(Invoke-WebRequest *)",
+      "Edit(disklordz-ralph/vst/autoresearch-cpp/evaluate_vst.py)",
+      "Edit(disklordz-ralph/factory/autoresearch/evaluate.py)",
+      "Edit(disklordz-ralph/vst/starter-cpp/Source/PluginProcessor.cpp)",
+      "Bash(git push *)"
+    ]
+  }
+}
