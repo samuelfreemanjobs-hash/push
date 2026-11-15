@@ -1,17 +1,19 @@
 # Storefront & faceplate (Impeccable)
 
-| Folder | Purpose |
-|--------|---------|
-| `disklordz-lite/` | Lite VST landing + 3-tier pricing (Week 3 launch) |
-| `plugin-faceplate/` | WebView HTML mock — polish with `/impeccable` before any JUCE `WebBrowserComponent` work |
+| Path | Purpose |
+|------|---------|
+| **`index.html`** | Primary Tailwind landing — Web Audio audition, tiers, checkout placeholders |
+| `disklordz-lite/` | Token-based CSS variant (same funnel, smaller surface) |
+| `plugin-faceplate/` | WebView mock — `/impeccable distill` before optional `WebBrowserComponent` |
 
-Preview locally:
+Preview:
 
 ```powershell
-cd storefront\disklordz-lite
+cd storefront
 python -m http.server 8080 --bind 127.0.0.1
+# open http://127.0.0.1:8080/index.html
 ```
 
-Then `/impeccable live` or `audit` on that folder.
+Run `/impeccable craft` → `polish` → `audit` on `storefront/index.html`.
 
 Copy approved HTML into tripwire / Lemon Squeezy embed as needed.

@@ -12,7 +12,7 @@ Premium **synthesis-only** drum tools for trap, Baton Rouge, NOLA bounce, and Me
 
 ## Product purpose
 
-1. **Detroit Phonk Trap Maker** — low-latency drum VST with BR 808 glide, soft clip, **drag WAV/MIDI to FL Playlist**
+1. **Detroit Phonk Trap Maker** (not “TrapDrumEngine”) — low-latency drum VST with BR 808 glide, 2× soft clip, **drag WAV/MIDI to FL Playlist on Core+**
 2. **Louisiana / Forge kits** — 24-bit WAV packs from `drum-forge-v4` factory
 3. **Lite lead magnet** — free VST3 + small WAV set → Core ($39–49) → Suite ($79–89)
 

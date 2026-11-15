@@ -36,7 +36,8 @@ Run `/impeccable init` only if you want to replace with interview output; otherw
 ## Targets in this repo
 
 ```
-storefront/disklordz-lite/     # Lemon/Gumroad-style landing (primary)
+storefront/index.html          # Tailwind landing (primary Impeccable target)
+storefront/disklordz-lite/     # CSS-token variant
 storefront/plugin-faceplate/   # JUCE WebView HTML mock (future)
 disklordz-command-center/src/ # Ops PWA — optional `document` pass
 ```

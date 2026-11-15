@@ -58,7 +58,7 @@ Dark **hardware rack** — matte charcoal, amber power indicators, soft red clip
 |---------|------|
 | Native editor (ship) | `disklordz-ralph/vst/starter-cpp/Source/PluginEditor.*` |
 | WebView mock (Impeccable) | `storefront/plugin-faceplate/index.html` |
-| Lite landing | `storefront/disklordz-lite/index.html` |
+| Lite landing | `storefront/index.html` (primary), `storefront/disklordz-lite/` |
 
 ## Motion
 
