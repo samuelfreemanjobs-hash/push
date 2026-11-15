@@ -40,6 +40,7 @@
       mkt: {
         skills: [
           "research_consume",
+          "beatmaker_content_brief",
           "tech_radar_signals",
           "tripwire_positioning",
           "telegram_brief",

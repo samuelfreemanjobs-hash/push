@@ -10,6 +10,7 @@ export const OPENCLAW_SKILL_HINTS = {
   forge: ["vst_factory"],
   sentinel: ["security_sentinel"],
   radar: ["tech_radar_signals", "memory_vault"],
+  mkt: ["beatmaker_content_brief", "tripwire_positioning", "telegram_brief"],
 };
 
 export function skillLineForAgent(agentId) {

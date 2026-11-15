@@ -26,6 +26,15 @@ jobs:
       Per kept item: licensing, integration 1-5, cost, DiskLordz product fit, adopt|watch|skip.
       No article archive; max 6 items.
 
+  - id: beatmaker-weekly-brief
+    cron: "0 10 * * 1"
+    description: Monday beatmaker short-form content brief → Telegram/Slack
+    output: "~/.openclaw/hermes-out/research/beatmaker-brief/COMPLETE-*.md"
+    prompt: |
+      Run beatmaker-brief script, load product-catalog.yaml, research YouTube/TikTok/Reddit (7d).
+      Three concepts: trend-jack, problem/solution, cookup — match catalog only.
+      Shot scripts with screen cues + audio hooks + captions. Deliver subject Monday Beatmaker Content Brief – [Date].
+
   - id: youtube-competitor-spy
     cron: "0 9 * * 1"
     output: "~/.openclaw/hermes-out/research/youtube-weekly.md"

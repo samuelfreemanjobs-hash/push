@@ -1,0 +1,23 @@
+name: disklordz-beatmaker-weekly-brief
+max_steps: 16
+coordinator: mkt
+workers:
+  - id: mkt-research
+    role: YouTube TikTok Reddit 7d trends with URLs
+    output: research/beatmaker-brief/notes.md
+  - id: mkt-catalog
+    role: Map 3 trends to product-catalog.yaml ids + presets
+    input: notes.md
+    output: research/beatmaker-brief/matches.json
+  - id: mkt-scripts
+    role: Shot-by-shot vertical briefs + captions
+    input: matches.json
+    output: research/beatmaker-brief/COMPLETE-draft.md
+  - id: mkt-deliver
+    role: telegram_brief format + subject line
+    input: COMPLETE-draft.md
+    output: research/beatmaker-brief/COMPLETE-*.md
+handoff:
+  notify: openclaw_telegram_mkt
+approval:
+  publish: human_only

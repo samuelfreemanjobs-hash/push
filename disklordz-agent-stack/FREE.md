@@ -80,6 +80,7 @@ DRUM: ingest kit-spec (after Grok)
 BIZ: Friday KPI
 MKT: summarize hermes-out/research/
 RADAR: review latest AI Dev Signals issue
+MKT: complete Monday beatmaker brief from hermes-out
 ```
 
 ## Ralph loop (whole business)

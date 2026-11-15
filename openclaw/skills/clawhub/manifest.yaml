@@ -45,6 +45,9 @@ skills:
   - dir: research_consume
     slug: disklordz-research-consume
     display_name: Research Consume
+  - dir: beatmaker_content_brief
+    slug: disklordz-beatmaker-content-brief
+    display_name: Beatmaker Weekly Brief
   - dir: tech_radar_signals
     slug: disklordz-tech-radar-signals
     display_name: AI Dev Signals Tech Radar
