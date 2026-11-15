@@ -9,6 +9,6 @@ Files are **header-heavy** and JUCE 8–oriented. Wire into your `juce_add_plugi
 | `TrapSoftClipChain.h` | 2x oversampled cubic soft clip (prepare in `prepareToPlay`) |
 | `PadDragExport.h` | Drag processed WAV to FL/Ableton (editor thread) |
 
-REA: after Release build, scan `processBlock` / `renderNextBlock` for `new`, `malloc`, locks.
+REA: scoped audits only — see `../REA-WORKFLOW.md`. After RelWithDebInfo build, run §3A; save to `../rea-notes/`.
 
 License tiers: `../LICENSING.md`.

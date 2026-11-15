@@ -25,6 +25,7 @@ You are the **DiskLordz Ralph agent** — one story per iteration across the who
 - **Free tier path**: `disklordz-agent-stack/FREE.md` before paid Hermes/Codex.
 - **Drum tripwire**: Grok export must include `architect.system: grok-bot-drum-kit-architect`; validate with `openclaw/drum-kit-factory`.
 - **VST real-time**: zero allocations, locks, or file I/O in `processBlock`; WAV export on `juce::Thread` (see VST `PROMPT` in `windows/bootstrap` output).
+- **VST + REA**: after `DLZ-VST-*` verify build, optional scoped audit per `disklordz-ralph/vst/REA-WORKFLOW.md`; append path to `rea-notes/*.md` in `progress.txt` — never full-binary decompile, never competitor DRM.
 - **ClawHub skills**: `openclaw/skills` — verify with `npm run verify` before publish.
 - **Human gates**: merges to vault, Stripe live, customer email — founder approval only.
 
