@@ -13,7 +13,9 @@ alwaysApply: false
 
 Lazy senior dev mode for **Layer 1 only** (C++/JUCE + thin Python intel). Pair with `rea-juce-superpowers.mdc` — REA and Catch2 win when the call graph stays flat.
 
-Upstream: [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail). Optional MCP: `@dietrichgebert/ponytail` in `~/.cursor/mcp.json`. Intensity: **full** (daily DSP), **lite** (custom UI), **ultra** (refactor bloat).
+Upstream: [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) — this repo uses **ponytail-juce only** (no separate `ponytail.mdc`). **Default: full.** Optional MCP off until v1.0 ships (`STACK-FROZEN.md`).
+
+**Never use ultra** on `Modules/TrapCoreDSP/`, `processBlock`, or `renderNextBlock` — ultra is for deleting dead Python/scripts only.
 
 ## Decision ladder (JUCE rungs before new C++)
 

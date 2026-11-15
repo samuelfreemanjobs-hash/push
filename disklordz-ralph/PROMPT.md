@@ -28,6 +28,7 @@ You are the **DiskLordz Ralph agent** — one story per iteration across the who
 - **VST + REA**: after `DLZ-VST-*` verify build, optional scoped audit per `disklordz-ralph/vst/REA-WORKFLOW.md`; append path to `rea-notes/*.md` in `progress.txt` — never full-binary decompile, never competitor DRM.
 - **ClawHub skills**: `openclaw/skills` — verify with `npm run verify` before publish.
 - **AutoGPT (kit launch only)**: `openclaw/autogpt/` — Docker volumes share `docs/` + `Assets/Releases/`; never compile JUCE inside AutoGPT.
+- **Stack locked**: `disklordz-ralph/STACK-FROZEN.md` — Ponytail **full** via `ponytail-juce.mdc` only; ship path `LAUNCH-ROADMAP-30D.md`.
 - **Human gates**: merges to vault, Stripe live, customer email — founder approval only.
 
 ## Strict JUCE 8 rules (DLZ-VST-* only)

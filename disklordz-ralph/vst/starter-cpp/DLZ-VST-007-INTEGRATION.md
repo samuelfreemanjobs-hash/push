@@ -1,6 +1,8 @@
 # DLZ-VST-007 — wire drag-export into PluginEditor
 
-Copy headers from this folder into `C:\Dev\DetroitPhonkTrapVST3\Source\export\` (or `Source/ui/`).
+Copy headers from this folder into `C:\Dev\DetroitPhonkTrapVST3\Source\`.
+
+**Fast path:** copy all of `starter-cpp/*.h` plus `integration/Source/PluginProcessor.*` and `PluginEditor.*` into your plugin `Source/` (adjust include paths to match your tree).
 
 ## 1. Editor inherits drag host
 
