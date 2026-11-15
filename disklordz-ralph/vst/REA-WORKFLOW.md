@@ -37,7 +37,7 @@ cmake --build build --config RelWithDebInfo --parallel
 # Release: pluginval + customer smoke only
 ```
 
-Compile flags: `/Zi` (MSVC) or `-g` (if cross-compiling); keep **one** known audit artifact path in `vst/rea-targets.json`.
+Compile flags: `starter-cpp/CMakeLists.txt` (Release `/Zi` + link `/DEBUG`). Prefer **RelWithDebInfo** for Ghidra. Paths: `WINDOWS-BUILD.md`. Register in `rea-targets.json` (copy from `rea-targets.example.json`).
 
 ---
 
