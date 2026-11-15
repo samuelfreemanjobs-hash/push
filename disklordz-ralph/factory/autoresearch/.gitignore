@@ -7,4 +7,5 @@ best_attempt.wav
 targets/*.wav
 outputs/best_kit.wav
 outputs/.best_loss
+outputs/ragflow_wins/
 renders/

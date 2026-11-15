@@ -43,3 +43,8 @@ Blends full-velocity loss with hits at MIDI **~30, 80, 127** (as velocity 0.24, 
 ## C++ / VST bridge
 
 See `docs/dev/autoresearch-cpp.md` — promote winning constants into `TrapCoreDSP`; agents do not edit JUCE in the loop.
+
+## RAGFlow (optional)
+
+Visual loop + RAG over DSP manuals: `docs/dev/autoresearch-ragflow.md`.  
+SSH runner on your machine + `tools/ragflow_persist_win.py` webhook. **CLI remains primary** for overnight Git iterations.
