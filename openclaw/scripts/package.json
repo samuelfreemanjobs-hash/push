@@ -1,0 +1,8 @@
+{
+  "name": "disklordz-openclaw-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "json5": "^2.2.3"
+  }
+}

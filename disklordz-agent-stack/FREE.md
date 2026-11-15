@@ -79,6 +79,16 @@ BIZ: Friday KPI
 MKT: summarize hermes-out/research/
 ```
 
+## Windows one-paste OpenClaw
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Dev\push
+.\Install-DiskLordz-Windows.ps1 -InstallNode -PromptSecrets
+```
+
+Then pair Telegram using `%USERPROFILE%\.openclaw\PAIRING-NEXT.txt`.
+
 ## Ralph loop (whole business)
 
 Autonomous one-story iterations: `disklordz-ralph/ralph.ps1` (Windows) or `ralph.sh` (Linux). VST MSVC work is lane **DLZ-VST-*** only — not a separate business.

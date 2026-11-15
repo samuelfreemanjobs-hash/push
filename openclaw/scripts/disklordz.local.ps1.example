@@ -1,0 +1,3 @@
+# Copy to %USERPROFILE%\.openclaw\disklordz.local.ps1 (never commit)
+$env:TELEGRAM_BOT_TOKEN = "123456789:REPLACE_FROM_BOTFATHER"
+$env:GEMINI_API_KEY = "REPLACE_FROM_GOOGLE_AI_STUDIO"

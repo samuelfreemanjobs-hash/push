@@ -16,7 +16,25 @@
 
 ### Windows (PowerShell)
 
-Paste as one block:
+### One-paste full automation (recommended)
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Dev\push
+git pull
+$env:DLZ_REPO_ROOT = (Get-Location).Path
+.\Install-DiskLordz-Windows.ps1 -InstallNode -PromptSecrets
+```
+
+This installs Node (winget if `-InstallNode`), OpenClaw, workspaces, skills, merges `openclaw.json`, adds Telegram + Gemini when you enter keys, and starts the gateway.
+
+**Non-interactive:** copy `openclaw/scripts/disklordz.local.ps1.example` → `%USERPROFILE%\.openclaw\disklordz.local.ps1`, fill tokens, then:
+
+```powershell
+.\Install-DiskLordz-Windows.ps1
+```
+
+### Manual / partial
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass

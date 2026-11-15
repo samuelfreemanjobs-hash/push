@@ -58,6 +58,12 @@ Write-Host "OPENCLAW_STATE_DIR=$State" -ForegroundColor DarkGray
 & (Join-Path $OcRoot "disklordz-picks\scripts\install-pick-workspaces.ps1")
 & (Join-Path $Repo "disklordz-agent-stack\deploy\bootstrap-free.ps1")
 node (Join-Path $OcScripts "merge-disklordz-config.mjs")
+Push-Location (Join-Path $OcScripts)
+if (-not (Test-Path "node_modules\json5")) { npm install --silent 2>$null; if ($LASTEXITCODE -ne 0) { npm install } }
+Pop-Location
+if (Test-Path (Join-Path $OcScripts "apply-disklordz-config.mjs")) {
+    node (Join-Path $OcScripts "apply-disklordz-config.mjs") 2>$null
+}
 
 $hasOpenClaw = $null -ne (Get-Command openclaw -ErrorAction SilentlyContinue)
 

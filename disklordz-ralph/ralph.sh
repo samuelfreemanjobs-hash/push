@@ -21,11 +21,13 @@ for ((i = 1; i <= MAX; i++)); do
     fi
   else
     echo "No claude CLI — use Cursor Cloud Agent with $RALPH/PROMPT.md"
-    node "$RALPH/scripts/verify-story.mjs" "$(node -e "
-const p=require('$RALPH/prd.json');
+    NEXT="$(node -e "
+const fs=require('node:fs');
+const p=JSON.parse(fs.readFileSync('${RALPH}/prd.json','utf8'));
 const n=p.stories.filter(s=>!s.passes&&!s.actor).sort((a,b)=>a.priority.localeCompare(b.priority))[0];
 console.log(n?n.id:'');
-")" || true
+")"
+    [[ -n "$NEXT" ]] && node "$RALPH/scripts/verify-story.mjs" "$NEXT" || true
     exit 0
   fi
   sleep 2
