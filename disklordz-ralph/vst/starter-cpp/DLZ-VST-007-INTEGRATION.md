@@ -60,6 +60,13 @@ KitExporter::PadSample s{ "808", processorRef.getPadBuffer(0), processorRef.getP
 KitExporter::exportPadsToFolder({ s, ... }, KitExporter::defaultExportDir());
 ```
 
-## 5. Out of scope here
+## 5. FL drag checklist (Week 2, Days 11–12)
+
+- Click pad → drop WAV on **Playlist** (not only Channel Rack)
+- Shift+click → drop `.mid` on Playlist
+- Drag external WAV onto pad → reload without reopening editor
+- Re-scan VST3 after installer: FL **Manage plugins → Find plugins**
+
+## 6. Out of scope here
 
 - Multi-out (`DLZ-VST-009`), `.blob` encryption, AutoGPT storefront publish (see `openclaw/autogpt/`).

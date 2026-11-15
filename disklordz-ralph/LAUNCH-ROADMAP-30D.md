@@ -1,52 +1,73 @@
-# First kit + Lite VST3 → first sales (30-day milestones)
+# 30-day launch: Baton Rouge Trap & NOLA Bounce VST3 → first sales
 
-Technical milestones only — adjust calendar on your Windows build machine.
+Stack: **Cursor + Superpowers + Ponytail (full, `ponytail-juce.mdc`) + REA**, TrapCoreDSP, **OpenClaw + Firecrawl**, **AutoGPT**. Frozen: `STACK-FROZEN.md`.
 
-## Phase A — Engine + drag-export (ship blocker)
+---
 
-| # | Deliverable | Done when |
-|---|-------------|-----------|
-| A1 | `TrapCoreDSP` Release + Catch2 green on Windows | `ctest -C Release` passes |
-| A2 | `DetroitPhonkTrapMaker` `.vst3` + pluginval level 5 | Strict validation pass |
-| A3 | **DLZ-VST-007** wired | Click pad → WAV on FL Playlist; Shift+click → `.mid`; drop WAV on pad loads sample |
-| A4 | REA smoke on `processBlock` only | Notes in `rea-notes/` — no full decompile |
+## Week 1: Core DSP & Catch2 (Days 1–7)
 
-**Copy pack:** `vst/starter-cpp/*` + `integration/Source/*` → `C:\Dev\DetroitPhonkTrapVST3\Source\`.
+**Goal:** Lock audio engine + RT safety before UI or marketing.
 
-## Phase B — First Louisiana kit (revenue asset)
+| Days | Work |
+|------|------|
+| **1–2** | Git + CMake, `AGENTS.md`, `.cursor/rules/rea-juce-superpowers.mdc` + `ponytail-juce.mdc` (**not** duplicate `ponytail.mdc`). First Catch2 baseline on Windows. |
+| **3–5** | Superpowers TDD: `Trap808Voice`, `SoftClipper` (2× OS), hi-hat choke, `RollEngine` in `Modules/TrapCoreDSP/` — Ponytail **full** on implementation only. |
+| **6–7** | Release `.vst3` + `.pdb`; `pluginval --strictness-level 5`; REA — zero `new`/locks in `processBlock`. |
 
-| # | Deliverable | Done when |
-|---|-------------|-----------|
-| B1 | 24-bit master WAVs in `Assets/RawMasters/` | Peak/headroom checked |
-| B2 | Generator run → `Assets/Releases/` + `kit_manifest.json` | Matches schema |
-| B3 | **Lite** tier: 25 WAVs + Lite `.vst3` zip | Download page draft in `docs/copy/` |
-| B4 | FL QA doc signed | `vst/docs/FL-STUDIO-QA.md` checklist |
+**Exit:** `ctest -C Release` green + pluginval pass.
 
-## Phase C — Lite in producers’ hands
+---
 
-| # | Deliverable | Done when |
-|---|-------------|-----------|
-| C1 | Landing copy from market snapshot | `docs/copy/landing-page.md` operator-approved |
-| C2 | OpenClaw Thu: leads + price intel | Cron live; you approve drafts only |
-| C3 | 10–15 personalized Lite outreach sends | Secondary domain, human-approved |
-| C4 | One public cook-up clip (808 + bounce) | Proves drag-export UX |
+## Week 2: UI, drag-export, FL QA, kits (Days 8–14)
 
-## Phase D — Paid Core drop
+**Goal:** Beatmaker UX + Louisiana sound library.
 
-| # | Deliverable | Done when |
-|---|-------------|-----------|
-| D1 | Core tier ($49) storefront **draft** | AutoGPT or manual; you approve |
-| D2 | Gumroad/Lemon/Shopify link live | Lite still $0 lead magnet |
-| D3 | First paying customer + install FAQ | Support answers from `vst/docs/` only |
-| D4 | Friday AutoGPT kit job optional | `Assets/Releases/` trigger only |
+| Days | Work |
+|------|------|
+| **8–10** | Minimal editor: macros (808 Punch/Clip, Glide, Bounce Swing, Roll trigger) + **DLZ-VST-007** — repo: `vst/starter-cpp/integration/Source/` + `PadGridComponent.h` (click = WAV drag, Shift+click = MIDI drag, drop WAV on pad). |
+| **11–12** | FL Studio (primary) + Ableton smoke: note-off, pitch-bend 12 st, state save/load, CPU @ 512 buffer — `vst/docs/FL-STUDIO-QA.md`. |
+| **13–14** | `LouisianaKitGenerator.exe` → 150+ WAVs + 40 MIDI rolls → `Assets/Releases/` + `kit_manifest.json`; encrypted `.blob` for in-plugin factory. |
 
-## Daily default (after stack frozen)
+**Exit:** Drag-export proven in FL Playlist; kit zip in `Assets/Releases/`.
 
-1. **Build lane (Cursor):** one `prd.json` story — test first, Ponytail **full** on implementation.  
-2. **No new tools.** If tempted, run `/ponytail-audit` equivalent prompt from `ponytail-juce.mdc`.  
+---
 
-## Success metrics at day 30
+## Week 3: Licensing, installer, storefront (Days 15–21)
 
-- Lite VST3 installed on ≥5 FL producers (verified replies or analytics)
-- ≥1 paid Core or kit sale **or** validated waitlist with deposit intent
-- Zero audio-thread allocations in REA-reviewed build
+**Goal:** Trustworthy Windows install + 3-tier funnel copy.
+
+| Days | Work |
+|------|------|
+| **15–16** | Lite binary (1 kit, clip on, import/drag gated per `LICENSING.md`); plan Moonbase for **Core** only. |
+| **17–18** | Inno Setup: `vst/installer/DetroitPhonkTrapMaker-Lite.iss` / `-Core.iss` → `Assets/Releases/installers/`; sign `.exe` when cert ready. |
+| **19–21** | Lemon Squeezy / Gumroad / Shopify draft; OpenClaw `track_competitors.py`; AutoGPT staged copy in `docs/factory/staged/`. |
+
+**Exit:** Signed or unsigned Lite installer downloadable; storefront draft approved.
+
+---
+
+## Week 4: Seeding, content, launch (Days 22–30)
+
+**Goal:** Lite in producers’ hands → first Core sales.
+
+| Days | Work |
+|------|------|
+| **22–24** | `find_producer_leads.py` → 40–50 leads; `pending_review` only. |
+| **25–26** | Approve 4-sentence emails; Lite link + optional affiliate — compliance in `outreach-compliance.md`. |
+| **27–28** | 60s FL cook-up (glide + clip + **drag MIDI roll**); Shorts/TikTok/Reels. |
+| **29–30** | Waitlist launch; Core $39–49 promo window; AutoGPT triage install FAQ; log v1.1 in `shortcut:` ledger. |
+
+**Exit:** ≥5 Lite installs or ≥1 Core sale; support paths documented.
+
+---
+
+## Quick links
+
+| Deliverable | Path |
+|-------------|------|
+| Drag-export integration | `vst/starter-cpp/DLZ-VST-007-INTEGRATION.md` |
+| Windows installer | `vst/installer/README.md` |
+| Tiers & DRM | `vst/LICENSING.md` |
+| OpenClaw crons | `openclaw/openclaw.disklordz.telegram.json5.example` |
+
+**Daily rule:** One `prd.json` story; no new agent tools until Week 4 ends.
