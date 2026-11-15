@@ -13,18 +13,32 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let genAI = null;
+let supabase = null;
 
-// Initialize Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+function getGemini() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!genAI) genAI = new GoogleGenerativeAI(apiKey);
+  return genAI;
+}
+
+function getSupabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_KEY;
+  if (!url || !key) return null;
+  if (!supabase) supabase = createClient(url, key);
+  return supabase;
+}
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'healthy',
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_KEY),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // AI Agent endpoint
@@ -36,14 +50,20 @@ app.post('/api/agent', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    const gemini = getGemini();
+    if (!gemini) {
+      return res.status(503).json({ error: 'GEMINI_API_KEY is not configured' });
+    }
+
     // Call Gemini AI
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-pro' });
     const result = await model.generateContent(message);
     const aiResponse = result.response.text();
 
     // Log to Supabase (optional)
-    if (userId) {
-      const { data, error } = await supabase
+    const supabaseClient = getSupabase();
+    if (userId && supabaseClient) {
+      const { error } = await supabaseClient
         .from('conversations')
         .insert([
           {
@@ -78,8 +98,12 @@ app.post('/api/agent', async (req, res) => {
 app.get('/api/conversations/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+      return res.status(503).json({ error: 'Supabase is not configured' });
+    }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('conversations')
       .select('*')
       .eq('user_id', userId)
