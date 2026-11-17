@@ -3,6 +3,7 @@ import { ActionConsolePanel } from "./components/ActionConsolePanel";
 import { AgentTasksPanel } from "./components/AgentTasksPanel";
 import { AgentsPanel } from "./components/AgentsPanel";
 import { AutomationsPanel } from "./components/AutomationsPanel";
+import { ConnectionsPanel } from "./components/ConnectionsPanel";
 import { GatesPanel } from "./components/GatesPanel";
 import { KanbanBoard } from "./components/KanbanBoard";
 import { MobileCrewPanel } from "./components/MobileCrewPanel";
@@ -16,6 +17,7 @@ import {
   CommandCenterProvider,
   useCommandCenter,
 } from "./context/CommandCenterContext";
+import { ConnectionsProvider } from "./context/ConnectionsContext";
 import { OpsDataProvider } from "./context/OpsDataContext";
 import type { KanbanColumnId } from "./data/types";
 import { useKanbanStorage } from "./hooks/useKanbanStorage";
@@ -45,6 +47,7 @@ function CommandCenterMain() {
         <ToastBar />
         {section === "overview" ? <Overview /> : null}
         {section === "automations" ? <AutomationsPanel /> : null}
+        {section === "connections" ? <ConnectionsPanel /> : null}
         {section === "actions" ? <ActionConsolePanel /> : null}
         {section === "tasks" ? <AgentTasksPanel /> : null}
         {section === "kanban" ? (
@@ -69,9 +72,11 @@ function CommandCenterMain() {
 export default function App() {
   return (
     <OpsDataProvider>
-      <CommandCenterProvider>
-        <CommandCenterMain />
-      </CommandCenterProvider>
+      <ConnectionsProvider>
+        <CommandCenterProvider>
+          <CommandCenterMain />
+        </CommandCenterProvider>
+      </ConnectionsProvider>
     </OpsDataProvider>
   );
 }

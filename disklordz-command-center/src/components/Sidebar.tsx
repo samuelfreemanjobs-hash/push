@@ -8,6 +8,7 @@ type SidebarProps = {
 const ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "overview", label: "Overview", hint: "Ops snapshot" },
   { id: "automations", label: "Automation", hint: "Daily brief + sync" },
+  { id: "connections", label: "Connect", hint: "Vault + agent API" },
   { id: "actions", label: "Actions", hint: "Triggers + task queue" },
   { id: "tasks", label: "Agent tasks", hint: "Assign & run" },
   { id: "kanban", label: "Kanban", hint: "Solo WIP board" },

@@ -13,6 +13,8 @@ import {
   withTaskSystem,
 } from "./tasks/runAgentTask.js";
 import { ollamaGenerate, shouldUseOllama } from "./providers/ollama.js";
+import { buildConnectionStatus } from "./connections/status.js";
+import { pullVaultOpsFragment } from "./github/vaultOps.js";
 
 dotenv.config();
 
@@ -43,6 +45,38 @@ app.get("/health", (_req, res) => {
 
 app.get("/api/agents", (_req, res) => {
   res.json({ success: true, agents: listEliteAgents() });
+});
+
+app.get("/api/connections/status", async (_req, res) => {
+  try {
+    const status = await buildConnectionStatus();
+    res.json(status);
+  } catch (error) {
+    console.error("connections/status:", error);
+    res.status(500).json({
+      error: "Connection check failed",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/vault/ops-fragment", async (_req, res) => {
+  try {
+    const fragment = await pullVaultOpsFragment();
+    if (!fragment.kanban.cards.length && fragment.syncErrors.length) {
+      return res.status(503).json({
+        error: "Vault not reachable",
+        details: fragment.syncErrors.join("; "),
+      });
+    }
+    res.json(fragment);
+  } catch (error) {
+    console.error("vault/ops-fragment:", error);
+    res.status(500).json({
+      error: "Vault pull failed",
+      details: error.message,
+    });
+  }
 });
 
 async function generateReply(agent, userMessage) {

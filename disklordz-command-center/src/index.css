@@ -973,6 +973,67 @@ code {
   cursor: not-allowed;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 1rem 0;
+}
+
+.field__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.field__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.field__input {
+  flex: 1;
+  min-width: 12rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.field__hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  margin-top: 0.5rem;
+}
+
+.conn-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.conn-dot {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.conn-dot--ok {
+  color: #6bcf8e;
+}
+
+.conn-dot--bad {
+  color: #e88b8b;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;

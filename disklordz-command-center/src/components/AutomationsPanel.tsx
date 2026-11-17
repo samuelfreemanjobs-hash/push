@@ -9,7 +9,7 @@ const PIPELINE = [
   {
     name: "Command Center",
     schedule: "On load + Refresh",
-    detail: "Merges live snapshot with your kanban column overrides in localStorage",
+    detail: "Merges static snapshot with vault live-pull (Connect tab) and kanban overrides",
   },
   {
     name: "Daily brief engine",

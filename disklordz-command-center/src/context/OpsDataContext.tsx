@@ -8,17 +8,20 @@ import {
   type ReactNode,
 } from "react";
 import { buildDailyBrief, type DailyBrief } from "../automation/engine";
+import { mergeOpsSnapshot } from "../data/mergeSnapshot";
 import {
   FALLBACK_SNAPSHOT,
   STATIC_AGENT_LANES,
   STATIC_REPOS,
   type OpsSnapshot,
 } from "../data/opsSnapshot";
+import type { VaultOpsFragment } from "../lib/connectionsApi";
 
 type OpsDataContextValue = {
   snapshot: OpsSnapshot;
   loading: boolean;
   refresh: () => void;
+  mergeLiveSnapshot: (fragment: VaultOpsFragment) => void;
   brief: DailyBrief;
   repos: typeof STATIC_REPOS;
   agentLanes: typeof STATIC_AGENT_LANES;
@@ -44,6 +47,10 @@ export function OpsDataProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const mergeLiveSnapshot = useCallback((fragment: VaultOpsFragment) => {
+    setSnapshot((prev) => mergeOpsSnapshot(prev, fragment));
+  }, []);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -65,11 +72,12 @@ export function OpsDataProvider({ children }: { children: ReactNode }) {
       snapshot,
       loading,
       refresh,
+      mergeLiveSnapshot,
       brief,
       repos: STATIC_REPOS,
       agentLanes: STATIC_AGENT_LANES,
     }),
-    [snapshot, loading, refresh, brief],
+    [snapshot, loading, refresh, mergeLiveSnapshot, brief],
   );
 
   return (

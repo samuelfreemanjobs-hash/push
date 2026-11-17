@@ -1,3 +1,5 @@
+import { getConfiguredAgentApiUrl } from "../lib/agentApiUrl";
+
 export type EliteAgent = {
   id: string;
   prefix: string;
@@ -110,23 +112,19 @@ export const ELITE_AGENTS: EliteAgent[] = [
 
 export const DEFAULT_MOBILE_AGENT_ID = "code";
 
-const API_BASE = (import.meta.env.VITE_AGENT_API_URL as string | undefined)?.replace(
-  /\/$/,
-  "",
-);
-
 export function agentApiBase(): string | undefined {
-  return API_BASE;
+  return getConfiguredAgentApiUrl();
 }
 
 export async function sendToEliteAgent(
   message: string,
   agentId?: string,
 ): Promise<{ aiResponse: string; prefix: string }> {
-  if (!API_BASE) {
+  const base = agentApiBase();
+  if (!base) {
     throw new Error("offline");
   }
-  const res = await fetch(`${API_BASE}/api/agent`, {
+  const res = await fetch(`${base}/api/agent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
