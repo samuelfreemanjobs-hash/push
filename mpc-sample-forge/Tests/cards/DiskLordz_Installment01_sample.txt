@@ -1,0 +1,75 @@
+DiskLordz Original Sample Recipe Book — Daily Installment 01
+3 new recipes
+Original compositions
+November 6, 2026
+
+Today’s set covers three directions: dreamy melodic rap, laid-back jazz, and polished luxury funk. Each recipe is designed to produce individual chord hits, pitched one-shots, and textures—not just a loop you have to chop.
+
+All three progressions and melodies use notes from their stated major scales. Roland Cloud preset names below are search terms, not claims about exact installed presets.
+1. Blue Hour Convertible
+Wiz-inspired
+Dreamy keys · warm synth layers · open space
+
+
+
+
+
+
+
+
+exploreusanow.com
+
+
+Musical settings
+- Key: D major
+- Scale: D–E–F♯–G–A–B–C♯
+- Tempo: 92 BPM
+- Feel: relaxed, spacious, melodic
+- Main sound: soft electric piano layered with a slow analog-style pad
+Chord progression — one chord per bar
+Bar	Chord	Exact notes
+1	Dmaj9	D3 · F♯3 · A3 · C♯4 · E4
+2	Bm7	B2 · D3 · F♯3 · A3
+3	Gmaj9	G2 · B2 · D3 · F♯3 · A3
+4	A6/9	A2 · C♯3 · E3 · F♯3 · B3
+
+Original melody — four bars
+
+Use a soft, rounded attack. The positions are in 4/4; e means eighth note and q means quarter note.
+Bar	Beat placement	Notes
+1	1: F♯5 q; 2: A5 e; 2&: C♯6 e; 3: B5 q; 4: A5 q	F♯5 · A5 · C♯6 · B5 · A5
+2	1: F♯5 q; 2: E5 e; 2&: F♯5 e; 3: A5 q; 4: F♯5 q	F♯5 · E5 · F♯5 · A5 · F♯5
+3	1: D5 q; 2: F♯5 e; 2&: A5 e; 3: B5 q; 4: A5 q	D5 · F♯5 · A5 · B5 · A5
+4	1: E5 q; 2: F♯5 e; 2&: A5 e; 3: C♯6 q; 4: B5 q	E5 · F♯5 · A5 · C♯6 · B5
+
+Roland Cloud sound search
+- ZENOLOGY / ZENOLOGY Pro: Soft Bell, Warm Electric Piano, Digital Keys
+- JUNO-106: Slow Analog Pad, Warm Poly Synth
+- SRX instruments: Electric Piano, Soft Keyboard
+Sound design
+- Electric piano: soften the attack, shorten the initial transient slightly, and keep the low end clean.
+- Pad: attack around 500–800 ms; release around 1.5–2 seconds.
+- Add chorus at approximately 15% wet.
+- Add a quiet dotted-eighth delay and a short plate reverb.
+- High-pass the layered pad around 120 Hz so it doesn't cloud the chord sample.
+Render and filenames
+
+Render four separate chord hits with a one-bar MIDI gate. Render each unique melody pitch as an individual note, plus the three alternate soft-velocity notes and three textures.
+DL_BHC_Dmaj9_CH.wav
+DL_BHC_Bm7_CH.wav
+DL_BHC_Gmaj9_CH.wav
+DL_BHC_A69_CH.wav
+DL_BHC_D5_LEAD.wav
+DL_BHC_E5_LEAD.wav
+DL_BHC_Fs5_LEAD.wav
+DL_BHC_A5_LEAD.wav
+DL_BHC_B5_LEAD.wav
+DL_BHC_Cs6_LEAD.wav
+DL_BHC_D5_SOFT.wav
+DL_BHC_Fs5_SOFT.wav
+DL_BHC_A5_SOFT.wav
+DL_BHC_WARM_PAD_SWELL.wav
+DL_BHC_REVERSE_PAD_SWELL.wav
+DL_BHC_GLASS_SHIMMER.wav
+DL_BHC_CHORDS.mid
+DL_BHC_MELODY.mid

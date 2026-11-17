@@ -1,0 +1,122 @@
+MPC SAMPLE FORGE - QUICK START
+==============================
+
+WHAT'S IN THIS FOLDER
+  MPC Sample Forge (.exe / .app)   the app
+  mpcforge (.exe)                  command-line tool for automation
+  Examples/                        an example custom style (JSON)
+  Demo-Samples/                    samples this exact build rendered during its self-test
+
+
+FIRST RUN
+
+  Windows
+    Double-click "MPC Sample Forge.exe".
+    If SmartScreen says "Windows protected your PC": click "More info", then "Run anyway".
+    (The app isn't code-signed yet.)
+
+  macOS
+    Right-click "MPC Sample Forge.app" and choose Open, then click Open again.
+    If macOS says the app "is damaged" or "can't be opened":
+      System Settings > Privacy & Security > scroll down > "Open Anyway",
+      or run this in Terminal:  xattr -dr com.apple.quarantine "/path/to/MPC Sample Forge.app"
+    The app runs on both Apple Silicon and Intel Macs.
+
+  Linux
+    ./"MPC Sample Forge"
+
+
+MAKE YOUR FIRST KIT (about a minute)
+  1. Instrument: leave "Built-in Synth", or pick one of your VST3s and click "Edit Sound".
+  2. Style: pick a recipe, e.g. "Jet Life EP Bell" or "Memphis / OG Phonk Kit".
+  3. 16 Levels root: "Recipe's own root". Tick "16-pad banks".
+  4. Click "Batch 16" for a quick round. Leave "Smart Pick" ticked (keeps the best, most varied)
+     and "Variety: normal" (drops near-identical samples).
+     For the MPC: keep "Level: loudness-matched" and "Short names" on, and set "Registers" to
+     After reviewing, click "Octave copies of keepers" if you'll play them far up or down with
+     16 Levels > Tune. Then "+16 More" for the next round.
+  Audition Random plays in the octave chosen in the menu beside it.
+  5. Click Generate. When it's done, the Review window opens:
+       Up/Down = move + play   Space = play/stop   K = keep   X = reject   U = clear
+       Left/Right = hear it re-pitched like 16 Levels (Shift = octave)   R = range check
+       Select All (Ctrl+A) then K / X / U = mark every sample at once
+     Then click "Export Keepers": your picks go to _Keepers/Bank_A... in pad order.
+  6. Copy the _Keepers folder to your MPC. _MPC_Setup.txt explains the pad settings.
+
+
+PLAY IN KEY WITHOUT 16 LEVELS (scale banks)
+  Pick a recipe (e.g. Soul Chords, 9th Chords, Moog / G-Funk Bass, Funky Lead), pick a Key,
+  set "Scale banks: style's type", Samples 64 -> 4 banks. Each Bank_ folder is one sound:
+  file 01 on Pad 1 ... file 16 on Pad 16. _MPC_Setup.txt shows the pad map.
+
+
+WHAT WILL GENERATE MAKE?
+  The yellow NEXT GENERATE line (above the chord buttons) always says exactly what Generate will
+  render: count, chord types, notes, octaves, sound, seed. Audition Random plays from that list,
+  rendered with the recipe's FX ("Hear with FX"), so it sounds like the files.
+  Octaves menu (Engine row): keep everything in the octave(s) you want (C3 = middle C).
+
+PROGRESSIONS (chord blocks, MIDI + loops)
+  Click "Progressions". Pick a genre preset (70s Philly Soul, 80s Quiet Storm, Neo-Soul, New Jack
+  Swing ...), a key and 4 / 8 / 16 bars, then "Generate Progression" - or build your own: add
+  chords (the key's chords, any chord, your palette, or type them), drag blocks to reorder, set
+  their length. Keys, bass, pad, lead and drums are written for it (5 MIDI tracks). "Play loop",
+  then "Export MIDI + Loop": multi-track .mid + one per part + chords, and a drumless,
+  seamless loop with stems for sampling.
+  Sound (per part): built-in, the main window's instrument + sound, or any VST3 ("Edit" picks
+  its preset). Finish: 70s Tape, Cassette, 80s Digital, SP-1200, MPC60, Vinyl, Dusty Record.
+  Chops: the loop also cut into pad chops (per chord / bar / 16 slices) in Bank_A ... + pad map.
+  Library: type a name, "Save". Double-click a row to load it back exactly (VST3 sounds too).
+  "Favourite" stars it, "More like this" adds 4 variations to try, "Undo" steps back.
+  Exports also save <name>.forgesong next to the files - "Open file..." reopens it.
+
+RECIPE CARDS (your recipe book / daily ChatGPT installment)
+  Click "Recipe Cards", paste the page. It shows exactly which files it will make (exact chord
+  notes, lead + soft notes, textures, .mid files, with the book's own file names). "Render this
+  card", or "Queue all cards". "Copy ChatGPT prompt" = the instruction that makes ChatGPT end
+  every recipe with a FORGE CARD block the app reads exactly.
+
+CHORD GRID + PALETTE (more control)
+  Under the 7 key chords: press a Root (C ... B) and a Type (Maj, m, 7, M7, m9, 13, sus4, dim,
+  6/9, Note ...) to hear a chord. Pick Oct / inversion / voicing. "+ Palette" keeps it exactly as
+  you heard it. "Export Palette" renders them all; tick "Generate uses palette" to make Generate
+  render exactly your palette - nothing random.
+
+CHORDS AND PROGRESSIONS
+  The row of 7 buttons above the keyboard plays the recipe's chords in your Key. Pick an octave
+  and inversion, then "Export chord" (or "Export all 7") -> Chord Picks folder.
+  "Scale banks: progressions" gives 4 smooth progressions per bank, one per row of pads.
+  Style "Trap Progressions": 20 trap progression sets. Pick one in the Progression menu
+  (next to the description) - one bank = main + 2 alternates + 808 roots. Random keys =
+  the set's original key. Tips are in _MPC_Setup.txt.
+  In Review, press M on a sample you like for 16 variations of it.
+  "Edit Style..." lets you change a recipe with checkboxes and save it as your own.
+
+
+RENDER QUEUE + ROUND ROBINS
+  Set up a batch, click "Add to Queue", change the settings, add the next ... then open Queue
+  (top right) and Start Queue. Each batch keeps its own instrument + sound. Walk away.
+  "Takes: 2-4 (round robin)" also renders slightly different takes of every sample into
+  Round_Robin/Take_2 ... (same pad numbers) so repeated hits don't sound machine-gunned.
+
+
+PRESET SWEEP (find the best sounds in a plugin)
+  Load a VST3, pick a recipe, click "Preset Sweep...". It tries every preset with a test chord,
+  drops silent / arp / duplicate / FX presets, ranks the rest by how well they fit the recipe,
+  and renders a 16-pad bank of each of the best (one folder per preset). Plugins that hide their
+  presets: choose "Variations of the current sound". The ranking and reasons are in
+  _Preset_Sweep.txt; every preset's test sound is in _Preset_Probes.
+
+
+SOMETHING WRONG?
+  Click "Diagnostics" (top right) > "Run Self-Test" > "Copy Report", and send the report.
+  Load your VST3 first so the self-test checks it too.
+
+  Command line:   mpcforge --diagnose
+                  mpcforge --diagnose --plugin "C:\Program Files\Common Files\VST3\YourSynth.vst3"
+
+  Log file:
+    Windows   %APPDATA%\MPCSampleForge\Logs\forge.log
+    macOS     ~/Library/MPCSampleForge/Logs/forge.log
+    Linux     ~/.config/MPCSampleForge/Logs/forge.log
+  The log includes a stack trace if the app crashes (e.g. a plugin crashes it).

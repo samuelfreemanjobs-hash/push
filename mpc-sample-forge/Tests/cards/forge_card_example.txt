@@ -1,0 +1,24 @@
+Some intro text from ChatGPT...
+=== FORGE CARD ===
+name: Blue Hour Convertible
+code: DL_BHC
+key: D major
+tempo: 92
+sound: soft electric piano + slow analog pad
+fx: chorus 15, delay 1/8d 10, plate 20, highpass 120
+CH Dmaj9 = D3 F#3 A3 C#4 E4
+CH Bm7 = B2 D3 F#3 A3
+CH A6/9 = A2 C#3 E3 F#3 B3
+LEAD = D5 E5 F#5 A5 B5 C#6
+SOFT = D5 F#5 A5 | velocity 60
+TEXTURE WARM_PAD_SWELL = D3 A3 F#4 | attack 800 | hold 4
+TEXTURE REVERSE_GLASS = D4 A4 F#5
+MELODY = F#5/q A5/e C#6/e B5/q A5/q | F#5/q E5/e F#5/e A5/q F#5/q
+=== END ===
+=== FORGE CARD ===
+name: Second One
+key: F minor
+tempo: 70
+sound: strings
+CH Fm9 = F2 Ab2 C3 Eb3 G3
+=== END ===

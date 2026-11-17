@@ -1,0 +1,195 @@
+name: MPC Sample Forge build
+
+on:
+  push:
+    # Both filters are needed: listing only tags would stop branch pushes from building.
+    branches: [ "**" ]
+    tags: [ "forge-v*" ]
+    paths: [ "mpc-sample-forge/**", ".github/workflows/mpc-sample-forge.yml" ]
+  pull_request:
+    paths: [ "mpc-sample-forge/**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+          - os: macos-latest
+            name: macOS
+          - os: ubuntu-24.04
+            name: Linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: mpc-sample-forge
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+            libxcomposite-dev libxext-dev libfreetype-dev libfontconfig1-dev
+
+      - name: Configure
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            # one app for Apple Silicon and Intel Macs
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+          fi
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Locate binaries
+        id: bin
+        run: |
+          R=build/mpcforge_artefacts/Release
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "cli=$R/mpcforge.exe" >> "$GITHUB_OUTPUT"; else echo "cli=$R/mpcforge" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Self-test (renders every engine and recipe)
+        run: '"${{ steps.bin.outputs.cli }}" --diagnose'
+
+      - name: Preset sweep against a real VST3 (test plugin)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -B build -DFORGE_BUILD_TEST_PLUGIN=ON
+          cmake --build build --target ForgeTestSynth_VST3 --parallel 4
+          P=build/ForgeTestSynth_artefacts/Release/VST3/ForgeTestSynth.vst3
+          CLI="${{ steps.bin.outputs.cli }}"
+          # the plugin's own preset list: 12 presets built to trip each check
+          "$CLI" --plugin $P --style neo-soul --sweep presets --sweep-keep 12 --short-names --warmup 0.3 --seed 5 --out sweep-out/presets
+          R=sweep-out/presets/_Preset_Sweep.txt
+          cat $R
+          grep -Eq "1\. (EP Soft Keys|Rhodes Classic) " $R
+          grep -q "sounds like Rhodes Classic" $R
+          grep -Eq "Silent Pad +0 +silent" $R
+          grep -Eq "Bubbles +0 +pulses" $R
+          grep -q "name says 'arp'" $R
+          grep -q "slow attack" $R
+          test "$(find sweep-out/presets/01_* -name '*.wav' | wc -l | tr -d ' ')" -eq 16
+          # preset files (.vstpreset), exported from the plugin and swept from a folder
+          "$CLI" --plugin $P --export-presets sweep-out/files/MPCSampleForge/ForgeTestSynth
+          test "$(ls sweep-out/files/MPCSampleForge/ForgeTestSynth/*.vstpreset | wc -l | tr -d ' ')" -eq 12
+          "$CLI" --plugin $P --style neo-soul --sweep-folder sweep-out/files --sweep-keep 3 --short-names --warmup 0.3 --out sweep-out/fromfiles
+          grep -q "sounds like 002_RhodesClassic" sweep-out/fromfiles/_Preset_Sweep.txt
+          # variations of the current sound
+          "$CLI" --plugin $P --style neo-soul --sweep variations --sweep-variations 24 --sweep-strength 0.7 --sweep-keep 4 --short-names --warmup 0.3 --out sweep-out/variations
+          test "$(ls -d sweep-out/variations/0*_Variation* | wc -l | tr -d ' ')" -ge 2
+          # a progression loop with a part played by a real VST3
+          "$CLI" --song philly-soul --key C --bars 4 --seed 3 --plugin-keys $P --finish sp1200 --chops 16 --out sweep-out/song_plugin
+          test -f sweep-out/song_plugin/*_stem_keys.wav
+          test "$(ls sweep-out/song_plugin/*_Chops/Bank_A/*.wav | wc -l | tr -d ' ')" -eq 16
+          # save it (with the plugin's sound), load it back: the same loop, sample for sample
+          "$CLI" --song philly-soul --key C --bars 4 --seed 3 --plugin-keys $P --finish sp1200 --save-song sweep-out/saved.forgesong --out sweep-out/song_saved
+          grep -q '"pluginState"' sweep-out/saved.forgesong
+          "$CLI" --song-file sweep-out/saved.forgesong --out sweep-out/song_loaded
+          cmp sweep-out/song_saved/*_stem_keys.wav sweep-out/song_loaded/*_stem_keys.wav
+          cmp sweep-out/song_saved/*_loop.wav sweep-out/song_loaded/*_loop.wav
+          "$CLI" --song-file sweep-out/saved.forgesong --vary 3 --no-loop --out sweep-out/song_vary
+          ls sweep-out/song_vary/*.mid
+
+      - name: Render demo kit
+        run: |
+          "${{ steps.bin.outputs.cli }}" --recipe guide-palette --16levels --count 18 --seed 11 --smart-pick --short-names --registers octaves --loudness --out demo-out/RecipeGuide_Palette
+          test -f demo-out/RecipeGuide_Palette/_smart_pick.csv
+          test ! -d demo-out/RecipeGuide_Palette/.candidates
+          test -d demo-out/RecipeGuide_Palette/Octave_Down
+          test -d demo-out/RecipeGuide_Palette/Octave_Up
+          # fail loudly if anything silently went missing
+          n=$(find demo-out/RecipeGuide_Palette -maxdepth 2 -name '*.wav' | wc -l | tr -d ' ')
+          r=$(find demo-out/RecipeGuide_Palette/Octave_* -name '*.wav' | wc -l | tr -d ' ')
+          echo "rendered $n WAV files + $r in other registers"
+          test "$n" -eq 18
+          test "$r" -ge 30
+          # a chord scale bank: one sound across 16 pads in C minor
+          "${{ steps.bin.outputs.cli }}" --recipe soul-chords --scale-bank --key C --scale minor --count 16 --seed 5 --short-names --loudness --out demo-out/SoulChords_ScaleBank_Cminor
+          b=$(find demo-out/SoulChords_ScaleBank_Cminor -name '*.wav' | wc -l | tr -d ' ')
+          echo "scale bank: $b pads"
+          test "$b" -eq 16
+          grep -q "SCALE BANKS" demo-out/SoulChords_ScaleBank_Cminor/_MPC_Setup.txt
+          # a progression bank: 4 voice-led progressions, one per row of pads
+          "${{ steps.bin.outputs.cli }}" --recipe gospel-rnb-90s --scale-bank --bank-type progressions --key Eb --scale major --count 16 --seed 5 --short-names --loudness --out demo-out/GospelRnB_Progressions_Ebmajor
+          p=$(find demo-out/GospelRnB_Progressions_Ebmajor -name '*.wav' | wc -l | tr -d ' ')
+          echo "progression bank: $p pads"
+          test "$p" -eq 16
+          grep -q "pads 1-4:" demo-out/GospelRnB_Progressions_Ebmajor/_MPC_Setup.txt
+          # trap progressions: all 20 sets, one bank each, with tips
+          "${{ steps.bin.outputs.cli }}" --recipe trap-progressions --count 320 --seed 1 --short-names --loudness --out demo-out/Trap_Progressions_All20
+          t=$(find demo-out/Trap_Progressions_All20 -name '*.wav' | wc -l | tr -d ' ')
+          echo "trap progressions: $t pads"
+          test "$t" -eq 320
+          grep -q "Tip:" demo-out/Trap_Progressions_All20/_MPC_Setup.txt
+          # round robins: 16 samples + 3 extra takes each
+          "${{ steps.bin.outputs.cli }}" --recipe neo-soul --count 16 --round-robins 4 --seed 3 --short-names --out demo-out/NeoSoul_RoundRobin
+          test "$(find demo-out/NeoSoul_RoundRobin -name '*.wav' | wc -l | tr -d ' ')" -eq 64
+          test -d demo-out/NeoSoul_RoundRobin/Round_Robin/Take_4
+          # a recipe card from a recipe book page: exact notes, the card's own file names, .mid files
+          "${{ steps.bin.outputs.cli }}" --card Tests/cards/DiskLordz_Installment01_sample.txt --out demo-out/RecipeCard_DL_BHC
+          test "$(ls demo-out/RecipeCard_DL_BHC/*.wav | wc -l | tr -d ' ')" -eq 16
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_A69_CH.wav
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_Fs5_LEAD.wav
+          test -f demo-out/RecipeCard_DL_BHC/DL_BHC_MELODY.mid
+          # a written progression with 5 parts: multi-track MIDI + drumless loop and stems
+          "${{ steps.bin.outputs.cli }}" --song quiet-storm --key Eb --bars 8 --seed 7 --finish dusty --chops chord --out demo-out/Progression_QuietStorm
+          test "$(ls demo-out/Progression_QuietStorm/*.mid | wc -l | tr -d ' ')" -eq 7
+          test "$(ls demo-out/Progression_QuietStorm/*.wav | wc -l | tr -d ' ')" -eq 5
+          test "$(ls demo-out/Progression_QuietStorm/*_Chops/Bank_A/*.wav | wc -l | tr -d ' ')" -eq 8
+          test -f demo-out/RecipeGuide_Palette/_MPC_Setup.txt
+
+      - name: Package
+        run: |
+          PKG=MPCSampleForge-${{ matrix.name }}
+          mkdir -p "pkg/$PKG"
+          R=build/MPCSampleForge_artefacts/Release
+          cp -R Examples QUICKSTART.txt README.md "pkg/$PKG/"
+          cp -R demo-out "pkg/$PKG/Demo-Samples"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cp -R "$R/MPC Sample Forge.app" "pkg/$PKG/"
+            cp build/mpcforge_artefacts/Release/mpcforge "pkg/$PKG/"
+            # ad-hoc signature: required for the app to launch at all on Apple Silicon
+            codesign --force --deep --sign - "pkg/$PKG/MPC Sample Forge.app"
+            codesign --force --sign - "pkg/$PKG/mpcforge"
+            # ditto keeps permissions and the bundle intact
+            (cd pkg && ditto -c -k --keepParent "$PKG" "$PKG.zip")
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            cp "$R/MPC Sample Forge.exe" build/mpcforge_artefacts/Release/mpcforge.exe "pkg/$PKG/"
+            (cd pkg && 7z a -tzip "$PKG.zip" "$PKG" > /dev/null)
+          else
+            cp "$R/MPC Sample Forge" build/mpcforge_artefacts/Release/mpcforge "pkg/$PKG/"
+            (cd pkg && tar czf "$PKG.tar.gz" "$PKG")
+          fi
+          ls -la pkg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MPCSampleForge-${{ matrix.name }}
+          path: |
+            mpc-sample-forge/pkg/*.zip
+            mpc-sample-forge/pkg/*.tar.gz
+          compression-level: 0   # already compressed
+
+  # Pushing a tag like forge-v1.2.0 publishes the three downloads as a GitHub Release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/forge-v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          name: MPC Sample Forge ${{ github.ref_name }}
