@@ -1,28 +1,50 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { ActionConsolePanel } from "./components/ActionConsolePanel";
 import { AgentsPanel } from "./components/AgentsPanel";
-import { MobileCrewPanel } from "./components/MobileCrewPanel";
 import { AutomationsPanel } from "./components/AutomationsPanel";
 import { GatesPanel } from "./components/GatesPanel";
 import { KanbanBoard } from "./components/KanbanBoard";
+import { MobileCrewPanel } from "./components/MobileCrewPanel";
 import { Overview } from "./components/Overview";
 import { Sidebar } from "./components/Sidebar";
-import type { SectionId } from "./components/Sidebar.types";
+import { ToastBar } from "./components/ToastBar";
 import { TripwirePanel } from "./components/TripwirePanel";
 import { VaultPanel } from "./components/VaultPanel";
 import { VstPanel } from "./components/VstPanel";
+import {
+  CommandCenterProvider,
+  useCommandCenter,
+} from "./context/CommandCenterContext";
 import { OpsDataProvider } from "./context/OpsDataContext";
+import type { KanbanColumnId } from "./data/types";
 import { useKanbanStorage } from "./hooks/useKanbanStorage";
 
 function CommandCenterMain() {
-  const [section, setSection] = useState<SectionId>("overview");
+  const {
+    section,
+    setSection,
+    kanbanMoveRequest,
+    clearKanbanMoveRequest,
+  } = useCommandCenter();
   const { cards, moveCard, resetKanban, wipLimit } = useKanbanStorage();
+
+  useEffect(() => {
+    if (!kanbanMoveRequest) return;
+    moveCard(
+      kanbanMoveRequest.cardId,
+      kanbanMoveRequest.column as KanbanColumnId,
+    );
+    clearKanbanMoveRequest();
+  }, [kanbanMoveRequest, moveCard, clearKanbanMoveRequest]);
 
   return (
     <div className="app-shell">
       <Sidebar active={section} onSelect={setSection} />
       <main className="main">
+        <ToastBar />
         {section === "overview" ? <Overview /> : null}
         {section === "automations" ? <AutomationsPanel /> : null}
+        {section === "actions" ? <ActionConsolePanel /> : null}
         {section === "kanban" ? (
           <KanbanBoard
             cards={cards}
@@ -45,7 +67,9 @@ function CommandCenterMain() {
 export default function App() {
   return (
     <OpsDataProvider>
-      <CommandCenterMain />
+      <CommandCenterProvider>
+        <CommandCenterMain />
+      </CommandCenterProvider>
     </OpsDataProvider>
   );
 }

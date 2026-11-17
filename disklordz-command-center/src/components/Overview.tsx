@@ -1,6 +1,9 @@
+import { useCommandCenter } from "../context/CommandCenterContext";
 import { useOpsData } from "../context/OpsDataContext";
+import { actionForBriefId } from "../data/actionCatalog";
 
 export function Overview() {
+  const { setSection, triggerAction } = useCommandCenter();
   const { snapshot, brief, agentLanes, repos, loading } = useOpsData();
   const cards = snapshot.kanban.cards;
 
@@ -46,15 +49,44 @@ export function Overview() {
       </section>
 
       <section className="panel">
-        <h2 className="panel__title">Automated focus (now)</h2>
+        <div className="panel__head">
+          <h2 className="panel__title">Automated focus (now)</h2>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => setSection("actions")}
+          >
+            Open action console
+          </button>
+        </div>
         {topActions.length > 0 ? (
-          <ol className="numbered">
-            {topActions.map((a) => (
-              <li key={a.id}>
-                <strong>{a.lane}</strong> — {a.title}
-              </li>
-            ))}
-          </ol>
+          <ul className="action-list">
+            {topActions.map((a) => {
+              const linked = actionForBriefId(a.id);
+              return (
+                <li key={a.id} className={`action-item action-item--${a.severity}`}>
+                  <span className="action-item__lane">{a.lane}</span>
+                  <strong>{a.title}</strong>
+                  {linked ? (
+                    <div className="action-row">
+                      <button
+                        type="button"
+                        className="btn btn--tiny"
+                        onClick={() =>
+                          void triggerAction(linked.id, {
+                            title: linked.title,
+                            lane: linked.lane,
+                          })
+                        }
+                      >
+                        Run
+                      </button>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <p className="panel__desc">No critical automated items — check Kanban ready column.</p>
         )}

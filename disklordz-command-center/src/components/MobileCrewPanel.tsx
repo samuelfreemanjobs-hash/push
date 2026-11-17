@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCommandCenter } from "../context/CommandCenterContext";
 import {
   DEFAULT_MOBILE_AGENT_ID,
   ELITE_AGENTS,
@@ -14,6 +15,7 @@ type ChatLine = {
 };
 
 export function MobileCrewPanel() {
+  const { agentPrefill, clearAgentPrefill } = useCommandCenter();
   const apiUrl = agentApiBase();
   const [selectedId, setSelectedId] = useState(DEFAULT_MOBILE_AGENT_ID);
   const [input, setInput] = useState("");
@@ -25,6 +27,15 @@ export function MobileCrewPanel() {
     () => ELITE_AGENTS.find((a) => a.id === selectedId) ?? ELITE_AGENTS[0],
     [selectedId],
   );
+
+  useEffect(() => {
+    if (!agentPrefill) return;
+    if (agentPrefill.agentId) {
+      setSelectedId(agentPrefill.agentId);
+    }
+    setInput(agentPrefill.message);
+    clearAgentPrefill();
+  }, [agentPrefill, clearAgentPrefill]);
 
   const pushLine = useCallback((line: ChatLine) => {
     setLines((prev) => [...prev, line]);

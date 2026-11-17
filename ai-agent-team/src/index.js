@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { listEliteAgents } from "./agents/eliteRoster.js";
 import { skillLineForAgent } from "./agents/openclawSkillsMap.js";
 import { modelForAgent, resolveAgent } from "./agents/router.js";
+import { dispatchWorkflow } from "./github/workflowDispatch.js";
 import { ollamaGenerate, shouldUseOllama } from "./providers/ollama.js";
 
 dotenv.config();
@@ -110,6 +111,25 @@ app.post("/api/agent", async (req, res) => {
     console.error("Error:", error);
     res.status(500).json({
       error: "Failed to process request",
+      details: error.message,
+    });
+  }
+});
+
+app.post("/api/github/workflow-dispatch", async (req, res) => {
+  try {
+    const { workflowFile, ref, inputs } = req.body ?? {};
+    if (!workflowFile || !ref) {
+      return res
+        .status(400)
+        .json({ error: "workflowFile and ref are required" });
+    }
+    const result = await dispatchWorkflow({ workflowFile, ref, inputs });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("workflow-dispatch:", error);
+    res.status(500).json({
+      error: "Workflow dispatch failed",
       details: error.message,
     });
   }
