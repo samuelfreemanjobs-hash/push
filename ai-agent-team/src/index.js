@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -7,6 +8,10 @@ import { listEliteAgents } from "./agents/eliteRoster.js";
 import { skillLineForAgent } from "./agents/openclawSkillsMap.js";
 import { modelForAgent, resolveAgent } from "./agents/router.js";
 import { dispatchWorkflow } from "./github/workflowDispatch.js";
+import {
+  formatTaskUserMessage,
+  withTaskSystem,
+} from "./tasks/runAgentTask.js";
 import { ollamaGenerate, shouldUseOllama } from "./providers/ollama.js";
 
 dotenv.config();
@@ -111,6 +116,91 @@ app.post("/api/agent", async (req, res) => {
     console.error("Error:", error);
     res.status(500).json({
       error: "Failed to process request",
+      details: error.message,
+    });
+  }
+});
+
+app.post("/api/tasks/run", async (req, res) => {
+  try {
+    const {
+      title,
+      instructions,
+      agentId,
+      taskId,
+      kanbanCardId,
+      userId,
+    } = req.body ?? {};
+
+    if (!title || !instructions) {
+      return res
+        .status(400)
+        .json({ error: "title and instructions are required" });
+    }
+
+    const userMessage = formatTaskUserMessage({
+      title,
+      instructions,
+      kanbanCardId,
+    });
+    const { agent, message: routedMessage, matchedBy } = resolveAgent(
+      userMessage,
+      agentId,
+    );
+
+    const system = withTaskSystem(agent.system + skillLineForAgent(agent.id));
+    let aiResponse;
+
+    if (shouldUseOllama(agent.id)) {
+      aiResponse = await ollamaGenerate({
+        baseUrl: process.env.OLLAMA_BASE_URL,
+        model: process.env.OLLAMA_MODEL,
+        system,
+        user: routedMessage,
+      });
+    } else if (!genAI) {
+      throw new Error("GEMINI_API_KEY or Ollama required");
+    } else {
+      const model = genAI.getGenerativeModel({
+        model: modelForAgent(agent),
+        systemInstruction: system,
+      });
+      const result = await model.generateContent(routedMessage);
+      aiResponse = result.response.text();
+    }
+
+    if (userId && supabase) {
+      const { error } = await supabase.from("agent_tasks").insert([
+        {
+          id: taskId ?? randomUUID(),
+          user_id: userId,
+          agent_id: agent.id,
+          title,
+          instructions,
+          output: aiResponse,
+          status: "completed",
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      if (error) console.error("agent_tasks insert:", error.message);
+    }
+
+    res.json({
+      success: true,
+      taskId,
+      output: aiResponse,
+      aiResponse,
+      agent: {
+        id: agent.id,
+        prefix: agent.prefix,
+        displayName: agent.displayName,
+        matchedBy,
+      },
+    });
+  } catch (error) {
+    console.error("tasks/run:", error);
+    res.status(500).json({
+      error: "Task execution failed",
       details: error.message,
     });
   }

@@ -51,13 +51,22 @@ export function Overview() {
       <section className="panel">
         <div className="panel__head">
           <h2 className="panel__title">Automated focus (now)</h2>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => setSection("actions")}
-          >
-            Open action console
-          </button>
+          <div className="task-form__actions">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setSection("tasks")}
+            >
+              Assign tasks
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setSection("actions")}
+            >
+              Actions
+            </button>
+          </div>
         </div>
         {topActions.length > 0 ? (
           <ul className="action-list">

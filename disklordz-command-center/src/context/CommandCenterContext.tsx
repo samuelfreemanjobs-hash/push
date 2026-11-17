@@ -7,13 +7,24 @@ import {
   type ReactNode,
 } from "react";
 import type { SectionId } from "../components/Sidebar.types";
-import { runOpsAction } from "../lib/runAction";
+import type { AgentAssignment } from "../data/agentTaskTypes";
+import { useAgentAssignments } from "../hooks/useAgentAssignments";
 import { useTaskQueue } from "../hooks/useTaskQueue";
+import {
+  executeAgentTask,
+  offlineAgentHint,
+} from "../lib/executeAgentTask";
+import { runOpsAction } from "../lib/runAction";
 
 type AgentPrefill = {
   agentId?: string;
   message: string;
 };
+
+type AssignInput = Omit<
+  AgentAssignment,
+  "id" | "status" | "createdAt"
+>;
 
 type CommandCenterContextValue = {
   section: SectionId;
@@ -30,6 +41,12 @@ type CommandCenterContextValue = {
   ) => Promise<{ ok: boolean; message: string }>;
   tasks: ReturnType<typeof useTaskQueue>["tasks"];
   clearDoneTasks: () => void;
+  assignments: AgentAssignment[];
+  assignTask: (input: AssignInput, options?: { runNow?: boolean }) => string;
+  runAssignment: (id: string) => Promise<void>;
+  runAllAssigned: () => Promise<void>;
+  removeAssignment: (id: string) => void;
+  clearCompletedAssignments: () => void;
   toast: string | null;
   clearToast: () => void;
 };
@@ -48,6 +65,69 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const { tasks, enqueue, patch, clearDone } = useTaskQueue();
+  const {
+    assignments,
+    create,
+    patch: patchAssignment,
+    remove,
+    clearCompleted,
+  } = useAgentAssignments();
+
+  const runAssignmentFor = useCallback(
+    async (task: AgentAssignment) => {
+      const id = task.id;
+      patchAssignment(id, {
+        status: "running",
+        startedAt: new Date().toISOString(),
+        error: undefined,
+      });
+      try {
+        const { output, prefix } = await executeAgentTask(task);
+        patchAssignment(id, {
+          status: "completed",
+          completedAt: new Date().toISOString(),
+          output: `[${prefix}]\n\n${output}`,
+        });
+        setToast(`Task completed — ${task.title}`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Run failed";
+        const hint = message === "offline" ? offlineAgentHint() : message;
+        patchAssignment(id, {
+          status: "failed",
+          error: hint,
+        });
+        setToast(hint);
+      }
+    },
+    [patchAssignment],
+  );
+
+  const runAssignment = useCallback(
+    async (id: string) => {
+      const task = assignments.find((a) => a.id === id);
+      if (!task) return;
+      await runAssignmentFor(task);
+    },
+    [assignments, runAssignmentFor],
+  );
+
+  const assignTask = useCallback(
+    (input: AssignInput, options?: { runNow?: boolean }) => {
+      const row = create(input);
+      setToast(`Assigned to ${input.agentId}: ${input.title}`);
+      if (options?.runNow) {
+        void runAssignmentFor(row);
+      }
+      return row.id;
+    },
+    [create, runAssignmentFor],
+  );
+
+  const runAllAssigned = useCallback(async () => {
+    for (const a of assignments.filter((x) => x.status === "assigned")) {
+      await runAssignment(a.id);
+    }
+  }, [assignments, runAssignment]);
 
   const triggerAction = useCallback(
     async (actionId: string, meta?: { title: string; lane: string }) => {
@@ -102,6 +182,12 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       triggerAction,
       tasks,
       clearDoneTasks: clearDone,
+      assignments,
+      assignTask,
+      runAssignment,
+      runAllAssigned,
+      removeAssignment: remove,
+      clearCompletedAssignments: clearCompleted,
       toast,
       clearToast: () => setToast(null),
     }),
@@ -112,6 +198,12 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       triggerAction,
       tasks,
       clearDone,
+      assignments,
+      assignTask,
+      runAssignment,
+      runAllAssigned,
+      remove,
+      clearCompleted,
       toast,
     ],
   );

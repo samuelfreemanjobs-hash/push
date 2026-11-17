@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { ActionConsolePanel } from "./components/ActionConsolePanel";
+import { AgentTasksPanel } from "./components/AgentTasksPanel";
 import { AgentsPanel } from "./components/AgentsPanel";
 import { AutomationsPanel } from "./components/AutomationsPanel";
 import { GatesPanel } from "./components/GatesPanel";
@@ -45,6 +46,7 @@ function CommandCenterMain() {
         {section === "overview" ? <Overview /> : null}
         {section === "automations" ? <AutomationsPanel /> : null}
         {section === "actions" ? <ActionConsolePanel /> : null}
+        {section === "tasks" ? <AgentTasksPanel /> : null}
         {section === "kanban" ? (
           <KanbanBoard
             cards={cards}

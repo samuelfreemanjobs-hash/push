@@ -21,6 +21,20 @@ GET /health
 GET /api/agents
 ```
 
+### Run assigned task (Command Center)
+```bash
+POST /api/tasks/run
+Content-Type: application/json
+
+{
+  "taskId": "uuid",
+  "title": "Resolve vault PR #126 conflicts",
+  "instructions": "List files and merge order…",
+  "agentId": "flow",
+  "kanbanCardId": "K-010"
+}
+```
+
 ### Send Message to AI Agent
 ```bash
 POST /api/agent

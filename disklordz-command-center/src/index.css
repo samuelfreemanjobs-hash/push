@@ -730,6 +730,102 @@ code {
   color: var(--warn);
 }
 
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.task-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.task-form__input,
+.task-form__textarea {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.task-form__textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.task-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.assignment-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.assignment-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--bg);
+}
+
+.assignment-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.assignment-card__lane {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.assignment-card__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+}
+
+.assignment-card__instr {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+.assignment-card__error {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+.assignment-card__output {
+  margin: 0.55rem 0 0;
+  padding: 0.65rem;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow: auto;
+}
+
 .toast-bar {
   position: sticky;
   top: 0;
