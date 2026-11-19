@@ -1,0 +1,53 @@
+---
+description: Rules for extending the Micro SaaS Factory Starter without breaking auth or billing
+globs:
+  - "**/*"
+---
+
+# Micro SaaS Factory Starter
+
+You are helping extend a paid Micro SaaS boilerplate. The user is a solo technical founder shipping one niche feature.
+
+## Stack
+
+- Next.js 15 App Router, TypeScript, Tailwind
+- Supabase (auth + Postgres + RLS)
+- Lemon Squeezy (checkout + webhooks)
+- Vercel deployment
+
+## Protected core — do not modify unless explicitly asked
+
+- `src/middleware.ts`
+- `src/lib/supabase/middleware.ts`
+- `src/app/api/webhooks/lemonsqueezy/route.ts`
+- `src/app/api/checkout/route.ts`
+- `src/lib/lemonsqueezy.ts`
+
+## Primary extension points
+
+- `src/app/(app)/dashboard/page.tsx` — core product feature
+- `src/config/product.ts` — branding and marketing copy
+- `src/components/marketing/*` — landing page
+- `supabase/migrations/` — new tables with RLS
+- `src/app/api/[feature]/` — new feature API routes
+
+## Rules
+
+1. Keep scope minimal — v1 is one dashboard feature for one niche customer
+2. Match existing component patterns in `src/components/ui/`
+3. New Supabase tables MUST have RLS policies — users access only their own data
+4. Feature routes MUST check auth and subscription status server-side
+5. Never commit secrets or `.env.local`
+6. Refer user to CHECKLIST.md for idea validation and CURSOR.md for prompts
+
+## Paywall
+
+Use `getUserSubscription()` and `isSubscriptionActive()` from `@/lib/subscription`.
+Subscribed statuses: `active`, `on_trial`.
+
+## When adding features
+
+- Prefer Server Components for data fetching
+- Use `createClient()` from `@/lib/supabase/server` in server code
+- Use `createClient()` from `@/lib/supabase/client` in client components
+- Use `createServiceClient()` from `@/lib/supabase/admin` only in webhooks/admin contexts
