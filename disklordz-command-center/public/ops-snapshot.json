@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-22T06:26:12.550Z",
+  "generatedAt": "2026-11-22T19:26:12.964Z",
   "sources": {
     "kanban": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/blob/main/agents/disklordz/kanban.yaml",
     "businessOs": "https://github.com/samuelfreemanjobs-hash/Revenue-Systems-Engineer-Master-Vault/blob/main/agents/disklordz/business-os.yaml",
@@ -343,7 +343,7 @@
       "path": "repo-wide",
       "workflow": "nightly-qa.yml",
       "ciStatus": "failure",
-      "ciDate": "2026-11-21"
+      "ciDate": "2026-11-22"
     },
     {
       "name": "Lane Bus",
