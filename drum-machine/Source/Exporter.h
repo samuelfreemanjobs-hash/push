@@ -1,0 +1,69 @@
+#pragma once
+
+#include "KitFactory.h"
+#include "PhonkClassic.h"
+#include "VintageBus.h"
+
+// Renders a kit to a sample pack: one WAV per pad (through the vintage bus),
+// an .sfz keymap, the .kitforge kit file and, if the bus has vinyl, a vinyl
+// texture loop.
+//
+// File naming:  <Prefix>_<Type>_<Name>_A<pad>_<bits>bit.wav
+//   e.g.        JazzPhonk_Kick_JazzSubKick_A01_12bit.wav
+// Levels:       kicks / snares / claps -1 dBFS, toms / rims -2 dBFS,
+//               percussion -3 dBFS, hats / cymbals -4 dBFS
+namespace kf::Exporter
+{
+struct Options
+{
+    double sampleRate = 44100.0;
+    int bitDepth = 24;
+    int firstPad = 1;          // number of the first pad (A01)
+    juce::String prefix;       // defaults to the kit name
+    bool normalise = true;
+    bool writeSfz = true;
+    bool writeKitFile = true;
+    bool writeVinylLoop = true;
+};
+
+struct Result
+{
+    juce::StringArray files;
+    juce::String error;
+    bool ok() const { return error.isEmpty(); }
+};
+
+float targetPeakDb (VoiceType type);
+juce::String sanitise (const juce::String& s);
+
+// Render one hit (mono) through the vintage bus, trimmed and faded.
+juce::AudioBuffer<float> renderVoice (const VoiceDef& voice, const BusDef& bus, double sampleRate);
+
+Result exportKit (const Kit& kit, const juce::File& folder, const Options& options);
+
+// Export a single pad as one WAV (rendered through the bus, normalised by type).
+// A file name like "Kick_JazzSubKick_12bit.wav" is suggested by padFileName().
+juce::String padFileName (const VoiceDef& voice, const juce::String& name, const BusDef& bus);
+bool exportPad (const VoiceDef& voice, const BusDef& bus, const juce::File& file, const Options& options);
+
+// Offline render of a Phonk Factory-style loop (tails wrap for seamless MPC loops).
+juce::AudioBuffer<float> renderPhonkLoop (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                                          const std::vector<PhonkClassic::Event>& events, double bpm,
+                                          double swingPercent, double sampleRate);
+
+struct PhonkLoopExportOptions
+{
+    double sampleRate = 44100.0;
+    int bitDepth = 16;
+    juce::String prefix { "PhonkFactory" };
+    int patternSeed = 7;
+    float variation = 0.5f;
+    float rolls = 0.3f;
+    float cowbell = 0.2f;
+    int extraLoops = 5;
+    double currentBpm = 118.0;
+};
+
+Result exportPhonkLoopPack (const Kit& kit, juce::AudioProcessorValueTreeState& apvts,
+                            const juce::File& folder, const PhonkLoopExportOptions& opt);
+} // namespace kf::Exporter
